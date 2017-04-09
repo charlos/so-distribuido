@@ -3,6 +3,7 @@
 *.ko
 *.obj
 *.elf
+*.mk
 
 # Precompiled Headers
 *.gch
@@ -31,3 +32,8 @@
 # Debug files
 *.dSYM/
 *.su
+
+# Archivos/directorios especificos
+kernel/Debug/kernel
+kernel/Debug/src/
+shared-library/Debug/shared-library/
