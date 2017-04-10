@@ -1,16 +1,15 @@
 /*
  ============================================================================
- Name        : kernel.c
+ Name        : memoria.c
  Author      : Carlos Flores
  Version     :
- Copyright   : GitHub @Charlos 
+ Copyright   : GitHub @Charlos
  Description : Hello World in C, Ansi-style
  ============================================================================
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "kernel.h"
 #include <shared-library/connect.h>
 
 int main(void) {
@@ -22,6 +21,6 @@ int main(void) {
 }
 
 int saludo() {
-	puts("¡Hola KERNEL!");
+	puts("¡Hola MEMORIA!");
 	return EXIT_SUCCESS;
 }

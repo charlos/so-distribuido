@@ -34,6 +34,14 @@
 *.su
 
 # Archivos/directorios especificos
+consola/Debug/consola
+consola/Debug/src/
+cpu/Debug/cpu
+cpu/Debug/src/
+file-system/Debug/file-system
+file-system/Debug/src/
+memoria/Debug/memoria
+memoria/Debug/src/
 kernel/Debug/kernel
 kernel/Debug/src/
 shared-library/Debug/shared-library/
