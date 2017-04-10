@@ -26,8 +26,8 @@ endif
 all: kernel
 
 dependents:
-	-cd /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug && $(MAKE) clean all
-	-cd /home/utnso/workspace/so-commons-library/src/Debug && $(MAKE) clean all
+	-cd /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/so-commons-library/src/Debug && $(MAKE) all
 
 # Tool invocations
 kernel: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug/libshared-library.so /home/utnso/workspace/so-commons-library/src/Debug/libcommons.so

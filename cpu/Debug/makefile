@@ -26,8 +26,8 @@ endif
 all: cpu
 
 dependents:
-	-cd /home/utnso/workspace/so-commons-library/src/Debug && $(MAKE) clean all
-	-cd /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug && $(MAKE) clean all
+	-cd /home/utnso/workspace/so-commons-library/src/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug && $(MAKE) all
 
 # Tool invocations
 cpu: $(OBJS) $(USER_OBJS) /home/utnso/workspace/so-commons-library/src/Debug/libcommons.so /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug/libshared-library.so
