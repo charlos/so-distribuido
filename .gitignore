@@ -45,3 +45,4 @@ memoria/Debug/src/
 kernel/Debug/kernel
 kernel/Debug/src/
 shared-library/Debug/shared-library/
+*.log
