@@ -6,12 +6,12 @@
  */
 
 #include <commons/config.h>
+#include <errno.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include "socket.h"
-#include <errno.h>
 
-int open_socket(int backlog, int port, t_log* logger) {
+int open_socket(int backlog, int port) {
 
 	struct sockaddr_in server;
 	int yes = 1;
@@ -23,12 +23,13 @@ int open_socket(int backlog, int port, t_log* logger) {
 
 	setsockopt(listenning_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
-	if(bind(listenning_socket, (struct sockaddr *) &server, sizeof(server)) == -1){
-		log_error(logger, "Error en el bind().\n error de tipo: %d", errno);
+	if (bind(listenning_socket, (struct sockaddr *) &server, sizeof(server)) == -1) {
+		fprintf("socket - error en el bind() (error de tipo: %d)\n", errno);
 		close(listenning_socket);
 	}
-	if(listen(listenning_socket, backlog) == -1){
-		log_error(logger, "Error en el listen().\n error de tipo: %d", errno);
+
+	if (listen(listenning_socket, backlog) == -1) {
+		fprintf("socket - error en el listen() (error de tipo: %d)\n", errno);
 		close(listenning_socket);
 	};
 
@@ -54,26 +55,25 @@ int connect_to_socket(char * server_ip, char * server_port) {
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	if(	getaddrinfo(server_ip, server_port, &hints, &server_info) != 0){
-		fprintf(stderr, "Error en getaddrinfo\n");
+	if (getaddrinfo(server_ip, server_port, &hints, &server_info) != 0) {
+		fprintf(stderr, "socket - error en getaddrinfo()\n");
 		exit(1);
 	}
-
 	int server_socket = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
-	if(server_socket == -1){
-		fprintf(stderr, "Error en socket()");
+	if (server_socket == -1) {
+		fprintf(stderr, "socket - error en socket()\n");
 		exit(1);
 	}
-	if(connect(server_socket, server_info->ai_addr, server_info->ai_addrlen) == -1){
+	if (connect(server_socket, server_info->ai_addr, server_info->ai_addrlen) == -1) {
 		close(server_socket);
-		fprintf(stderr, "Error en el connect\n");
+		fprintf(stderr, "socket - error en connect()\n");
 		exit(1);
 	}
 	freeaddrinfo(server_info);
 	return server_socket;
 }
 
-void manage_select(int socket, t_log* log){
+void manage_select(int socket, t_log * log){
 	int nuevaConexion, a, recibido, set_fd_max, i;
 	char buf[512];
 	fd_set master, lectura;
@@ -114,7 +114,6 @@ void manage_select(int socket, t_log* log){
 		}
 	}
 }
-
 
 int socket_send(int * server_socket, void * buffer, int buffer_size, int flags) {
 	return send(* server_socket, buffer, buffer_size, flags);

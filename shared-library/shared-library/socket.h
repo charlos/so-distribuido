@@ -24,7 +24,7 @@
 	 *
 	 * @RETURN int : file descriptor del nuevo socket
 	 */
-	int open_socket(int, int, t_log*);
+	int open_socket(int, int);
 
 	/**
 	 * @NAME   close_socket
@@ -104,6 +104,13 @@
 	 */
 	int close_client(int);
 
-	void manage_select(int socket, t_log* log);
+	/**
+	 * @NAME:  manage_select
+	 * @DESC:  none
+	 *
+	 * @PARAMS int * socket : none
+	 * 		   t_log * log  : none
+	 */
+	void manage_select(int socket, t_log * log);
 
 #endif /* SHARED_LIBRARY_SOCKET_H_ */
