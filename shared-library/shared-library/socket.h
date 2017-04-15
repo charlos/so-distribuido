@@ -12,6 +12,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 	/**
 	 * @NAME   open_socket
@@ -22,7 +24,7 @@
 	 *
 	 * @RETURN int : file descriptor del nuevo socket
 	 */
-	int open_socket(int, int);
+	int open_socket(int, int, t_log*);
 
 	/**
 	 * @NAME   close_socket
@@ -101,5 +103,7 @@
 	 * @RETURN int : 0 funcionamiento normal, -1 en caso de error
 	 */
 	int close_client(int);
+
+	void manage_select(int socket, t_log* log);
 
 #endif /* SHARED_LIBRARY_SOCKET_H_ */

@@ -8,7 +8,7 @@
 #ifndef KERNEL_H_
 #define KERNEL_H_
 
-#include <shared-library/sockets.h>
+#include <shared-library/socket.h>
 
 int saludo(void);
 
