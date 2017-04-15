@@ -12,5 +12,12 @@
 #include <stdlib.h>
 #include <shared-library/connect.h>
 #include <shared-library/socket.h>
+#include <commons/config.h>
+
+typedef struct {
+	char* ipAddress;
+	int* port;
+} console_cfg;
+
 
 #endif /* CONSOLA_H_ */

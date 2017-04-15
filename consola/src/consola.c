@@ -11,9 +11,11 @@
 #include "consola.h"
 
 t_log* logger;
+console_cfg * console_config;
 
 int main(int argc, char* argv[]) {
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
+//	load_config(argv[0]);
 	char* timeStart = temporal_get_string_time(); //usando commons
 	printf("Tiempo de Inicio del Proceso: %s\n", timeStart);
 	saludo();
@@ -28,4 +30,10 @@ int main(int argc, char* argv[]) {
 int saludo() {
 	puts("¡Hola CONSOLA!");
 	return EXIT_SUCCESS;
+}
+
+load_config(char * path) {
+	t_config* cfg = config_create(path);
+	console_config->ipAddress = config_get_string_value(cfg, "IP_KERNEL");
+	console_config->port = config_get_int_value(cfg, "PORT_KERNEL");
 }
