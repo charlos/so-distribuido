@@ -4,12 +4,28 @@
  *  Created on: 12/4/2017
  *      Author: utnso
  */
-#include <commons/log.h>
+#include "generales.h"
+
+
+char* obtener_nombre_proceso(char* pathProceso){
+	char* nombreProceso;
+	char** lista;
+	nombreProceso = string_reverse(pathProceso);
+	lista = string_split(nombreProceso, "/");
+	nombreProceso = lista[0];
+	nombreProceso = string_reverse(nombreProceso);
+	return nombreProceso;
+}
 
 // Crea el logger con el nombre del proceso
-void crear_logger(char* nombreProceso, t_log** logger, bool active_console, t_log_level level){
+void crear_logger(char* pathProceso, t_log** logger, bool active_console, t_log_level level){
+	char* nombreProceso;
 	char* nombre_log = string_new();
-	string_append(&nombre_log, nombreProceso);
+	string_append(&nombre_log, pathProceso);
 	string_append(&nombre_log, ".log");
-	*logger = log_create(nombre_log, "<NOMBRE-DE-PROCESO>", active_console, level); //TODO Hacer la funcion para sacar el nombre del proceso de la ruta
+	nombreProceso = obtener_nombre_proceso(pathProceso);
+	string_to_upper(nombreProceso);
+	*logger = log_create(nombre_log, nombreProceso, active_console, level);
 }
+
+

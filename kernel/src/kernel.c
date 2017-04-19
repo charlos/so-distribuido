@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
 	saludo();
 	connect_send("mi primer mensaje enviado :)"); //usando nuestra shared library
 	log_trace(logger, "Prueba de log");
-	socket_escucha = open_socket(10, 46000, logger);
+	socket_escucha = open_socket(10, 46000);
 	log_trace(logger, "Socket de escucha: %d", socket_escucha);
 	manage_select(socket_escucha, logger);
 	return EXIT_SUCCESS;
