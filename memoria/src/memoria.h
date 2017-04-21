@@ -26,4 +26,17 @@ typedef struct {
 	char *   logfile;
 } memoria_config;
 
+
+typedef struct {
+	uint32_t frame;
+	uint32_t pid;
+	uint32_t pag;
+} reg_tabla_invert;
+
+typedef struct  {
+	uint32_t size;
+	char isFree; // 0=Free ; 1=Used
+} HeapMetadata;
+
+
 #endif /* MEMORIA_H_ */

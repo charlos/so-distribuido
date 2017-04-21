@@ -20,6 +20,8 @@
 
 #include "memoria.h"
 
+void inicializar_paginas(void *, memoria_config *);
+
 #define	SOCKET_BACKLOG 100
 
 memoria_config * memoria_arch_conf;
@@ -33,6 +35,18 @@ int main(void) {
 	create_logger();
 	print_memory_properties();
 
+//Creación de estructura MEMORIA
+
+	void * memory_ptr = malloc(memoria_arch_conf->marco_size*memoria_arch_conf->marcos);
+
+	reg_tabla_invert * tabla_invertida = (reg_tabla_invert *) memory_ptr;
+	uint32_t ULT_POS_TABLA_INVERT = memoria_arch_conf->marcos;
+
+	inicializar_paginas(memory_ptr, memoria_arch_conf);
+
+	memory_ptr++;
+
+
 	int * new_sock;
 	listenning_socket = open_socket(SOCKET_BACKLOG, memoria_arch_conf->puerto);
 
@@ -44,12 +58,29 @@ int main(void) {
 		pthread_t thread;
 		pthread_attr_init(&attr);
 		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-		pthread_create(&thread, &attr, &process_request, (void *) new_sock);
+//		pthread_create(&thread, &attr, &process_request, (void *) new_sock);
 		pthread_attr_destroy(&attr);
 	}
 	close_socket(listenning_socket);
 	return EXIT_SUCCESS;
 }
+
+void inicializar_paginas(void * pag_ptr, memoria_config * memoria_arch_conf){
+
+	uint32_t i;
+	HeapMetadata *block_meta;
+	block_meta->isFree = '0';
+	block_meta->size = memoria_arch_conf->marco_size-5;
+
+	// REVISAR ESTO, DA SEGMENTATION FAULT AL FIN DEL BUCLE FOR
+	for(i=0;1<memoria_arch_conf->marcos;i++){
+
+		memcpy(pag_ptr, &block_meta, sizeof(HeapMetadata));
+		pag_ptr+=memoria_arch_conf->marco_size;
+	}
+
+}
+
 
 void create_logger(void) {
 	logger = log_create(memoria_arch_conf->logfile, "MEMORIA", true, LOG_LEVEL_TRACE);
