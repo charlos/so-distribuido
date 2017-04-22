@@ -56,7 +56,7 @@ void load_config(char * path) {
 
 int read_command(char* command) {
 
-	char** palabras = string_split(command, " ");
+	char** palabras = string_n_split(command, 2, " ");
 
 	if(palabras[0] == NULL) return -2;
 
@@ -66,7 +66,11 @@ int read_command(char* command) {
 			return -1;
 		}
 		else {
+			FILE* file;
+			file = fopen(palabras[1], "r");
+			if(file != NULL) {
 
+			}
 		}
 	}
 	else if(palabras[0] == "kill") {
