@@ -23,11 +23,11 @@ int main(void) {
 	char * msg = NULL;
 	size_t len = 0;
 	ssize_t read;
-	printf ("CPU : enter message ([ctrl + d] to quit)\n");
+	printf("CPU : enter message ([ctrl + d] to quit)\n");
 	while ((read = getline(&msg, &len, stdin)) != -1) {
 		if (read > 0) {
 			msg[read-1] = '\0';
-			printf ("CPU : read %zd chars from stdin, allocated %zd bytes for message : %s\n", read, len, msg);
+			printf("CPU : read %zd chars from stdin, allocated %zd bytes for message : %s\n", read, len, msg);
 		}
 		printf("CPU : sending message to server >> msg : %s\n", msg);
 		// << sending message >>

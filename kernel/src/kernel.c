@@ -1,36 +1,82 @@
 /*
  ============================================================================
- Name        : kernel.c
- Author      : Carlos Flores
+ Name        : cpu.c
+ Authors     : Carlos Flores, Gustavo Tofaletti, Dante Romero
  Version     :
- Copyright   : GitHub @Charlos 
- Description : Hello World in C, Ansi-style
+ Description : Kernel Proccess
  ============================================================================
  */
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "kernel.h"
-#include <shared-library/connect.h>
+#include <shared-library/socket.h>
+#include <shared-library/memory_prot.h>
+
+int memory_socket;
+
+int main(void) {
+
+	char * server_ip = "127.0.0.1";
+	char * server_port = "5003";
+	memory_socket = connect_to_socket(server_ip, server_port);
+
+	// initializing process
+	// << sending message >>
+	uint8_t prot_ope_code = 1;
+	uint8_t prot_pid = 4;
+	uint8_t prot_req_pages = 4;
+
+	uint8_t ope_code = INIT_PROCESS_OC;
+	uint32_t pid = 15;
+	uint32_t req_pages = 1;
+
+	int buffer_size = sizeof(char) * (prot_ope_code + prot_pid + prot_req_pages);
+	void * buffer = malloc(buffer_size);
+	memcpy(buffer, &ope_code, prot_ope_code);
+	memcpy(buffer + prot_ope_code, &pid, prot_pid);
+	memcpy(buffer + prot_ope_code + prot_pid, &req_pages, prot_req_pages);
+	socket_send(&memory_socket, buffer, buffer_size, 0);
+	free(buffer);
+
+	// << receiving message >>
+	uint8_t resp_code;
+	uint8_t prot_resp_code = 1;
+	int received_bytes = socket_recv(&memory_socket, &resp_code, prot_resp_code);
+	if (received_bytes <= 0) {
+		printf("KERNEL : memory socket %d disconnected\n", memory_socket);
+		return EXIT_FAILURE;
+	}
 
 
-t_log* logger;
+	// writing memory
+	// << sending message >>
+	prot_ope_code = 1;
+	prot_pid = 4;
+	uint8_t prot_page = 4;
+	uint8_t prot_offset = 4;
+	uint8_t prot_size = 4;
+	uint8_t prot_buf_size = 4;
 
-int main(int argc, char* argv[]) {
-	int socket_escucha;
-	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE); // logger listo para usar
-	char* timeStart = temporal_get_string_time(); //usando commons
-	printf("Tiempo de Inicio del Proceso: %s\n", timeStart);
-	saludo();
-	connect_send("mi primer mensaje enviado :)"); //usando nuestra shared library
-	log_trace(logger, "Prueba de log");
-	socket_escucha = open_socket(10, 46000);
-	log_trace(logger, "Socket de escucha: %d", socket_escucha);
-	manage_select(socket_escucha, logger);
-	return EXIT_SUCCESS;
-}
+	ope_code = WRITE_OC;
+	pid = 15;
+	uint32_t page = 1;
+	uint32_t offset = 0;
+	uint32_t size = 36;
+	uint32_t buf_size = 36;
+	char * buf = "Message to write and show in memory\0";
 
-int saludo() {
-	puts("¡Hola KERNEL!");
+
+	buffer_size = sizeof(char) * (prot_ope_code + prot_pid + prot_page + prot_offset + prot_size + prot_buf_size + buf_size);
+	buffer = malloc(buffer_size);
+	memcpy(buffer, &ope_code, prot_ope_code);
+	memcpy(buffer + prot_ope_code, &pid, prot_pid);
+	memcpy(buffer + prot_ope_code + prot_pid, &page, prot_page);
+	memcpy(buffer + prot_ope_code + prot_pid + prot_page, &offset, prot_offset);
+	memcpy(buffer + prot_ope_code + prot_pid + prot_page + prot_offset, &size, prot_size);
+	memcpy(buffer + prot_ope_code + prot_pid + prot_page + prot_offset + prot_size, &buf_size, prot_buf_size);
+	memcpy(buffer + prot_ope_code + prot_pid + prot_page + prot_offset + prot_size + prot_buf_size, buf, buf_size);
+	send(memory_socket, buffer, buffer_size, 0);
+	free(buffer);
+
 	return EXIT_SUCCESS;
 }
