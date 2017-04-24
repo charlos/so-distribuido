@@ -12,6 +12,7 @@
 
 t_log* logger;
 console_cfg * console_config;
+int console_socket;
 
 int main(int argc, char* argv[]) {
 
@@ -26,7 +27,7 @@ int main(int argc, char* argv[]) {
 
 
 	//connect_to_socket("127.0.0.1", "46000");
-	connect_to_socket(console_config->ipAddress, string_itoa(console_config->port));
+	console_socket = connect_to_socket(console_config->ipAddress, string_itoa(console_config->port));
 
 	enter_command();
 
@@ -68,14 +69,11 @@ void enter_command() {
 }
 int read_command(char* command) {
 
-	//char** palabras = string_n_split(command, 2, " ");
-	char** palabras = string_split(command, " ");
+	int caracter = 0;
+	while (command[caracter] != '\n') caracter++;
+	command[caracter] = '\0';
 
-	int i = 0;
-	while(palabras[i]) {
-		printf("%s, ", palabras[i]);
-		i++;
-	}
+	char** palabras = string_n_split(command, 2, " ");
 
 	if(palabras[0] == NULL) return -2;
 
@@ -86,33 +84,28 @@ int read_command(char* command) {
 			cantPalabras++;
 			i++;
 		}
-
 		if(cantPalabras != 2) {
 			printf("Cantidad de parametros erronea\n");
 			return -1;
 		}
 		else {
-			printf("Buscando archivo\n");
-
 			FILE* file;
 			char buffer[255];
 			char * path = palabras[1];
 
-			int caracter = 0;
-			while (path[caracter] != '\n') caracter++;
-			path[caracter] = '\0';
-
-			printf("%s \n", path);
-
 			file = fopen(path, "r");
 			if(file) {
 
-				while(fgets(buffer, 255, (FILE*)file)) {
+				char* string = string_new();
 
-					printf("%s \n", buffer);
+				while(fgets(buffer, 255, (FILE*)file)) {
+					string_append(&string, buffer);
+					printf("%s", buffer);
 				}
 				if(feof(file)) {
 					fclose(file);
+					printf("\nMensaje compilado: %s \n", string);
+					mandarScriptAKernel(string);
 					return 1;
 				}
 
@@ -135,4 +128,18 @@ int read_command(char* command) {
 
 	}
 	else return -2;
+}
+void mandarScriptAKernel(char * string) {
+	uint8_t operation_code = 4;
+
+	int size_opc = sizeof(uint8_t);
+	int size_char = sizeof(char);
+	int length_string = strlen(string);
+
+	int buffer_size = size_opc + size_char * length_string;
+	void * buffer = malloc(buffer_size);
+	memcpy(buffer, &operation_code, size_opc);
+	memcpy(buffer + operation_code, &string, length_string);
+	socket_send(console_socket, buffer, buffer_size, 0);
+
 }
