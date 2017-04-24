@@ -1,15 +1,11 @@
 /*
  * kernel.h
  *
- *  Created on: 9/4/2017
- *      Author: utnso
+ * Created on: 9/4/2017
+ *    Authors: Carlos Flores, Gustavo Tofaletti, Dante Romero
  */
 
 #ifndef KERNEL_H_
 #define KERNEL_H_
-
-#include <shared-library/socket.h>
-
-int saludo(void);
 
 #endif /* KERNEL_H_ */
