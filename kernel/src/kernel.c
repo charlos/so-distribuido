@@ -80,3 +80,17 @@ int main(void) {
 
 	return EXIT_SUCCESS;
 }
+
+t_stack* stack_create(){
+	t_stack* stack = list_create();
+	return stack;
+}
+
+t_link_element* stack_pop(t_stack* stack){
+	t_link_element* elemento = list_remove(stack, list_size(stack) - 1);
+	return elemento;
+}
+
+void stack_push(t_stack* stack, void* element){
+	list_add(stack, element);
+}
