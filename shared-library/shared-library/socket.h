@@ -139,6 +139,6 @@
 	 * 			uint8_t operation_code: codigo de operacion que se recibira primero. Define como desserializar el payload
 	 * 			void** message: buffer con lo recibido
 	 */
-	int connection_recv(int, uint8_t*, void**)
+	int connection_recv(int, uint8_t*, void**);
 
 #endif /* SHARED_LIBRARY_SOCKET_H_ */
