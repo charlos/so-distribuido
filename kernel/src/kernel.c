@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <shared-library/socket.h>
 #include <shared-library/memory_prot.h>
+#include "kernel.h"
 
 int memory_socket;
 

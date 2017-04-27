@@ -74,7 +74,7 @@ int connect_to_socket(char * server_ip, char * server_port) {
 }
 
 void manage_select(int socket, t_log * log){
-	int nuevaConexion, a, recibido, set_fd_max, i;
+	int nuevaConexion, fd_seleccionado, recibido, set_fd_max, i;
 	char buf[512];
 	fd_set master, lectura;
 	set_fd_max = socket;
@@ -84,9 +84,9 @@ void manage_select(int socket, t_log * log){
 	while(1){
 		lectura = master;
 		select(set_fd_max +1, &lectura, NULL, NULL, NULL);
-		for(a = 0 ; a <= set_fd_max ; a++){
-			if(FD_ISSET(a, &lectura)){
-				if(a == socket){
+		for(fd_seleccionado = 0 ; fd_seleccionado <= set_fd_max ; fd_seleccionado++){
+			if(FD_ISSET(fd_seleccionado, &lectura)){
+				if(fd_seleccionado == socket){
 					if((nuevaConexion = accept_connection(socket)) == -1){
 						log_error(log, "Error al aceptar conexion");
 					} else {
@@ -95,15 +95,15 @@ void manage_select(int socket, t_log * log){
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 					}
 				} else {
-					recibido = recv(a, buf, sizeof(buf), 0);
+					recibido = recv(fd_seleccionado, buf, sizeof(buf), 0);
 					if(recibido <= 0){
-						log_error(log, "Desconexion de cliente en socket %d", a);
-						FD_CLR(a, &master);
-						close_client(a);
+						log_error(log, "Desconexion de cliente en socket %d", fd_seleccionado);
+						FD_CLR(fd_seleccionado, &master);
+						close_client(fd_seleccionado);
 					} else {
 						for(i=0; i < set_fd_max; i++){
 							if(FD_ISSET(i, &master)){
-								if(i != socket && i != a){
+								if(i != socket && i != fd_seleccionado){
 									if(send(i, buf, recibido, 0) == -1) log_error(log, "Error en send()");
 								}
 							}
@@ -129,4 +129,92 @@ int socket_write(int * client_socket, void * response, int response_size) {
 
 int close_client(int client_socket) {
 	return close(client_socket);
+}
+
+int connection_send(int file_descriptor, uint8_t operation_code, void* message){
+/**	╔══════════════════════════════════════════════╦══════════════════════════════════════════╦══════════════════════════════╗
+	║ operation_code_value (operation_code_length) ║ message_size_value (message_size_length) ║ message (message_size_value) ║
+	╚══════════════════════════════════════════════╩══════════════════════════════════════════╩══════════════════════════════╝ **/
+
+	uint8_t operation_code_value = operation_code;
+	uint8_t message_size_value;
+
+	switch ((int)operation_code) {
+		case OC_MEMORIA_INICIO_PROGRAMA:
+		case OC_MEMORIA_INSUFICIENTE:
+		case OC_SOLICITUD_MEMORIA:
+		case OC_LIBERAR_MEMORIA:
+//		DEFINIR COMPORTAMIENTO
+		default:
+			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
+			break;
+	}
+
+	uint8_t operation_code_length = sizeof(uint8_t);
+	uint8_t message_size_length = sizeof(uint8_t);
+	void * buffer = malloc(operation_code_length + message_size_length + message_size_value);
+	memcpy(buffer, &operation_code_value, operation_code_length);
+	memcpy(buffer + operation_code_length, &message_size_value, message_size_length);
+	memcpy(buffer + operation_code_length + message_size_length, message, message_size_value);
+	int ret = send(file_descriptor, buffer, operation_code_length + message_size_length + message_size_value, 0);
+	free(buffer);
+
+	return ret;
+}
+
+int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** message){
+/**	╔══════════════════════════════════════════════╦══════════════════════════════════════════╦══════════════════════════════╗
+	║ operation_code_value (operation_code_length) ║ message_size_value (message_size_length) ║ message (message_size_value) ║
+	╚══════════════════════════════════════════════╩══════════════════════════════════════════╩══════════════════════════════╝ **/
+
+	uint8_t prot_ope_code_size = sizeof(uint8_t);
+	uint8_t prot_message_size = sizeof(uint8_t);
+	uint8_t message_size;
+	int status = 1;
+	int ret = 0;
+	char* buffer;
+
+	status = recv(file_descriptor, operation_code_value, prot_ope_code_size, 0);
+	if (status <= 0) {
+		printf("ERROR: Socket %d, disconnected...\n", file_descriptor);
+		game_over();
+	} else {
+		ret = ret + status;
+		status = recv(file_descriptor, &message_size, prot_message_size, 0);
+		if (status <= 0) {
+			printf("ERROR: Socket %d, no message size...\n", file_descriptor);
+		} else {
+			ret = ret + status;
+			//message = (void*) malloc(message_size);
+			switch ((int)*operation_code_value) {
+			case OC_MEMORIA_INICIO_PROGRAMA:
+			case OC_MEMORIA_INSUFICIENTE:
+			case OC_SOLICITUD_MEMORIA:
+			case OC_LIBERAR_MEMORIA:
+				buffer = malloc(message_size + 1);
+				if(message_size > 0){
+					status = recv(file_descriptor, buffer, message_size, 0);
+				}
+				if(status > 0){
+					buffer[message_size] = '\0';
+					*message = buffer;
+				}
+				//free(buffer);
+				break;
+			default:
+				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);
+				break;
+			}
+
+			if (status <= 0) {
+				printf("ERROR: Socket %d, no message...\n", file_descriptor);
+				ret = status;
+			}else{
+				ret = ret + status;
+			}
+
+		}
+	}
+
+	return ret;
 }

@@ -15,6 +15,12 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+
+#define OC_MEMORIA_INICIO_PROGRAMA 1
+#define OC_MEMORIA_INSUFICIENTE 2
+#define OC_SOLICITUD_MEMORIA 3
+#define OC_LIBERAR_MEMORIA 4
+
 	/**
 	 * @NAME   open_socket
 	 * @DESC   Permite crear un socket "servidor" o "de escucha" El mismo abre un puerto en la red y después espera a que un cliente se conecte a ese puerto
@@ -106,11 +112,33 @@
 
 	/**
 	 * @NAME:  manage_select
-	 * @DESC:  none
+	 * @DESC:  Permite monitoriar sets de file descriptors. Acepta conexiones nuevas y responde a pedidos de los fd que esta escuchando
 	 *
 	 * @PARAMS int * socket : none
 	 * 		   t_log * log  : none
 	 */
 	void manage_select(int socket, t_log * log);
+
+	/**
+	 * @NAME: connection_send
+	 * @DESC:
+	 *
+	 * @PARAMS 	int file_descriptor: file descriptor del receptor del mensaje
+	 * 			uint8_t operation_code: codigo de operacion del mensaje. Define como serializar el payload
+	 * 			void* message: payload a mandar
+	 * @RETURN int : cantidad de bytes mandados; -1 en caso de error
+	 *
+	 */
+	int connection_send(int, uint8_t, void*);
+
+	/**
+	 * @NAME: connection_recv
+	 * @DESC:
+	 *
+	 * @PARAMS 	int file_descriptor: file descriptor del receptor del mensaje
+	 * 			uint8_t operation_code: codigo de operacion que se recibira primero. Define como desserializar el payload
+	 * 			void** message: buffer con lo recibido
+	 */
+	int connection_recv(int, uint8_t*, void**)
 
 #endif /* SHARED_LIBRARY_SOCKET_H_ */
