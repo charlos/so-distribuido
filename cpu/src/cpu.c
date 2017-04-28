@@ -11,8 +11,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <shared-library/socket.h>
+#include <parser/metadata_program.h>
 
 int server_socket;
+AnSISOP_funciones * funciones;
+AnSISOP_kernel * func_kernel;
+
+void procesarMsg(char * msg);
 
 int main(void) {
 
@@ -73,6 +78,7 @@ int main(void) {
 			printf("CPU : server %d disconnected\n", server_socket);
 			return EXIT_FAILURE;
 		}
+		//procesarMsg(resp);
 		free(resp);
 
 		printf ("CPU : enter message ([ctrl + d] to quit)\n");
@@ -82,4 +88,11 @@ int main(void) {
 	return EXIT_SUCCESS;
 
 }
+void procesarMsg(char * msg) {
 
+	char ** lineas = string_split(msg, "\n");
+	int ipointer;
+	for(ipointer = 0; lineas[ipointer] != NULL; ipointer++) {
+		analizadorLinea(lineas[ipointer],funciones, func_kernel);
+	}
+}
