@@ -140,7 +140,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	uint8_t message_size_value;
 
 	switch ((int)operation_code) {
-		case OC_MEMORIA_INICIO_PROGRAMA:
+		case OC_SOLICITUD_PROGRAMA_NUEVO:
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
@@ -177,7 +177,6 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 	status = recv(file_descriptor, operation_code_value, prot_ope_code_size, 0);
 	if (status <= 0) {
 		printf("ERROR: Socket %d, disconnected...\n", file_descriptor);
-		game_over();
 	} else {
 		ret = ret + status;
 		status = recv(file_descriptor, &message_size, prot_message_size, 0);
@@ -187,7 +186,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			ret = ret + status;
 			//message = (void*) malloc(message_size);
 			switch ((int)*operation_code_value) {
-			case OC_MEMORIA_INICIO_PROGRAMA:
+			case OC_SOLICITUD_PROGRAMA_NUEVO:
 			case OC_MEMORIA_INSUFICIENTE:
 			case OC_SOLICITUD_MEMORIA:
 			case OC_LIBERAR_MEMORIA:
