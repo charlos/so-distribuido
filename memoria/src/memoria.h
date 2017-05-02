@@ -26,4 +26,9 @@ typedef struct {
 	uint32_t page;
 } t_reg_invert_table;
 
+typedef struct {
+	uint32_t pid;
+	uint32_t page_count;
+} t_reg_pages_process_table;
+
 #endif /* MEMORIA_H_ */
