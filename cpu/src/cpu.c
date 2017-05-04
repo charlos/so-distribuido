@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <shared-library/socket.h>
 #include <parser/metadata_program.h>
+#include "funcionesParser.h"
 
 int server_socket;
 AnSISOP_funciones * funciones;
@@ -78,6 +79,8 @@ int main(void) {
 			printf("CPU : server %d disconnected\n", server_socket);
 			return EXIT_FAILURE;
 		}
+
+		inicializarFuncionesParser();
 		//procesarMsg(resp);
 		free(resp);
 
@@ -87,6 +90,20 @@ int main(void) {
 	free(msg);
 	return EXIT_SUCCESS;
 
+}
+void inicializarFuncionesParser() {
+	funciones->AnSISOP_definirVariable = definirVariable;
+	funciones->AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable;
+	funciones->AnSISOP_dereferenciar = dereferenciar;
+	funciones->AnSISOP_asignar = asignar;
+	funciones->AnSISOP_irAlLabel = irAlLabel;
+
+	func_kernel->AnSISOP_abrir = abrir;
+	func_kernel->AnSISOP_cerrar = cerrar;
+	func_kernel->AnSISOP_borrar = borrar;
+	func_kernel->AnSISOP_escribir = escribir;
+	func_kernel->AnSISOP_leer = leer;
+	func_kernel->AnSISOP_moverCursor = moverCursor;
 }
 void procesarMsg(char * msg) {
 
