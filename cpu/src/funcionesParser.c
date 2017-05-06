@@ -16,7 +16,8 @@ Llamada* crearLlamada(char* nombre, int cantidadParametros, ...){
     Parametro* parametros = malloc(10*sizeof(Parametro));
 
     va_start (parametrosVa , cantidadParametros);
-    for (int x = 0; x < cantidadParametros; x++ ){
+    int x;
+    for (x = 0; x < cantidadParametros; x++ ){
         parametros[x] = va_arg (parametrosVa, Parametro);
     }
     va_end ( parametrosVa );
