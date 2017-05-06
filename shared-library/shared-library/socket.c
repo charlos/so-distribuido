@@ -141,6 +141,10 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 
 	switch ((int)operation_code) {
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
+			message_size_value = *(uint8_t*) message;
+			printf("message size value: %d", message_size_value);
+			(uint8_t *)message++;
+			break;
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
@@ -187,6 +191,14 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			//message = (void*) malloc(message_size);
 			switch ((int)*operation_code_value) {
 			case OC_SOLICITUD_PROGRAMA_NUEVO:
+				buffer = malloc(message_size);
+				status = recv(file_descriptor, buffer, message_size, 0);
+				if(status > 0) {
+					*message = buffer;
+				}
+
+				printf("Script: %s", (char *) message);
+				break;
 			case OC_MEMORIA_INSUFICIENTE:
 			case OC_SOLICITUD_MEMORIA:
 			case OC_LIBERAR_MEMORIA:
