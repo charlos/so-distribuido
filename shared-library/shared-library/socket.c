@@ -75,6 +75,7 @@ int connect_to_socket(char * server_ip, char * server_port) {
 
 void manage_select(int socket, t_log * log){
 	int nuevaConexion, fd_seleccionado, recibido, set_fd_max, i;
+	uint8_t* operation_code;
 	char buf[512];
 	fd_set master, lectura;
 	set_fd_max = socket;
@@ -93,22 +94,10 @@ void manage_select(int socket, t_log * log){
 						log_trace(log, "Nueva conexion: socket %d", nuevaConexion);
 						FD_SET(nuevaConexion, &master);
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
+						handshake(fd_seleccionado);
 					}
 				} else {
-					recibido = recv(fd_seleccionado, buf, sizeof(buf), 0);
-					if(recibido <= 0){
-						log_error(log, "Desconexion de cliente en socket %d", fd_seleccionado);
-						FD_CLR(fd_seleccionado, &master);
-						close_client(fd_seleccionado);
-					} else {
-						for(i=0; i < set_fd_max; i++){
-							if(FD_ISSET(i, &master)){
-								if(i != socket && i != fd_seleccionado){
-									if(send(i, buf, recibido, 0) == -1) log_error(log, "Error en send()");
-								}
-							}
-						}
-					}
+					connection_recv(fd_seleccionado, operation_code, &buf);
 				}
 			}
 		}
@@ -144,6 +133,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
+		case OC_TERMINO_INSTRUCCION:
+			termino_instruccion();
+			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
