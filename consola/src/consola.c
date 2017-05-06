@@ -63,7 +63,7 @@ void enter_command() {
 		fgets(command, 256, stdin);
 
 		int ret = read_command(command);
-		printf("%d \n", ret);
+		printf("\n%d \n", ret);
 
 		enter_command();
 }
@@ -130,16 +130,24 @@ int read_command(char* command) {
 	else return -2;
 }
 void mandarScriptAKernel(char * string) {
-	uint8_t operation_code = 4;
+	uint8_t operation_code = 1;
 
-	int size_opc = sizeof(uint8_t);
-	int size_char = sizeof(char);
-	int length_string = strlen(string);
+	uint8_t size_opc = sizeof(uint8_t);
+	uint8_t size_char = sizeof(char);
+	uint8_t length_string = strlen(string) * size_char;
+	uint8_t length_message = length_string +1;
 
-	int buffer_size = size_opc + size_char * length_string;
-	void * buffer = malloc(buffer_size);
-	memcpy(buffer, &operation_code, size_opc);
-	memcpy(buffer + operation_code, &string, length_string);
-	socket_send(console_socket, buffer, buffer_size, 0);
+	//uint8_t buffer_size = size_opc + size_char * length_string;
+	void * buffer = malloc(length_message);
+
+	memcpy(buffer, &length_string, 1);
+	memcpy(buffer + 1, &string, length_string);
+	connection_send(console_socket, operation_code, buffer);
+	free(buffer);
+
+	/*memcpy(buffer, &operation_code, size_opc);
+	memcpy(buffer + operation_code, &length_string, sizeof(int));
+	memcpy(buffer + operation_code + length_string, &string, length_string);
+	socket_send(&console_socket, buffer, buffer_size, 0);*/
 
 }

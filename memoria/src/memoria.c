@@ -17,6 +17,7 @@
 #include <commons/log.h>
 #include <commons/temporal.h>
 #include <commons/string.h>
+#include <commons/bitarray.h>
 
 #include "memoria.h"
 
@@ -29,6 +30,11 @@ t_memory_conf * memory_conf;
 t_log * logger;
 int listenning_socket;
 char * memory_ptr;
+t_bitarray * bitmap;
+int last_used_index;
+
+t_reg_invert_table* invert_table_begin_ptr; // Puntero al primer registro de la tabla invertida
+t_reg_invert_table* invert_table_end_ptr;   // Puntero al ultimo registro de la tabla invertida
 
 void load_memory_properties(void);
 void create_logger(void);
@@ -75,6 +81,8 @@ int main(int argc, char * argv[]) {
 		pthread_attr_destroy(&attr);
 	}
 	close_socket(listenning_socket);
+
+
 	return EXIT_SUCCESS;
 }
 
@@ -116,6 +124,31 @@ void load(){
 	// TODO : Se debe generar las estruturas administrativas:
 	//				- tabla de páginas invertida
 	//				- bitmap de frames disponibles
+
+/*
+	//Generación de tabla de páginas invertida
+	uint32_t i;
+	t_reg_invert_table* invert_table;
+	invert_table_begin_ptr = (t_reg_invert_table*) memory_ptr;
+	invert_table_end_ptr = invert_table_begin_ptr + memory_conf->frames;
+
+	invert_table = (t_reg_invert_table *) malloc(memory_conf->frames * sizeof(t_reg_invert_table));
+
+	for(i=0;i<memory_conf->frames;i++){
+		(invert_table+i)->frame = i;
+		(invert_table+i)->page = 0;
+		(invert_table+i)->pid = 0;
+	}
+
+	memcpy(memory_ptr, &invert_table, memory_conf->frames * sizeof(t_reg_invert_table));
+
+	free(invert_table);
+*/
+	//Generación de bitmap de frames libres
+	 //memory_conf->frames/8
+	//char data[] = { 0 };
+	//bitmap = bitarray_create_with_mode(data, memory_conf->frames, MSB_FIRST);
+
 }
 
 void process_request(int * client_socket) {
@@ -167,11 +200,7 @@ void inicialize_process(int * client_socket) {
 		return;
 	}
 
-
-
 	assign_pages_to_process(pid, req_pages);
-
-
 
 	// << sending response >>
 	uint8_t resp_code = SUCCESS;
@@ -214,10 +243,32 @@ int get_available_frame(void) {
 	//
 	//		  Si llego nuevamente a la posición last_used_index, significa que di una vuelta completa, sin haber encontrado un frame disponible. Se debe retornar error indicando
 	// 		  falta de espacio en disco.
-	return 0;
+/*
+	int pos;
+	bool its_busy;
+	pos = last_used_index+1;
+
+	while(1){
+
+		if (pos>memory_conf->frames-1){
+			pos=0;
+		}
+
+		its_busy = bitarray_test_bit(bitmap, pos);
+		if (!its_busy) {
+			bitarray_set_bit(bitmap, pos);
+			break;
+		}
+		pos++;
+		if (pos==last_used_index){
+			return -1; // poner codigo de error "no hay páginas disponibles"
+			break;
+		}
+	}
+	last_used_index = pos;
+	*/
+	return 0;  //pos;
 }
-
-
 
 
 
@@ -287,12 +338,24 @@ void write_page(int * client_socket) {
 
 int get_frame(int pid, int page) {
 	// TODO : La función retorna el nro. de frame para un proceso y página buscando en la tabla de páginas invertida
+	// TODO : Se deberá implementar una función hash para buscar el pid dentro de la tabla
+
+	/*
+	 * t_reg_invert_table* reg_invert_table;
+	reg_invert_table = invert_table_begin_ptr;
+
+	while (reg_invert_table->pid!=pid && reg_invert_table->page!=page){
+		//Detecto si es el fin de la tabla
+		if(reg_invert_table==invert_table_end_ptr){
+			break;
+		}
+		reg_invert_table++;
+	}
+
+	return reg_invert_table->frame;
+	*/
 	return 0;
 }
-
-
-
-
 
 
 
