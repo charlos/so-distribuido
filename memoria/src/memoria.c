@@ -57,7 +57,7 @@ int main(int argc, char * argv[]) {
 	create_logger();
 	print_memory_properties();
 	load();
-/*
+
 	// console thread
 	pthread_attr_t attr;
 	pthread_t thread;
@@ -82,7 +82,7 @@ int main(int argc, char * argv[]) {
 	}
 	close_socket(listenning_socket);
 
-*/
+
 	return EXIT_SUCCESS;
 }
 
@@ -125,7 +125,7 @@ void load(){
 	//				- tabla de páginas invertida
 	//				- bitmap de frames disponibles
 
-
+/*
 	//Generación de tabla de páginas invertida
 	uint32_t i;
 	t_reg_invert_table* invert_table;
@@ -133,7 +133,6 @@ void load(){
 	invert_table_end_ptr = invert_table_begin_ptr + memory_conf->frames;
 
 	invert_table = (t_reg_invert_table *) malloc(memory_conf->frames * sizeof(t_reg_invert_table));
-
 
 	for(i=0;i<memory_conf->frames;i++){
 		(invert_table+i)->frame = i;
@@ -144,9 +143,11 @@ void load(){
 	memcpy(memory_ptr, &invert_table, memory_conf->frames * sizeof(t_reg_invert_table));
 
 	free(invert_table);
-
+*/
 	//Generación de bitmap de frames libres
-	//bitmap = bitarray_create_with_mode(bitmap_ptr, memory_conf->frames, MSB_FIRST);
+	 //memory_conf->frames/8
+	//char data[] = { 0 };
+	//bitmap = bitarray_create_with_mode(data, memory_conf->frames, MSB_FIRST);
 
 }
 
@@ -242,7 +243,7 @@ int get_available_frame(void) {
 	//
 	//		  Si llego nuevamente a la posición last_used_index, significa que di una vuelta completa, sin haber encontrado un frame disponible. Se debe retornar error indicando
 	// 		  falta de espacio en disco.
-
+/*
 	int pos;
 	bool its_busy;
 	pos = last_used_index+1;
@@ -265,7 +266,8 @@ int get_available_frame(void) {
 		}
 	}
 	last_used_index = pos;
-	return pos;
+	*/
+	return 0;  //pos;
 }
 
 
@@ -338,8 +340,8 @@ int get_frame(int pid, int page) {
 	// TODO : La función retorna el nro. de frame para un proceso y página buscando en la tabla de páginas invertida
 	// TODO : Se deberá implementar una función hash para buscar el pid dentro de la tabla
 
-	// Para el checkpoint 2 solo implementamos una busqueda secuencial
-	t_reg_invert_table* reg_invert_table;
+	/*
+	 * t_reg_invert_table* reg_invert_table;
 	reg_invert_table = invert_table_begin_ptr;
 
 	while (reg_invert_table->pid!=pid && reg_invert_table->page!=page){
@@ -351,6 +353,8 @@ int get_frame(int pid, int page) {
 	}
 
 	return reg_invert_table->frame;
+	*/
+	return 0;
 }
 
 
