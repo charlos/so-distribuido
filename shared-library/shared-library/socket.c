@@ -95,7 +95,18 @@ void manage_select(int socket, t_log * log){
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 					}
 				} else {
-					recibido = recv(fd_seleccionado, buf, sizeof(buf), 0);
+
+					void * operation_code = malloc(sizeof(uint8_t));
+					void * buffer;
+					int ret;
+					ret = connection_recv(fd_seleccionado, operation_code,  buffer);
+
+					if(!ret) {
+						FD_CLR(fd_seleccionado, &master);
+						close_client(fd_seleccionado);
+					}
+
+					/*recibido = recv(fd_seleccionado, buf, sizeof(buf), 0);
 					if(recibido <= 0){
 						log_error(log, "Desconexion de cliente en socket %d", fd_seleccionado);
 						FD_CLR(fd_seleccionado, &master);
@@ -108,7 +119,7 @@ void manage_select(int socket, t_log * log){
 								}
 							}
 						}
-					}
+					}*/
 				}
 			}
 		}
@@ -142,7 +153,6 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	switch ((int)operation_code) {
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
 			message_size_value = *(uint8_t*) message;
-			printf("message size value: %d", message_size_value);
 			(uint8_t *)message++;
 			break;
 		case OC_MEMORIA_INSUFICIENTE:
@@ -191,13 +201,17 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			//message = (void*) malloc(message_size);
 			switch ((int)*operation_code_value) {
 			case OC_SOLICITUD_PROGRAMA_NUEVO:
-				buffer = malloc(message_size);
+
+				*message = malloc(message_size +1);
+				buffer = (char*)*message;
 				status = recv(file_descriptor, buffer, message_size, 0);
+				buffer[message_size] = '\0';
 				if(status > 0) {
-					*message = buffer;
+
+					printf("\nScript: %s\n", buffer);
 				}
 
-				printf("Script: %s", (char *) message);
+
 				break;
 			case OC_MEMORIA_INSUFICIENTE:
 			case OC_SOLICITUD_MEMORIA:

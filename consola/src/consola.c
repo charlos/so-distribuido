@@ -141,7 +141,7 @@ void mandarScriptAKernel(char * string) {
 	void * buffer = malloc(length_message);
 
 	memcpy(buffer, &length_string, 1);
-	memcpy(buffer + 1, &string, length_string);
+	memcpy(buffer + 1, string, length_string);
 	connection_send(console_socket, operation_code, buffer);
 	free(buffer);
 
