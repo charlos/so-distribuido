@@ -27,13 +27,12 @@ all: kernel
 
 dependents:
 	-cd /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug && $(MAKE) all
-	-cd /home/utnso/workspace/so-commons-library/src/Debug && $(MAKE) all
 
 # Tool invocations
-kernel: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug/libshared-library.so /home/utnso/workspace/so-commons-library/src/Debug/libcommons.so
+kernel: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug/libshared-library.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/workspace/so-commons-library/src/Debug" -L"/home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug" -o "kernel" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug" -o "kernel" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -45,6 +44,5 @@ clean:
 .PHONY: all clean dependents
 .SECONDARY:
 /home/utnso/workspace/tp-2017-1c-Stranger-Code/shared-library/Debug/libshared-library.so:
-/home/utnso/workspace/so-commons-library/src/Debug/libcommons.so:
 
 -include ../makefile.targets

@@ -25,9 +25,7 @@ int main(int argc, char* argv[]) {
 	saludo();
 	connect_send("mi primer mensaje enviado :)"); //usando nuestra shared library
 
-
-	//connect_to_socket("127.0.0.1", "46000");
-	console_socket = connect_to_socket(console_config->ipAddress, string_itoa(console_config->port));
+	console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
 
 	enter_command();
 
@@ -47,7 +45,7 @@ void load_config(char * path) {
 	t_config* cfg = config_create(path);
 	console_config = malloc(sizeof(console_cfg));
 
-	console_config->port = config_get_int_value(cfg, "PORT_KERNEL");
+	console_config->port = config_get_string_value(cfg, "PORT_KERNEL");
 	console_config->ipAddress = config_get_string_value(cfg, "IP_KERNEL");
 }
 void enter_command() {
@@ -137,17 +135,11 @@ void mandarScriptAKernel(char * string) {
 	uint8_t length_string = strlen(string) * size_char;
 	uint8_t length_message = length_string +1;
 
-	//uint8_t buffer_size = size_opc + size_char * length_string;
 	void * buffer = malloc(length_message);
 
 	memcpy(buffer, &length_string, 1);
 	memcpy(buffer + 1, string, length_string);
 	connection_send(console_socket, operation_code, buffer);
 	free(buffer);
-
-	/*memcpy(buffer, &operation_code, size_opc);
-	memcpy(buffer + operation_code, &length_string, sizeof(int));
-	memcpy(buffer + operation_code + length_string, &string, length_string);
-	socket_send(&console_socket, buffer, buffer_size, 0);*/
 
 }

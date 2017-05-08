@@ -16,7 +16,7 @@
 
 typedef struct {
 	char* ipAddress;
-	int* port;
+	char* port;
 } console_cfg;
 
 

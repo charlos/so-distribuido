@@ -73,59 +73,6 @@ int connect_to_socket(char * server_ip, char * server_port) {
 	return server_socket;
 }
 
-void manage_select(int socket, t_log * log){
-	int nuevaConexion, fd_seleccionado, recibido, set_fd_max, i;
-	char buf[512];
-	fd_set master, lectura;
-	set_fd_max = socket;
-	FD_ZERO(&lectura);
-	FD_ZERO(&master);
-	FD_SET(socket, &master);
-	while(1){
-		lectura = master;
-		select(set_fd_max +1, &lectura, NULL, NULL, NULL);
-		for(fd_seleccionado = 0 ; fd_seleccionado <= set_fd_max ; fd_seleccionado++){
-			if(FD_ISSET(fd_seleccionado, &lectura)){
-				if(fd_seleccionado == socket){
-					if((nuevaConexion = accept_connection(socket)) == -1){
-						log_error(log, "Error al aceptar conexion");
-					} else {
-						log_trace(log, "Nueva conexion: socket %d", nuevaConexion);
-						FD_SET(nuevaConexion, &master);
-						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
-					}
-				} else {
-
-					void * operation_code = malloc(sizeof(uint8_t));
-					void * buffer;
-					int ret;
-					ret = connection_recv(fd_seleccionado, operation_code,  buffer);
-
-					if(!ret) {
-						FD_CLR(fd_seleccionado, &master);
-						close_client(fd_seleccionado);
-					}
-
-					/*recibido = recv(fd_seleccionado, buf, sizeof(buf), 0);
-					if(recibido <= 0){
-						log_error(log, "Desconexion de cliente en socket %d", fd_seleccionado);
-						FD_CLR(fd_seleccionado, &master);
-						close_client(fd_seleccionado);
-					} else {
-						for(i=0; i < set_fd_max; i++){
-							if(FD_ISSET(i, &master)){
-								if(i != socket && i != fd_seleccionado){
-									if(send(i, buf, recibido, 0) == -1) log_error(log, "Error en send()");
-								}
-							}
-						}
-					}*/
-				}
-			}
-		}
-	}
-}
-
 int socket_send(int * server_socket, void * buffer, int buffer_size, int flags) {
 	return send(* server_socket, buffer, buffer_size, flags);
 }
@@ -158,6 +105,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
+		case OC_TERMINO_INSTRUCCION:
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
@@ -210,8 +158,6 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 
 					printf("\nScript: %s\n", buffer);
 				}
-
-
 				break;
 			case OC_MEMORIA_INSUFICIENTE:
 			case OC_SOLICITUD_MEMORIA:
