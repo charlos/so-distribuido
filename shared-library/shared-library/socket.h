@@ -20,6 +20,9 @@
 #define OC_MEMORIA_INSUFICIENTE 2
 #define OC_SOLICITUD_MEMORIA 3
 #define OC_LIBERAR_MEMORIA 4
+#define OC_ASIGNA_PCB 5
+#define OC_TERMINA_PROGRAMA 6
+#define OC_TERMINO_INSTRUCCION 7
 
 	/**
 	 * @NAME   open_socket
@@ -109,15 +112,6 @@
 	 * @RETURN int : 0 funcionamiento normal, -1 en caso de error
 	 */
 	int close_client(int);
-
-	/**
-	 * @NAME:  manage_select
-	 * @DESC:  Permite monitoriar sets de file descriptors. Acepta conexiones nuevas y responde a pedidos de los fd que esta escuchando
-	 *
-	 * @PARAMS int * socket : none
-	 * 		   t_log * log  : none
-	 */
-	void manage_select(int socket, t_log * log);
 
 	/**
 	 * @NAME: connection_send
