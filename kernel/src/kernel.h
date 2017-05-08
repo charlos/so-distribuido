@@ -22,12 +22,12 @@
 typedef t_list t_stack;
 
 typedef struct{
-	char* program_port;
-	char* cpu_port;
+	int program_port;
+	int cpu_port;
 	char* memory_ip;
-	char* memory_port;
+	int memory_port;
 	char* filesystem_ip;
-	char* filesystem_port;
+	int filesystem_port;
 	int quantum;
 	int quantum_sleep;
 	char* algoritmo;
@@ -79,7 +79,7 @@ t_queue* cola_cpu;
  *
  * @PARAMS char * port: puerto de escucha
  */
-void manage_select(char* port);
+void manage_select(int port);
 
 /**
  * @NAME: crear_PCB

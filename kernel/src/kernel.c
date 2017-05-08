@@ -91,12 +91,12 @@ t_cpu* cpu_create(int file_descriptor){
 void load_kernel_properties(void) {
 	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
 	kernel_conf = malloc(sizeof(t_kernel_conf));
-	kernel_conf->program_port = config_get_string_value(conf, "PUERTO_PROG");
-	kernel_conf->cpu_port = config_get_string_value(conf, "PUERTO_CPU");
+	kernel_conf->program_port = config_get_int_value(conf, "PUERTO_PROG");
+	kernel_conf->cpu_port = config_get_int_value(conf, "PUERTO_CPU");
 	kernel_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
-	kernel_conf->memory_port = config_get_string_value(conf, "PUERTO_MEMORIA");
+	kernel_conf->memory_port = config_get_int_value(conf, "PUERTO_MEMORIA");
 	kernel_conf->filesystem_ip = config_get_string_value(conf, "IP_FS");
-	kernel_conf->filesystem_port = config_get_string_value(conf, "PUERTO_FS");
+	kernel_conf->filesystem_port = config_get_int_value(conf, "PUERTO_FS");
 	kernel_conf->grado_multiprog = config_get_int_value(conf, "GRADO_MULTIPROG");
 	kernel_conf->algoritmo = config_get_string_value(conf, "ALGORITMO");
 	kernel_conf->quantum = config_get_int_value(conf, "QUANTUM");
@@ -107,7 +107,7 @@ void load_kernel_properties(void) {
 	kernel_conf->shared_vars = config_get_array_value(conf, "SHARED_VARS");
 }
 
-void manage_select(char* port){
+void manage_select(int port){
 
 	int listening_socket;
 	listening_socket = open_socket(20, port);
