@@ -27,7 +27,7 @@ Estructura de respuesta
 
 
 
-##write
+## write
 ```
 void memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer)
 ```
@@ -57,7 +57,7 @@ Estructura de respuesta
 **No olvidar liberar memoria**
 
 
-##read
+## read
 ```
 void memory_read(int server_socket, int pid, int page, int offset, int size)
 ```
