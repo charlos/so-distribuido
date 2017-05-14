@@ -33,8 +33,8 @@ char * memory_ptr;
 t_bitarray * bitmap;
 int last_used_index;
 
-t_reg_invert_table* invert_table_begin_ptr; // Puntero al primer registro de la tabla invertida
-t_reg_invert_table* invert_table_end_ptr;   // Puntero al ultimo registro de la tabla invertida
+t_reg_invert_table* invert_table_begin_ptr;
+t_reg_invert_table* invert_table_end_ptr;
 
 void load_memory_properties(void);
 void create_logger(void);
@@ -87,7 +87,7 @@ int main(int argc, char * argv[]) {
 }
 
 void load_memory_properties(void) {
-	t_config * conf = config_create("memoria.cfg");
+	t_config * conf = config_create("/home/utnso/memoria.cfg"); // TODO : Ver porque no lo toma del workspace
 	memory_conf = malloc(sizeof(t_memory_conf));
 	memory_conf->port = config_get_int_value(conf, "PUERTO");
 	memory_conf->frames = config_get_int_value(conf, "MARCOS");
@@ -119,47 +119,38 @@ void create_logger(void) {
 void create_console_file(void) {
 	logger = log_create(memory_conf->logfile, "MEMORY_PROCESS", true, LOG_LEVEL_TRACE);
 }
-void load(){
-	memory_ptr = malloc((memory_conf->frames) * (memory_conf->frame_size));
+void load() {
+
 	// TODO : Se debe generar las estruturas administrativas:
 	//				- tabla de páginas invertida
-	//				- bitmap de frames disponibles
+	//				- lista de frames disponibles
 
-/*
-	//Generación de tabla de páginas invertida
-	uint32_t i;
-	t_reg_invert_table* invert_table;
-	invert_table_begin_ptr = (t_reg_invert_table*) memory_ptr;
+	// invert table
+	memory_ptr = malloc((memory_conf->frames) * (memory_conf->frame_size));
+	t_reg_invert_table * invert_table;
+	invert_table_begin_ptr = (t_reg_invert_table *) memory_ptr;
 	invert_table_end_ptr = invert_table_begin_ptr + memory_conf->frames;
 
 	invert_table = (t_reg_invert_table *) malloc(memory_conf->frames * sizeof(t_reg_invert_table));
-
-	for(i=0;i<memory_conf->frames;i++){
-		(invert_table+i)->frame = i;
-		(invert_table+i)->page = 0;
-		(invert_table+i)->pid = 0;
+	int i;
+	for (i = 0; i < memory_conf->frames; i++) {
+		(invert_table + i)->frame = i;
+		(invert_table + i)->page = 0;
+		(invert_table + i)->pid = 0;
 	}
 
 	memcpy(memory_ptr, &invert_table, memory_conf->frames * sizeof(t_reg_invert_table));
-
 	free(invert_table);
-*/
-	//Generación de bitmap de frames libres
-	 //memory_conf->frames/8
-	//char data[] = { 0 };
-	//bitmap = bitarray_create_with_mode(data, memory_conf->frames, MSB_FIRST);
+
+	// TODO: available frames collection
 
 }
 
 void process_request(int * client_socket) {
-	// << receiving message >>
-	uint8_t op_code;
-	uint8_t prot_ope_code_size = 1;
-	int received_bytes = socket_recv(client_socket, &op_code, prot_ope_code_size);
-
-	while (received_bytes > 0) {
-		log_info(logger, "------ CLIENT %d >> operation code : %d", * client_socket, op_code);
-		switch (op_code) {
+	t_ope_code * request_ope_code = recv_operation_code(logger, client_socket);
+	while ((request_ope_code->received_bytes) > 0) {
+		log_info(logger, "------ CLIENT %d >> operation code : %d", * client_socket, request_ope_code->ope_code);
+		switch (request_ope_code->ope_code) {
 		case INIT_PROCESS_OC:
 			inicialize_process(client_socket);
 			break;
@@ -177,7 +168,8 @@ void process_request(int * client_socket) {
 			break;
 		default:;
 		}
-		received_bytes = socket_recv(client_socket, &op_code, prot_ope_code_size);
+		free(request_ope_code);
+		request_ope_code = recv_operation_code(logger, client_socket);
 	}
 	close_client(* client_socket);
 	free(client_socket);
@@ -185,32 +177,10 @@ void process_request(int * client_socket) {
 }
 
 void inicialize_process(int * client_socket) {
-	uint32_t pid;
-	uint32_t prot_pid = 4;
-	int received_bytes = socket_recv(client_socket, &pid, prot_pid);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t req_pages;
-	uint32_t prot_req_pages = 4;
-	received_bytes = socket_recv(client_socket, &req_pages, prot_req_pages);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-
-	assign_pages_to_process(pid, req_pages);
-
-	// << sending response >>
-	uint8_t resp_code = SUCCESS;
-	uint8_t resp_prot_code = 1;
-
-	int response_size = sizeof(char) * (resp_prot_code);
-	void * resp = malloc(response_size);
-	memcpy(resp, &resp_code, resp_prot_code);
-	socket_write(client_socket, resp, response_size);
-	free(resp);
+	t_init_process_request * request = init_process_recv_req(logger, client_socket);
+	assign_pages_to_process(request->pid, request->pages);
+	free(request);
+	init_process_send_resp(client_socket, SUCCESS);
 }
 
 int assign_pages_to_process(int pid, int required_pages) {
@@ -228,187 +198,63 @@ int inicialize_page(int pid) {
 	//
 	//		  Se debe conocer el último nro. de página asignado a un proceso (pid), para incrementarlo ¿Como puedo obtener el último nro. de página asignado a un proceso?
 
-	return EXIT_SUCCESS;
+	return free_frame;
 }
 
 int get_available_frame(void) {
+
 	// TODO : La función retorna el nro. de frame que se encuentra disponible.
 	//
-	//		  Se debe verificar un bitmap de frames libres (estructura administrativa)
-	//
-	//		  Se debe tener disponible en una variable GLOBAL el último índice del bitmap en donde fue encontrado un frame disponible (last_used_index)
-	//
-	//		  Para la búsqueda, se debe posicionar en ell índice last_used_index. Empezar a moverse, verificando que no me pasé del limite (index < memoria_arch_conf->frames - 1).
-	//		  En caso de que llegué al final del bitmap, me posiciono al inicio (indice = 0), y continuo la búsqueda.
-	//
-	//		  Si llego nuevamente a la posición last_used_index, significa que di una vuelta completa, sin haber encontrado un frame disponible. Se debe retornar error indicando
-	// 		  falta de espacio en disco.
-/*
-	int pos;
-	bool its_busy;
-	pos = last_used_index+1;
+	// 		  Se debe tomar un elemento de la lista de frames libres, y decrementar el contador de cantidad de elementos de la lista. Si el contador de cantidad de elementos es igual a cero,
+	//		  se debe retornar error indicando falta de espacio en memoria.
 
-	while(1){
-
-		if (pos>memory_conf->frames-1){
-			pos=0;
-		}
-
-		its_busy = bitarray_test_bit(bitmap, pos);
-		if (!its_busy) {
-			bitarray_set_bit(bitmap, pos);
-			break;
-		}
-		pos++;
-		if (pos==last_used_index){
-			return -1; // poner codigo de error "no hay páginas disponibles"
-			break;
-		}
-	}
-	last_used_index = pos;
-	*/
 	return 0;  //pos;
 }
 
-
-
 void write_page(int * client_socket) {
-	uint32_t pid;
-	uint8_t prot_pid = 4;
-	int received_bytes = socket_recv(client_socket, &pid, prot_pid);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t page;
-	uint8_t prot_page = 4;
-	received_bytes = socket_recv(client_socket, &page, prot_page);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t offset;
-	uint8_t prot_offset = 4;
-	received_bytes = socket_recv(client_socket, &offset, prot_offset);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t size;
-	uint8_t prot_size = 4;
-	received_bytes = socket_recv(client_socket, &size, prot_size);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t buf_size;
-	uint8_t prot_buf_size = 4;
-	received_bytes = socket_recv(client_socket, &buf_size, prot_buf_size);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	char * buffer = malloc(sizeof(char) * (size));
-	received_bytes = socket_recv(client_socket, buffer, buf_size);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	log_info(logger, "------ CLIENT %d >> WRITE [ id %d page %d offset %d size %d ]", * client_socket, pid, page, offset, size);
+	t_write_request * w_req = write_recv_req(logger, client_socket);
 
+	int frame = get_frame(w_req->pid, w_req->page);
+	char * write_pos = memory_ptr + (frame * (memory_conf->frame_size));
+	memcpy(&write_pos[w_req->offset], w_req->buffer, w_req->size);
 
-
-	int frame = get_frame(pid, page);
-	char * write_pos = memory_ptr +  (frame * (memory_conf->frame_size));
-	memcpy(&write_pos[offset], buffer, size);
-
-
-
-	// << sending response >>
-	uint8_t resp_code = SUCCESS;
-	uint8_t resp_prot_code = 1;
-
-	int response_size = sizeof(char) * (resp_prot_code);
-	void * resp = malloc(response_size);
-	memcpy(resp, &resp_code, resp_prot_code);
-	socket_write(client_socket, resp, response_size);
-	free(resp);
-	free(buffer);
+	free(w_req->buffer);
+	free(w_req);
+	write_send_resp(client_socket, SUCCESS);
 }
 
 int get_frame(int pid, int page) {
 	// TODO : La función retorna el nro. de frame para un proceso y página buscando en la tabla de páginas invertida
 	// TODO : Se deberá implementar una función hash para buscar el pid dentro de la tabla
 
-	/*
-	 * t_reg_invert_table* reg_invert_table;
+	/*t_reg_invert_table * reg_invert_table;
 	reg_invert_table = invert_table_begin_ptr;
 
-	while (reg_invert_table->pid!=pid && reg_invert_table->page!=page){
-		//Detecto si es el fin de la tabla
-		if(reg_invert_table==invert_table_end_ptr){
-			break;
+	while (reg_invert_table->pid != pid && reg_invert_table->page != page) {
+		if (reg_invert_table == invert_table_end_ptr) {
+			break; // end of invert table
 		}
 		reg_invert_table++;
 	}
 
-	return reg_invert_table->frame;
-	*/
+	return reg_invert_table->frame;*/
 	return 0;
 }
 
 
 
 
+
 void read_page(int * client_socket) {
-	uint32_t pid;
-	uint8_t prot_pid = 4;
-	int received_bytes = socket_recv(client_socket, &pid, prot_pid);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t page;
-	uint8_t prot_page = 4;
-	received_bytes = socket_recv(client_socket, &page, prot_page);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t offset;
-	uint8_t prot_offset = 4;
-	received_bytes = socket_recv(client_socket, &offset, prot_offset);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
-	uint32_t size;
-	uint8_t prot_size = 4;
-	received_bytes = socket_recv(client_socket, &size, prot_size);
-	if (received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return;
-	}
+	t_read_request * r_req = read_recv_req(logger, client_socket);
 
-
-
-	void * buff = malloc(size);
-	int frame = get_frame(pid, page);
+	void * buff = malloc(r_req->size);
+	int frame = get_frame(r_req->pid, r_req->page);
 	void * read_pos = memory_ptr +  (frame * memory_conf->frame_size);
-	memcpy(buff, read_pos + offset, size);
+	memcpy(buff, read_pos + r_req->offset, r_req->size);
+	free(r_req);
 
-
-
-	// << sending response >>
-	uint8_t resp_code = SUCCESS;
-	uint8_t prot_resp_code = 1;
-
-	int response_size = sizeof(char) * (prot_resp_code + size);
-	void * resp = malloc(response_size);
-	memcpy(resp, &resp_code, prot_resp_code);
-	memcpy(resp + prot_resp_code, buff, size);
-
-	free(resp);
+	read_send_resp(client_socket, SUCCESS, r_req->size, buff);
 	free(buff);
 }
 
