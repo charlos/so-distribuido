@@ -1,6 +1,6 @@
 # Shared library - Memoria: Funciones principales
 
-## init process
+## init process (request)
 ```
 void memory_init_process(int server_socket, int pid, int pages)
 ```
@@ -12,6 +12,7 @@ Envía pedido de inicio de proceso:
 
 
 
+## init process (response)
 ```
 t_init_process_response * memory_init_process_recv_resp(int server_socket) 
 ```
@@ -27,7 +28,7 @@ Estructura de respuesta
 
 
 
-## write
+## write (request)
 ```
 void memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer)
 ```
@@ -43,6 +44,7 @@ Envía pedido de escritura:
 
 
 
+## write (response)
 ```
 t_write_response * memory_write_recv_resp(int server_socket)
 ```
@@ -57,7 +59,8 @@ Estructura de respuesta
 **No olvidar liberar memoria**
 
 
-## read
+
+## read (request)
 ```
 void memory_read(int server_socket, int pid, int page, int offset, int size)
 ```
@@ -71,6 +74,7 @@ Envía pedido de lectura:
 
 
 
+## read (response)
 ```
 t_read_response * memory_read_recv_resp(int server_socket)
 ```
