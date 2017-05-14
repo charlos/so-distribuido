@@ -24,7 +24,11 @@ Estructura de respuesta
 - t_init_process_response.received_bytes = cantidad de bytes recibidos
 - t_init_process_response.resp_code = código de respuesta
 
-**No olvidar liberar memoria**
+**No olvidar liberar memoria** 
+```
+t_init_process_response * init_process_resp = memory_init_process_recv_resp(server_socket);
+free(init_process_resp);
+```  
 
 
 
@@ -56,8 +60,11 @@ Estructura de respuesta
 - t_write_response.received_bytes = cantidad de bytes recibidos
 - t_write_response.resp_code = código de respuesta
 
-**No olvidar liberar memoria**
-
+**No olvidar liberar memoria** 
+```
+t_write_response * write_response = memory_write_recv_resp(server_socket);
+free(write_response);
+```  
 
 
 ## read (request)
@@ -88,4 +95,9 @@ Estructura de respuesta
 - t_read_response.buffer_size = tamaño del buffer (si hubo algún error, el mismo es igual a 0)
 - t_read_response.buffer = buffer con los bytes leidos
 
-**No olvidar liberar memoria**
+**No olvidar liberar memoria** 
+```
+t_read_response * read_response = memory_read_recv_resp(server_socket);
+free(read_response->buffer);
+free(read_response);
+```  
