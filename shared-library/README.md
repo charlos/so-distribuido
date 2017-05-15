@@ -12,7 +12,7 @@ Pedido de inicio de proceso:
 - logger: opcional
 
 Respuesta: 
-- t_init_process_response->exec_code = código resultado comunicación socket (DISCONNECTED_CLIENT=201, DISCONNECTED_SERVER=202) 
+- t_init_process_response->exec_code = código resultado comunicación socket (DISCONNECTED_SERVER=202) 
 - t_init_process_response->resp_code = código respuesta inicio del proceso (SUCCESS=1, ERROR=200)
 
 **No olvidar liberar memoria** 
@@ -39,7 +39,7 @@ Pedido de escritura:
 - logger: opcional
 
 Respuesta: 
-- t_write_response->exec_code = código resultado comunicación socket (DISCONNECTED_CLIENT=201, DISCONNECTED_SERVER=202) 
+- t_write_response->exec_code = código resultado comunicación socket (DISCONNECTED_SERVER=202) 
 - t_write_response->resp_code = código respuesta escritura (SUCCESS=1, ERROR=200)
 
 **No olvidar liberar memoria** 
@@ -64,7 +64,7 @@ Pedido de lectura:
 - logger: opcional
 
 Respuesta:
-- t_read_response->exec_code = código resultado comunicación socket (DISCONNECTED_CLIENT=201, DISCONNECTED_SERVER=202) 
+- t_read_response->exec_code = código resultado comunicación socket (DISCONNECTED_SERVER=202) 
 - t_read_response->resp_code = código respuesta escritura (SUCCESS=1, ERROR=200)
 - t_read_response->buffer_size = tamaño del buffer
 - t_read_response->buffer = buffer con los bytes leídos
