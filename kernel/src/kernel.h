@@ -25,9 +25,9 @@ typedef struct{
 	int program_port;
 	int cpu_port;
 	char* memory_ip;
-	int memory_port;
+	char* memory_port;
 	char* filesystem_ip;
-	int filesystem_port;
+	char* filesystem_port;
 	int quantum;
 	int quantum_sleep;
 	char* algoritmo;
@@ -93,6 +93,7 @@ t_PCB* crear_PCB();
  */
 void load_kernel_properties(void);
 void solicitar_progama_nuevo(int file_descriptor, char* codigo);
-t_cpu* cpu_create(int file_descriptor);
+uint8_t handshake_memory(int socket);
+void handshake_filsesystem(int socket);
 
 #endif /* KERNEL_H_ */

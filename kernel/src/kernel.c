@@ -19,10 +19,19 @@ t_kernel_conf* kernel_conf;
 
 int main(int argc, char* argv[]) {
 
+	int memory_socket, fs_socket;
+	uint8_t tamanio_paginas;
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
 	load_kernel_properties();
+
+	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
+
+	tamanio_paginas = handshake_memory(memory_socket);
+
+//	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
+
 
 	pthread_t hilo_cpu;
 	pthread_t hilo_consola;
@@ -94,9 +103,9 @@ void load_kernel_properties(void) {
 	kernel_conf->program_port = config_get_int_value(conf, "PUERTO_PROG");
 	kernel_conf->cpu_port = config_get_int_value(conf, "PUERTO_CPU");
 	kernel_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
-	kernel_conf->memory_port = config_get_int_value(conf, "PUERTO_MEMORIA");
+	kernel_conf->memory_port = config_get_string_value(conf, "PUERTO_MEMORIA");
 	kernel_conf->filesystem_ip = config_get_string_value(conf, "IP_FS");
-	kernel_conf->filesystem_port = config_get_int_value(conf, "PUERTO_FS");
+	kernel_conf->filesystem_port = config_get_string_value(conf, "PUERTO_FS");
 	kernel_conf->grado_multiprog = config_get_int_value(conf, "GRADO_MULTIPROG");
 	kernel_conf->algoritmo = config_get_string_value(conf, "ALGORITMO");
 	kernel_conf->quantum = config_get_int_value(conf, "QUANTUM");
@@ -134,9 +143,9 @@ void manage_select(int port){
 					}
 				} else {
 
-					operation_code = malloc(sizeof(uint8_t));
+					//operation_code = malloc(sizeof(uint8_t));
 					void * buffer;
-					int ret = connection_recv(fd_seleccionado, operation_code, &buf);
+					int ret = connection_recv(fd_seleccionado, &operation_code, &buf);
 
 					if(!ret) {
 						FD_CLR(fd_seleccionado, &master);
@@ -146,4 +155,16 @@ void manage_select(int port){
 			}
 		}
 	}
+}
+
+uint8_t handshake_memory(int socket){
+	uint8_t op_code, *buffer;
+	connection_recv(socket, &op_code, &buffer);
+	return *buffer;
+}
+
+void handshake_filsesystem(int socket){
+	uint8_t op_code;
+	char* buffer;
+	// TODO Definir handshake en filsesysyem
 }
