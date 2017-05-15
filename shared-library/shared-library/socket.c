@@ -102,10 +102,16 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = *(uint8_t*) message;
 			(uint8_t *)message++;
 			break;
+		case OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA:
+			message_size_value = strlen((char*)message);
+			break;
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
 		case OC_TERMINO_INSTRUCCION:
+		case OC_HANDSHAKE_MEMORY:
+			message_size_value = sizeof(uint8_t);
+			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
@@ -148,6 +154,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			ret = ret + status;
 			//message = (void*) malloc(message_size);
 			switch ((int)*operation_code_value) {
+			case OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA:
 			case OC_SOLICITUD_PROGRAMA_NUEVO:
 
 				*message = malloc(message_size +1);
@@ -171,6 +178,11 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 					*message = buffer;
 				}
 				//free(buffer);
+				break;
+			case OC_HANDSHAKE_MEMORY:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = (uint8_t *)buffer;
 				break;
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);

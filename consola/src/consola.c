@@ -16,6 +16,7 @@ int console_socket;
 
 int main(int argc, char* argv[]) {
 
+	uint8_t operation_code;
 	printf("%s \n", argv[1]);
 	crear_logger(argv[1], &logger, true, LOG_LEVEL_TRACE);
 	load_config(argv[1]);
@@ -27,6 +28,8 @@ int main(int argc, char* argv[]) {
 
 	console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
 
+	char* mensaje = string_duplicate("este es un mensaje que se va a mandar a kernel");
+	connection_send(console_socket, OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA, mensaje);
 	enter_command();
 
 	/*while(1){
