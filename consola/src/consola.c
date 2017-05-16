@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
 
 	uint8_t operation_code;
 	printf("%s \n", argv[1]);
-	crear_logger(argv[1], &logger, true, LOG_LEVEL_TRACE);
+	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	load_config(argv[1]);
 
 	char* timeStart = temporal_get_string_time(); //usando commons
@@ -131,18 +131,21 @@ int read_command(char* command) {
 	else return -2;
 }
 void mandarScriptAKernel(char * string) {
-	uint8_t operation_code = 1;
 
-	uint8_t size_opc = sizeof(uint8_t);
+	connection_send(console_socket, OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA, string);
+
+	/*uint8_t size_opc = sizeof(uint8_t);
 	uint8_t size_char = sizeof(char);
 	uint8_t length_string = strlen(string) * size_char;
 	uint8_t length_message = length_string +1;
 
 	void * buffer = malloc(length_message);
 
+
+
 	memcpy(buffer, &length_string, 1);
 	memcpy(buffer + 1, string, length_string);
 	connection_send(console_socket, operation_code, buffer);
-	free(buffer);
+	free(buffer);*/
 
 }
