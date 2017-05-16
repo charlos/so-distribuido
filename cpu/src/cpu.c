@@ -10,18 +10,21 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <commons/config.h>
 #include <shared-library/socket.h>
 #include <parser/metadata_program.h>
 #include "funcionesParser.h"
+#include "cpu.h"
 
 int server_socket;
 AnSISOP_funciones * funciones;
 AnSISOP_kernel * func_kernel;
+t_cpu_conf* cpu_conf;
 
 void procesarMsg(char * msg);
 
 int main(void) {
-
+	load_properties();
 	char * server_ip = "127.0.0.1";
 	char * server_port = "5003";
 	server_socket = connect_to_socket(server_ip, server_port);
@@ -91,7 +94,7 @@ int main(void) {
 	return EXIT_SUCCESS;
 
 }
-void inicializarFuncionesParser() {
+void inicializarFuncionesParser(void) {
 	funciones->AnSISOP_definirVariable = definirVariable;
 	funciones->AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable;
 	funciones->AnSISOP_dereferenciar = dereferenciar;
@@ -112,4 +115,14 @@ void procesarMsg(char * msg) {
 	for(ipointer = 0; lineas[ipointer] != NULL; ipointer++) {
 		analizadorLinea(lineas[ipointer],funciones, func_kernel);
 	}
+}
+
+void load_properties(void) {
+	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/Debug/cpu.cfg");
+	cpu_conf = malloc(sizeof(t_cpu_conf));
+	cpu_conf->kernel_ip = config_get_string_value(conf, "IP_KERNEL");
+	cpu_conf->kernel_port = config_get_int_value(conf, "PUERTO_KERNEL");
+	cpu_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
+	cpu_conf->memory_port = config_get_int_value(conf, "PUERTO_MEMORIA");
+	free(conf);
 }

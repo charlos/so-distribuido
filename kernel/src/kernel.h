@@ -19,7 +19,6 @@
 
 #define CPU 5
 
-typedef t_list t_stack;
 
 typedef struct{
 	int program_port;
@@ -37,28 +36,6 @@ typedef struct{
 	char** shared_vars;
 	int stack_size;
 }t_kernel_conf;
-typedef struct{
-	pid_t pid;
-	int PC;
-	int cantidad_paginas;
-	t_stack* indice_stack;
-	t_list* indice_codigo;
-	// tabla de archivos
-	int exit_code;
-}t_PCB;
-
-typedef struct{
-	int pagina;
-	int offset;
-	int size;
-}posicion_memoria;
-
-typedef struct{
-	t_list* args;
-	t_list* vars;
-	int retPos;
-	posicion_memoria* retVar;
-}t_element_stack;
 
 typedef struct{
 	int file_descriptor;
