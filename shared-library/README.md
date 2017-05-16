@@ -2,31 +2,22 @@
 
 ## init process (request)
 ```
-void memory_init_process(int server_socket, int pid, int pages)
+t_init_process_response * memory_init_process(int server_socket, int pid, int pages, t_log * logger)
 ```
 
-Envía pedido de inicio de proceso: 
+Pedido de inicio de proceso: 
 - server_socket : file descriptor socket
 - pid: id del proceso
 - pages: cantidad de páginas a solicitar para el proceso
+- logger: opcional
 
-
-
-## init process (response)
-```
-t_init_process_response * memory_init_process_recv_resp(int server_socket) 
-```
-
-Retorna estructura resultado del inicio de proceso: 
-- server_socket : file descriptor socket
-
-Estructura de respuesta
-- t_init_process_response.received_bytes = cantidad de bytes recibidos
-- t_init_process_response.resp_code = código de respuesta
+Respuesta: 
+- t_init_process_response->exec_code = código resultado comunicación socket (DISCONNECTED_SERVER=202) 
+- t_init_process_response->resp_code = código respuesta inicio del proceso (SUCCESS=1, ERROR=200)
 
 **No olvidar liberar memoria** 
 ```
-t_init_process_response * init_process_resp = memory_init_process_recv_resp(server_socket);
+t_init_process_response * init_process_resp = memory_init_process(server_socket, pid, pages, logger);
 free(init_process_resp);
 ```  
 
@@ -34,70 +25,53 @@ free(init_process_resp);
 
 ## write (request)
 ```
-void memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer)
+t_write_response * memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer, t_log * logger)
 ```
 
-Envía pedido de escritura: 
+Pedido de escritura: 
 - server_socket : file descriptor socket
 - pid: id del proceso
 - page: página a realizar la escritura
 - offset: posición de inicio de escritura
 - size: cantidad de bytes a escribir
-- size: tamaño del buffer
+- buffer_size: tamaño del buffer
 - buffer: buffer con los bytes a escribir
+- logger: opcional
 
-
-
-## write (response)
-```
-t_write_response * memory_write_recv_resp(int server_socket)
-```
-
-Retorna estructura resultado de escritura: 
-- server_socket : file descriptor socket
-
-Estructura de respuesta
-- t_write_response.received_bytes = cantidad de bytes recibidos
-- t_write_response.resp_code = código de respuesta
+Respuesta: 
+- t_write_response->exec_code = código resultado comunicación socket (DISCONNECTED_SERVER=202) 
+- t_write_response->resp_code = código respuesta escritura (SUCCESS=1, ERROR=200)
 
 **No olvidar liberar memoria** 
 ```
-t_write_response * write_response = memory_write_recv_resp(server_socket);
+t_write_response * write_response = memory_write(server_socket, pid, page, offset, size, buffer_size, buffer, logger);
 free(write_response);
 ```  
 
 
+
 ## read (request)
 ```
-void memory_read(int server_socket, int pid, int page, int offset, int size)
+t_read_response * memory_read(int server_socket, int pid, int page, int offset, int size, t_log * logger) 
 ```
 
-Envía pedido de lectura: 
+Pedido de lectura: 
 - server_socket : file descriptor socket
 - pid: id del proceso
 - page: página a realizar la lectura
 - offset: posición de inicio de lectura
 - size: cantidad de bytes a leer
+- logger: opcional
 
-
-
-## read (response)
-```
-t_read_response * memory_read_recv_resp(int server_socket)
-```
-
-Retorna estructura resultado de lectura: 
-- server_socket : file descriptor socket
-
-Estructura de respuesta
-- t_read_response.received_bytes = cantidad de bytes recibidos
-- t_read_response.resp_code = código de respuesta
-- t_read_response.buffer_size = tamaño del buffer (si hubo algún error, el mismo es igual a 0)
-- t_read_response.buffer = buffer con los bytes leidos
+Respuesta:
+- t_read_response->exec_code = código resultado comunicación socket (DISCONNECTED_SERVER=202) 
+- t_read_response->resp_code = código respuesta escritura (SUCCESS=1, ERROR=200)
+- t_read_response->buffer_size = tamaño del buffer
+- t_read_response->buffer = buffer con los bytes leídos
 
 **No olvidar liberar memoria** 
 ```
-t_read_response * read_response = memory_read_recv_resp(server_socket);
+t_read_response * read_response = memory_read(server_socket, pid, page, offset, size, logger);
 free(read_response->buffer);
 free(read_response);
 ```  
