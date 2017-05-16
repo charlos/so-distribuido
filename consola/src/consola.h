@@ -10,9 +10,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <shared-library/connect.h>
 #include <shared-library/socket.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
 
 typedef struct {
 	char* ipAddress;

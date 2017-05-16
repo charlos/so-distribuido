@@ -13,6 +13,7 @@
 t_log* logger;
 console_cfg * console_config;
 int console_socket;
+t_list thread_list;
 
 int main(int argc, char* argv[]) {
 
@@ -20,6 +21,7 @@ int main(int argc, char* argv[]) {
 	printf("%s \n", argv[1]);
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	load_config(argv[1]);
+	thread_list = list_create();
 
 	char* timeStart = temporal_get_string_time(); //usando commons
 	printf("Tiempo de Inicio del Proceso: %s\n", timeStart);
@@ -71,8 +73,10 @@ void enter_command() {
 int read_command(char* command) {
 
 	int caracter = 0;
-	while (command[caracter] != '\n') caracter++;
-	command[caracter] = '\0';
+	int car = string_length(command);
+	//while (command[caracter] != '\n') caracter++;
+	//command[caracter] = '\0';
+	command[string_length(command)] = '\0';
 
 	char** palabras = string_n_split(command, 2, " ");
 
@@ -80,12 +84,11 @@ int read_command(char* command) {
 
 	if(strcmp(palabras[0], "init") == 0) {
 
-		int cantPalabras = 0, i=0;
+		int i=0;
 		while(palabras[i]) {
-			cantPalabras++;
 			i++;
 		}
-		if(cantPalabras != 2) {
+		if(i != 2) {
 			printf("Cantidad de parametros erronea\n");
 			return -1;
 		}
@@ -106,7 +109,15 @@ int read_command(char* command) {
 				if(feof(file)) {
 					fclose(file);
 					printf("\nMensaje compilado: %s \n", string);
-					mandarScriptAKernel(string);
+
+					pthread_t thread_program;
+					pthread_attr_t attr;
+					pthread_attr_init(&attr);
+					pthread_create(&thread_program, &attr, &thread_subprograma, string);
+					pthread_attr_destroy(&attr);
+
+					list_add(thread_list, &thread_program);
+
 					return 1;
 				}
 
@@ -148,4 +159,7 @@ void mandarScriptAKernel(char * string) {
 	connection_send(console_socket, operation_code, buffer);
 	free(buffer);*/
 
+}
+void thread_subprograma(char * string) {
+	connection_send(console_socket, OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA, string);
 }
