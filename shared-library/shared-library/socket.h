@@ -26,6 +26,8 @@
 #define OC_HANDSHAKE_MEMORY 8
 #define OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA 9
 
+#define OC_FUNCION_ABRIR 30
+
 	/**
 	 * @NAME   open_socket
 	 * @DESC   Permite crear un socket "servidor" o "de escucha" El mismo abre un puerto en la red y después espera a que un cliente se conecte a ese puerto
