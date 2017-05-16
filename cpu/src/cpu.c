@@ -13,10 +13,8 @@
 #include <commons/config.h>
 #include <shared-library/socket.h>
 #include <parser/metadata_program.h>
-#include "funcionesParser.h"
 #include "cpu.h"
 
-int server_socket;
 AnSISOP_funciones * funciones;
 AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;

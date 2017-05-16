@@ -11,6 +11,7 @@
 #include <parser/parser.h>
 #include <commons/log.h>
 #include <commons/collections/queue.h>
+#include <shared-library/socket.h>
 
 typedef union {
 	t_nombre_variable nombre_variable;
@@ -35,11 +36,14 @@ void asignar(t_puntero, t_valor_variable);
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta);
 t_puntero alocar(t_valor_variable);
 void liberar(t_puntero);
+
 t_descriptor_archivo abrir(t_direccion_archivo, t_banderas);
 void borrar(t_descriptor_archivo);
 void cerrar(t_descriptor_archivo);
 void moverCursor(t_descriptor_archivo, t_valor_variable);
 void escribir(t_descriptor_archivo, void *, t_valor_variable);
 void leer(t_descriptor_archivo, t_puntero, t_valor_variable);
+
+int server_socket;
 
 #endif /* FUNCIONESPARSER_H_ */

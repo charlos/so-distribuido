@@ -91,15 +91,20 @@ void liberar(t_puntero puntero){
 char* boolToChar(bool boolean) {
     return boolean ? "✔" : "✖";
 }
-
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     log_trace(logger, "Abrir [%s] Lectura: %s. Escritura: %s, Creacion: %s", direccion,
               boolToChar(banderas.lectura), boolToChar(banderas.escritura), boolToChar(banderas.creacion));
 
     queue_push(llamadas, crearLlamada("abrir", 2, direccion, banderas));
+
+    void * buffer = malloc(sizeof(t_direccion_archivo)+sizeof(t_banderas));
+    memcpy(buffer, &direccion, sizeof(t_direccion_archivo));
+    memcpy(buffer + sizeof(t_direccion_archivo), &banderas, sizeof(t_banderas));
+    connection_send(server_socket, OC_FUNCION_ABRIR, buffer);
+
+    free(buffer);
     CON_RETORNO_DESCRIPTOR;
 }
-
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
     queue_push(llamadas, crearLlamada("borrar", 1, descriptor));
@@ -127,4 +132,3 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
     queue_push(llamadas, crearLlamada("leer", 3, descriptor, informacion, tamanio));
 }
-
