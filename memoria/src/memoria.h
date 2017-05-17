@@ -28,7 +28,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t pid;
-	uint32_t page_count;
+	uint32_t pages_count;
 } t_reg_pages_process_table;
 
 #endif /* MEMORIA_H_ */

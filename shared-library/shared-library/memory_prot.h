@@ -12,20 +12,24 @@
 #ifndef SHARED_LIBRARY_MEMORY_PROTOCOL_H_
 #define SHARED_LIBRARY_MEMORY_PROTOCOL_H_
 
-#define INIT_PROCESS_OC     1
-#define	ASSIGN_PAGE_OC 		2
-#define	READ_OC			 	3
-#define	WRITE_OC			4
-#define	END_PROCESS_OC		5
+#define INIT_PROCESS_OC     			1
+#define	ASSIGN_PAGE_OC 						2
+#define	READ_OC			 							3
+#define	WRITE_OC									4
+#define	END_PROCESS_OC						5
 
-#define	SUCCESS				1
+#define	SUCCESS										1
+#define	ERROR											200
+#define	DISCONNECTED_CLIENT				201
+#define	DISCONNECTED_SERVER				202
+#define	ENOSPC										203
 
 /**	╔═════════════════════════════════╗
 	║ MEMORY - RECEIVE OPERATION CODE ║
 	╚═════════════════════════════════╝ **/
 typedef struct {
-	uint32_t received_bytes;
-	uint32_t ope_code;
+	uint8_t exec_code;
+	uint8_t ope_code;
 } t_ope_code;
 
 /**
@@ -34,19 +38,21 @@ typedef struct {
  *
  * @PARAMS
  */
-t_ope_code * recv_operation_code(t_log *, int *);
+t_ope_code * recv_operation_code(int *, t_log *);
+
+
 
 /**	╔═══════════════════════╗
 	║ MEMORY - INIT PROCESS ║
 	╚═══════════════════════╝ **/
 typedef struct {
-	uint32_t received_bytes;
+	uint8_t exec_code;
 	uint32_t pid;
 	uint32_t pages;
 } t_init_process_request;
 
 typedef struct {
-	uint8_t received_bytes;
+	uint8_t exec_code;
 	uint8_t resp_code;
 } t_init_process_response;
 
@@ -56,7 +62,7 @@ typedef struct {
  *
  * @PARAMS
  */
-void memory_init_process(int, int, int);
+t_init_process_response * memory_init_process(int, int, int, t_log *);
 
 /**
  * @NAME
@@ -64,7 +70,7 @@ void memory_init_process(int, int, int);
  *
  * @PARAMS
  */
-t_init_process_request * init_process_recv_req(t_log *, int *);
+t_init_process_request * init_process_recv_req(int *, t_log *);
 
 /**
  * @NAME
@@ -74,19 +80,13 @@ t_init_process_request * init_process_recv_req(t_log *, int *);
  */
 void init_process_send_resp(int *, int);
 
-/**
- * @NAME
- * @DESC
- *
- * @PARAMS
- */
-t_init_process_response * memory_init_process_recv_resp(int);
+
 
 /**	╔════════════════╗
 	║ MEMORY - WRITE ║
 	╚════════════════╝ **/
 typedef struct {
-	uint32_t received_bytes;
+	uint8_t exec_code;
 	uint32_t pid;
 	uint32_t page;
 	uint32_t offset;
@@ -95,7 +95,7 @@ typedef struct {
 } t_write_request;
 
 typedef struct {
-	uint8_t received_bytes;
+	uint8_t exec_code;
 	uint8_t resp_code;
 } t_write_response;
 
@@ -105,7 +105,7 @@ typedef struct {
  *
  * @PARAMS
  */
-void memory_write(int, int, int, int, int, int, void *);
+t_write_response * memory_write(int, int, int, int, int, int, void *, t_log *);
 
 /**
  * @NAME
@@ -113,7 +113,7 @@ void memory_write(int, int, int, int, int, int, void *);
  *
  * @PARAMS
  */
-t_write_request * write_recv_req(t_log *, int *);
+t_write_request * write_recv_req(int *, t_log *);
 
 /**
  * @NAME
@@ -123,19 +123,13 @@ t_write_request * write_recv_req(t_log *, int *);
  */
 void write_send_resp(int *, int);
 
-/**
- * @NAME
- * @DESC
- *
- * @PARAMS
- */
-t_write_response * memory_write_recv_resp(int);
+
 
 /**	╔═══════════════╗
 	║ MEMORY - READ ║
 	╚═══════════════╝ **/
 typedef struct {
-	uint32_t received_bytes;
+	uint8_t exec_code;
 	uint32_t pid;
 	uint32_t page;
 	uint32_t offset;
@@ -143,9 +137,9 @@ typedef struct {
 } t_read_request;
 
 typedef struct {
-	uint8_t received_bytes;
+	uint8_t exec_code;
 	uint8_t resp_code;
-	uint8_t buffer_size;
+	uint32_t buffer_size;
 	void * buffer;
 } t_read_response;
 
@@ -155,7 +149,7 @@ typedef struct {
  *
  * @PARAMS
  */
-void memory_read(int, int, int, int, int);
+t_read_response * memory_read(int, int, int, int, int, t_log *);
 
 /**
  * @NAME
@@ -163,7 +157,7 @@ void memory_read(int, int, int, int, int);
  *
  * @PARAMS
  */
-t_read_request * read_recv_req(t_log *, int *);
+t_read_request * read_recv_req(int *, t_log *);
 
 /**
  * @NAME
@@ -172,14 +166,5 @@ t_read_request * read_recv_req(t_log *, int *);
  * @PARAMS
  */
 void read_send_resp(int *, int, int, void *);
-
-/**
- * @NAME
- * @DESC
- *
- * @PARAMS
- */
-t_read_response * memory_read_recv_resp(int);
-
 
 #endif /* SHARED_LIBRARY_MEMORY_PROT_H_ */
