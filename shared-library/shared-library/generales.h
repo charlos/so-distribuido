@@ -16,7 +16,7 @@
 typedef t_list t_stack;
 
 typedef struct{
-	pid_t pid;
+	int pid;
 	int PC;
 	int cantidad_paginas;
 	t_stack* indice_stack;

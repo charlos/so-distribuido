@@ -80,7 +80,7 @@ void init_process_send_resp(int *, int);
  *
  * @PARAMS
  */
-t_init_process_response * memory_init_process_recv_resp(int);
+uint8_t memory_init_process_recv_resp(int);
 
 /**	╔════════════════╗
 	║ MEMORY - WRITE ║

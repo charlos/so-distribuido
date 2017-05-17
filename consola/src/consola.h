@@ -21,5 +21,6 @@ typedef struct {
 	char* port;
 } console_cfg;
 
+void thread_subprograma(char * string);
 
 #endif /* CONSOLA_H_ */

@@ -74,11 +74,11 @@ void init_process_send_resp(int * client_socket, int resp_code) {
 	free(response);
 }
 
-t_init_process_response * memory_init_process_recv_resp(int server_socket) {
+uint8_t memory_init_process_recv_resp(int server_socket) {
 	t_init_process_response * response = malloc(sizeof(t_init_process_response));
 	uint8_t prot_resp_code = 1;
 	response->received_bytes = socket_recv(&server_socket, &(response->resp_code), prot_resp_code);
-	return response;
+	return response->resp_code;
 }
 
 /**	╔════════════════╗
