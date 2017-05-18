@@ -21,5 +21,10 @@ typedef struct {
 	char* port;
 } console_cfg;
 
+void load_config(char * path);
+void enter_command();
+int read_command(char * command);
+char* read_file(char * path);
+void thread_subprograma(char * string);
 
 #endif /* CONSOLA_H_ */

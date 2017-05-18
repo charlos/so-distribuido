@@ -12,13 +12,11 @@
 
 t_log* logger;
 console_cfg * console_config;
-int console_socket;
-t_list thread_list;
+int main_console_socket;
+t_list * thread_list;
 
 int main(int argc, char* argv[]) {
 
-	uint8_t operation_code;
-	printf("%s \n", argv[1]);
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	load_config(argv[1]);
 	thread_list = list_create();
@@ -28,15 +26,12 @@ int main(int argc, char* argv[]) {
 	saludo();
 	connect_send("mi primer mensaje enviado :)"); //usando nuestra shared library
 
-	console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
+	//Conexion a kernel
+	main_console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
 
-	char* mensaje = string_duplicate("este es un mensaje que se va a mandar a kernel");
-	connection_send(console_socket, OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA, mensaje);
+	//Inicio UI
 	enter_command();
 
-	/*while(1){
-		sleep(20);
-	}*/
 	return EXIT_SUCCESS;
 
 }
@@ -52,23 +47,25 @@ void load_config(char * path) {
 
 	console_config->port = config_get_string_value(cfg, "PORT_KERNEL");
 	console_config->ipAddress = config_get_string_value(cfg, "IP_KERNEL");
+
+	free(cfg);
 }
 void enter_command() {
 	char* command = malloc(sizeof(char)*256);
 
-		printf("/***************************************\\ \n");
-		printf("| init path     : Iniciar Programa      |\n");
-		printf("| kill pid      : Finalizar Programa    |\n");
-		printf("| disconnect    : Desconectar Consola   |\n");
-		printf("| clean         : Limpiar Mensajes      |\n");
-		printf("\\***************************************/\n");
+	printf("/***************************************\\ \n");
+	printf("| init path     : Iniciar Programa      |\n");
+	printf("| kill pid      : Finalizar Programa    |\n");
+	printf("| disconnect    : Desconectar Consola   |\n");
+	printf("| clean         : Limpiar Mensajes      |\n");
+	printf("\\***************************************/\n");
 
-		fgets(command, 256, stdin);
+	fgets(command, 256, stdin);
 
-		int ret = read_command(command);
-		printf("\n%d \n", ret);
-
-		enter_command();
+	int ret = read_command(command);
+	printf("\n%d \n", ret);
+	free(command);
+	enter_command();
 }
 int read_command(char* command) {
 
@@ -79,8 +76,6 @@ int read_command(char* command) {
 	command[string_length(command)] = '\0';
 
 	char** palabras = string_n_split(command, 2, " ");
-
-	if(palabras[0] == NULL) return -2;
 
 	if(strcmp(palabras[0], "init") == 0) {
 
@@ -93,34 +88,19 @@ int read_command(char* command) {
 			return -1;
 		}
 		else {
-			FILE* file;
-			char buffer[255];
 			char * path = palabras[1];
+			char * file_content = read_file(path);
 
-			file = fopen(path, "r");
-			if(file) {
+			if(*file_content != NULL) {
+				pthread_t thread_program;
+				pthread_attr_t attr;
+				pthread_attr_init(&attr);
+				pthread_create(&thread_program, &attr, &thread_subprograma, file_content);
+				pthread_attr_destroy(&attr);
 
-				char* string = string_new();
+				list_add(thread_list, &thread_program);
 
-				while(fgets(buffer, 255, (FILE*)file)) {
-					string_append(&string, buffer);
-					printf("%s", buffer);
-				}
-				if(feof(file)) {
-					fclose(file);
-					printf("\nMensaje compilado: %s \n", string);
-
-					pthread_t thread_program;
-					pthread_attr_t attr;
-					pthread_attr_init(&attr);
-					pthread_create(&thread_program, &attr, &thread_subprograma, string);
-					pthread_attr_destroy(&attr);
-
-					list_add(thread_list, &thread_program);
-
-					return 1;
-				}
-
+				return 1;
 			}
 		}
 	}
@@ -143,7 +123,7 @@ int read_command(char* command) {
 }
 void mandarScriptAKernel(char * string) {
 
-	connection_send(console_socket, OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA, string);
+	connection_send(main_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, string);
 
 	/*uint8_t size_opc = sizeof(uint8_t);
 	uint8_t size_char = sizeof(char);
@@ -161,5 +141,38 @@ void mandarScriptAKernel(char * string) {
 
 }
 void thread_subprograma(char * string) {
-	connection_send(console_socket, OC_SOLICITUD_PROGRAMA_NUEVO_A_MEMORIA, string);
+
+	uint8_t pid, operation_code;
+	int sub_console_socket;
+	void * buffer;
+
+	sub_console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
+	connection_send(sub_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, string);
+	int result = connection_recv(sub_console_socket, &operation_code, &buffer);
+
+	if(result > 1 && operation_code == OC_NUEVA_CONSOLA_PID)
+		pid = *(uint8_t *) buffer;
+
+}
+char * read_file(char * path) {
+	FILE * file;
+	char *buffer = malloc(255);
+
+	file = fopen(path, "r");
+
+	if(file) {
+		char* string = string_new();
+
+		while(fgets(buffer, 255, (FILE*)file)) {
+			string_append(&string, buffer);
+		}
+		if(feof(file)) {
+			fclose(file);
+			printf("\nMensaje compilado: %s \n", string);
+			free(buffer);
+			return string;
+		}
+		return NULL;
+	}
+	return NULL;
 }
