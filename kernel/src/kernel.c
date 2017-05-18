@@ -13,14 +13,13 @@
 #include <shared-library/memory_prot.h>
 #include <pthread.h>
 #include "kernel.h"
+#include "solicitudes.h"
 
-int memory_socket;
-t_kernel_conf* kernel_conf;
+
 
 int main(int argc, char* argv[]) {
 
-	int memory_socket, fs_socket;
-	uint8_t tamanio_paginas;
+	registro_pid = 0;
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
@@ -28,7 +27,7 @@ int main(int argc, char* argv[]) {
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
-	tamanio_paginas = handshake_memory(memory_socket);
+	TAMANIO_PAGINAS = handshake_memory(memory_socket);
 
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
 
@@ -71,49 +70,12 @@ void stack_push(t_stack* stack, void* element){
 	list_add(stack, element);
 }
 
-t_PCB* crear_PCB(){
-	t_PCB* PCB = malloc(sizeof(t_PCB));
-	PCB->pid = registro_pid++;
-	PCB->cantidad_paginas = 0;
-	return PCB;
-}
-
-void solicitar_progama_nuevo(int file_descriptor, char* codigo){
-	int respuesta;
-	uint8_t* operation_code;
-	char* buffer; // no importa por ahora
-
-	t_PCB* pcb = crear_PCB();
-
-	connection_send(file_descriptor, OC_SOLICITUD_PROGRAMA_NUEVO, codigo);
-	respuesta = connection_recv(file_descriptor, operation_code, &buffer);
-	if(respuesta != -1) pcb->cantidad_paginas++;
-}
 
 t_cpu* cpu_create(int file_descriptor){
 	t_cpu* cpu = malloc(sizeof(t_cpu));
 	cpu->file_descriptor = file_descriptor;
 	cpu->proceso_asignado = NULL;
 	return cpu;
-}
-
-void load_kernel_properties(void) {
-	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
-	kernel_conf = malloc(sizeof(t_kernel_conf));
-	kernel_conf->program_port = config_get_int_value(conf, "PUERTO_PROG");
-	kernel_conf->cpu_port = config_get_int_value(conf, "PUERTO_CPU");
-	kernel_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
-	kernel_conf->memory_port = config_get_string_value(conf, "PUERTO_MEMORIA");
-	kernel_conf->filesystem_ip = config_get_string_value(conf, "IP_FS");
-	kernel_conf->filesystem_port = config_get_string_value(conf, "PUERTO_FS");
-	kernel_conf->grado_multiprog = config_get_int_value(conf, "GRADO_MULTIPROG");
-	kernel_conf->algoritmo = config_get_string_value(conf, "ALGORITMO");
-	kernel_conf->quantum = config_get_int_value(conf, "QUANTUM");
-	kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
-	kernel_conf->stack_size = config_get_int_value(conf, "STACK_SIZE");
-	kernel_conf->sem_ids = config_get_array_value(conf, "SEM_IDS");
-	kernel_conf->sem_init = config_get_array_value(conf, "SEM_INIT");
-	kernel_conf->shared_vars = config_get_array_value(conf, "SHARED_VARS");
 }
 
 void manage_select(int port){
@@ -143,14 +105,9 @@ void manage_select(int port){
 					}
 				} else {
 
-					//operation_code = malloc(sizeof(uint8_t));
-					void * buffer;
-					int ret = connection_recv(fd_seleccionado, &operation_code, &buf);
+					solve_request(fd_seleccionado);
 
-					if(!ret) {
-						FD_CLR(fd_seleccionado, &master);
-						close_client(fd_seleccionado);
-					}
+					//TODO Borrar sockets que se desconectan
 				}
 			}
 		}
@@ -159,6 +116,9 @@ void manage_select(int port){
 
 uint8_t handshake_memory(int socket){
 	uint8_t op_code, *buffer;
+	uint32_t* msg = malloc(sizeof(uint32_t));
+	*msg = 1;
+	connection_send(socket, OC_HANDSHAKE_MEMORY, msg);
 	connection_recv(socket, &op_code, &buffer);
 	return *buffer;
 }
