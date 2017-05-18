@@ -52,14 +52,12 @@ uint8_t memory_init_process(int server_socket, int pid, int pages, t_log * logge
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
 
-//	t_init_process_response * response = malloc(sizeof(t_init_process_response));
 	uint8_t resp_prot_code = 1;
 	uint8_t response;
 	int received_bytes = socket_recv(&server_socket, &response, resp_prot_code);
 	if (received_bytes <= 0) {
-		uint8_t error = 202;
+		response = DISCONNECTED_SERVER;
 		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
-		return error;
 	}
 	return response;
 };
