@@ -7,28 +7,31 @@
 #include <commons/log.h>
 #include <stdint.h>
 #include <stdlib.h>
-
 #include "memory_prot.h"
 #include "socket.h"
 
 /**	╔═════════════════════════════════╗
 	║ MEMORY - RECEIVE OPERATION CODE ║
 	╚═════════════════════════════════╝ **/
-t_ope_code * recv_operation_code(t_log * logger, int * client_socket) {
+t_ope_code * recv_operation_code(int * client_socket, t_log * logger) {
 	t_ope_code * request_ope_code = malloc(sizeof(t_ope_code));
-	request_ope_code->ope_code = 99;
 	uint8_t prot_ope_code_size = 1;
-	request_ope_code->received_bytes = socket_recv(client_socket, &(request_ope_code->ope_code), prot_ope_code_size);
-	if (request_ope_code->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	int received_bytes = socket_recv(client_socket, &(request_ope_code->ope_code), prot_ope_code_size);
+	if (received_bytes <= 0) {
+		request_ope_code->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request_ope_code;
 	}
+	request_ope_code->exec_code = SUCCESS;
 	return request_ope_code;
 }
+
+
 
 /**	╔═══════════════════════╗
 	║ MEMORY - INIT PROCESS ║
 	╚═══════════════════════╝ **/
-void memory_init_process(int server_socket, int pid, int pages) {
+uint8_t memory_init_process(int server_socket, int pid, int pages, t_log * logger) {
 	/**	╔═════════════════════════╦═══════════════╦═════════════════╗
 		║ operation_code (1 byte) ║ pid (4 bytes) ║ pages (4 bytes) ║
 		╚═════════════════════════╩═══════════════╩═════════════════╝ **/
@@ -48,20 +51,36 @@ void memory_init_process(int server_socket, int pid, int pages) {
 	memcpy(request + prot_ope_code + prot_pid, &req_pages, prot_pages);
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
+
+//	t_init_process_response * response = malloc(sizeof(t_init_process_response));
+	uint8_t resp_prot_code = 1;
+	uint8_t response;
+	int received_bytes = socket_recv(&server_socket, &response, resp_prot_code);
+	if (received_bytes <= 0) {
+		uint8_t error = 202;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+		return error;
+	}
+	return response;
 };
 
-t_init_process_request * init_process_recv_req(t_log * logger, int * client_socket) {
+t_init_process_request * init_process_recv_req(int * client_socket, t_log * logger) {
 	t_init_process_request * request = malloc(sizeof(t_init_process_request));
 	uint8_t prot_req_pid = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	int received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_pages = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->pages), prot_req_pages);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->pages), prot_req_pages);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
+	request->exec_code = SUCCESS;
 	return request;
 }
 
@@ -74,17 +93,12 @@ void init_process_send_resp(int * client_socket, int resp_code) {
 	free(response);
 }
 
-uint8_t memory_init_process_recv_resp(int server_socket) {
-	t_init_process_response * response = malloc(sizeof(t_init_process_response));
-	uint8_t prot_resp_code = 1;
-	response->received_bytes = socket_recv(&server_socket, &(response->resp_code), prot_resp_code);
-	return response->resp_code;
-}
+
 
 /**	╔════════════════╗
 	║ MEMORY - WRITE ║
 	╚════════════════╝ **/
-void memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer) {
+t_write_response * memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer, t_log * logger) {
 
 	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╦══════════════╦════════╗
 		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║ buffer size  ║ buffer ║
@@ -115,41 +129,65 @@ void memory_write(int server_socket, int pid, int page, int offset, int size, in
 	memcpy(request + prot_ope_code + prot_pid + prot_page + prot_offset + prot_size + prot_buffer_size, buffer, buffer_size);
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
+
+	t_write_response * response = malloc(sizeof(t_write_response));
+	uint8_t resp_prot_code = 1;
+	int received_bytes = socket_recv(&server_socket, &(response->resp_code), resp_prot_code);
+	if (received_bytes <= 0) {
+		response->exec_code = DISCONNECTED_SERVER;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+		return response;
+	}
+	response->exec_code = SUCCESS;
+	return response;
 };
 
-t_write_request * write_recv_req(t_log * logger, int * client_socket) {
+t_write_request * write_recv_req(int * client_socket, t_log * logger) {
 	t_write_request * request = malloc(sizeof(t_write_request));
 	uint8_t prot_req_pid = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	int received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_page = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->page), prot_req_page);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->page), prot_req_page);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_offset = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->offset), prot_req_offset);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->offset), prot_req_offset);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_size = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->size), prot_req_size);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->size), prot_req_size);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_buffer_size = 4;
 	uint32_t buffer_size;
-	request->received_bytes = socket_recv(client_socket, &buffer_size, prot_buffer_size);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &buffer_size, prot_buffer_size);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	request->buffer = malloc(sizeof(char) * buffer_size);
-	request->received_bytes = socket_recv(client_socket, request->buffer, buffer_size);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, request->buffer, buffer_size);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
+	request->exec_code = SUCCESS;
 	return request;
 }
 
@@ -162,17 +200,12 @@ void write_send_resp(int * client_socket, int resp_code) {
 	free(response);
 }
 
-t_write_response * memory_write_recv_resp(int server_socket) {
-	t_write_response * response = malloc(sizeof(t_write_response));
-	uint8_t prot_resp_code = 1;
-	response->received_bytes = socket_recv(&server_socket, &(response->resp_code), prot_resp_code);
-	return response;
-}
+
 
 /**	╔═══════════════╗
 	║ MEMORY - READ ║
 	╚═══════════════╝ **/
-void memory_read(int server_socket, int pid, int page, int offset, int size) {
+t_read_response * memory_read(int server_socket, int pid, int page, int offset, int size, t_log * logger) {
 
 	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╗
 		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║
@@ -199,55 +232,78 @@ void memory_read(int server_socket, int pid, int page, int offset, int size) {
 	memcpy(request + prot_ope_code + prot_pid + prot_page + prot_offset, &req_size, prot_size);
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
+
+	t_read_response * response = malloc(sizeof(t_read_response));
+	uint8_t resp_prot_code = 1;
+	int received_bytes = socket_recv(&server_socket, &(response->resp_code), resp_prot_code);
+	if (received_bytes <= 0) {
+		response->exec_code = DISCONNECTED_SERVER;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+		return response;
+	}
+	uint8_t resp_prot_buff_size = 1;
+	received_bytes = socket_recv(&server_socket, &(response->buffer_size), resp_prot_buff_size);
+	if (received_bytes <= 0) {
+		response->exec_code = DISCONNECTED_SERVER;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+		return response;
+	}
+	if ((response->buffer_size) > 0) {
+		received_bytes = socket_recv(&server_socket, response->buffer, response->buffer_size);
+		if (received_bytes <= 0) {
+			response->exec_code = DISCONNECTED_SERVER;
+			if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+			return response;
+		}
+	}
+	response->exec_code = SUCCESS;
+	return response;
 };
 
-t_read_request * read_recv_req(t_log * logger, int * client_socket) {
+t_read_request * read_recv_req(int * client_socket, t_log * logger) {
 	t_read_request * request = malloc(sizeof(t_read_request));
 	uint8_t prot_req_pid = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	int received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_page = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->page), prot_req_page);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->page), prot_req_page);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_offset = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->offset), prot_req_offset);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->offset), prot_req_offset);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
 	uint8_t prot_req_size = 4;
-	request->received_bytes = socket_recv(client_socket, &(request->size), prot_req_size);
-	if (request->received_bytes <= 0) {
-		log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+	received_bytes = socket_recv(client_socket, &(request->size), prot_req_size);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
 	}
+	request->exec_code = SUCCESS;
 	return request;
 }
 
 void read_send_resp(int * client_socket, int resp_code, int buffer_size, void * buffer) {
 	uint8_t resp_prot_code = 1;
-	uint8_t resp_buffer_size = 4;
-	int response_size = sizeof(char) * (resp_prot_code + ((buffer_size > 0) ? (resp_buffer_size + buffer_size): 0));
+	uint8_t resp_prot_buff_size = 4;
+	int response_size = sizeof(char) * (resp_prot_code + resp_prot_buff_size + ((buffer_size > 0) ? buffer_size : 0));
 	void * response = malloc(response_size);
 	memcpy(response, &resp_code, resp_prot_code);
+	memcpy(response + resp_prot_code, &buffer_size, resp_prot_buff_size);
 	if (buffer_size > 0) {
-		memcpy(response + resp_prot_code, &buffer_size, resp_buffer_size);
-		memcpy(response + resp_prot_code + resp_buffer_size, buffer, buffer_size);
+		memcpy(response + resp_prot_code + resp_prot_buff_size, buffer, buffer_size);
 	}
 	socket_write(client_socket, response, response_size);
 	free(response);
-}
-
-t_read_response * memory_read_recv_resp(int server_socket) {
-	t_read_response * response = malloc(sizeof(t_read_response));
-	uint8_t prot_resp_code = 1;
-	response->received_bytes = socket_recv(&server_socket, &(response->resp_code), prot_resp_code);
-	uint8_t prot_resp_buff_size = 1;
-	response->received_bytes = socket_recv(&server_socket, &(response->buffer_size), prot_resp_buff_size);
-	if ((response->buffer_size) > 0) {
-		response->received_bytes = socket_recv(&server_socket, response->buffer, response->buffer_size);
-	}
-	return response;
 }
