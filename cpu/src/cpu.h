@@ -9,6 +9,8 @@
 #define CPU_H_
 
 #include "funcionesParser.h"
+#include <shared-library/generales.h>
+#include <commons/collections/list.h>
 
 typedef struct{
 	char* memory_ip;

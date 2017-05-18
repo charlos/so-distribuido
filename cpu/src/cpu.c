@@ -81,9 +81,15 @@ int main(void) {
 			return EXIT_FAILURE;
 		}
 
+		//TODO: loop de esto
+		t_PCB* pcb = malloc(sizeof(t_PCB));
+		uint8_t operation_code;
+		connection_recv(server_socket_kernel, &operation_code, pcb);
+		char * instruccion = list_get(pcb->indice_codigo, pcb->PC);
+		pcb->PC++;
 		inicializarFuncionesParser();
-		//procesarMsg(resp);
-		free(resp);
+		procesarMsg(instruccion);
+		//free(instruccion);
 
 		printf ("CPU : enter message ([ctrl + d] to quit)\n");
 
