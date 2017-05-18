@@ -80,13 +80,7 @@ t_init_process_request * init_process_recv_req(int *, t_log *);
  */
 void init_process_send_resp(int *, int);
 
-/**
- * @NAME
- * @DESC
- *
- * @PARAMS
- */
-uint8_t memory_init_process_recv_resp(int);
+
 
 /**	╔════════════════╗
 	║ MEMORY - WRITE ║
