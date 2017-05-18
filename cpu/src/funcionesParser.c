@@ -100,7 +100,7 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     void * buffer = malloc(sizeof(t_direccion_archivo)+sizeof(t_banderas));
     memcpy(buffer, &direccion, sizeof(t_direccion_archivo));
     memcpy(buffer + sizeof(t_direccion_archivo), &banderas, sizeof(t_banderas));
-    connection_send(server_socket, OC_FUNCION_ABRIR, buffer);
+    connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
     free(buffer);
     CON_RETORNO_DESCRIPTOR;

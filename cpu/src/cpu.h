@@ -14,7 +14,7 @@ typedef struct{
 	char* memory_ip;
 	uint32_t memory_port;
 	char* kernel_ip;
-	uint32_t kernel_port;
+	char* kernel_port;
 }t_cpu_conf;
 
 void load_properties(void);

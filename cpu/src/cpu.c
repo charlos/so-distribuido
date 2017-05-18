@@ -22,10 +22,10 @@ t_cpu_conf* cpu_conf;
 void procesarMsg(char * msg);
 
 int main(void) {
+
 	load_properties();
-	char * server_ip = "127.0.0.1";
-	char * server_port = "5003";
-	server_socket = connect_to_socket(server_ip, server_port);
+	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
+	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 
 	char * msg = NULL;
 	size_t len = 0;
@@ -50,7 +50,7 @@ int main(void) {
 		memcpy(buffer, &req_ope_code, prot_ope_code_size);
 		memcpy(buffer + prot_ope_code_size, &req_msg_size, prot_msg_size);
 		memcpy(buffer + prot_ope_code_size + prot_msg_size, msg, req_msg_size);
-		socket_send(&server_socket, buffer, buffer_size, 0);
+		socket_send(&server_socket_kernel, buffer, buffer_size, 0);
 		free(buffer);
 
 
@@ -58,26 +58,26 @@ int main(void) {
 		// response code
 		uint8_t prot_resp_code_size = 1;
 		uint8_t resp_code;
-		int received_bytes = socket_recv(&server_socket, &resp_code, prot_resp_code_size);
+		int received_bytes = socket_recv(&server_socket_kernel, &resp_code, prot_resp_code_size);
 		if (received_bytes <= 0) {
-			printf("CPU : server %d disconnected\n", server_socket);
+			printf("CPU : server %d disconnected\n", server_socket_kernel);
 			return EXIT_FAILURE;
 		}
 		printf("CPU : receiving message from server >> resp code : %d\n", resp_code);
 		// msg response
 		uint8_t prot_resp_size = 4;
 		uint32_t resp_size;
-		received_bytes = socket_recv(&server_socket, &resp_size, prot_resp_size);
+		received_bytes = socket_recv(&server_socket_kernel, &resp_size, prot_resp_size);
 		printf("CPU : receiving message from server >> resp size : %d\n", resp_size);
 		if (received_bytes <= 0) {
-			printf("CPU : server %d disconnected\n", server_socket);
+			printf("CPU : server %d disconnected\n", server_socket_kernel);
 			return EXIT_FAILURE;
 		}
 		char * resp = malloc(resp_size);
-		received_bytes = socket_recv(&server_socket, resp, resp_size);
+		received_bytes = socket_recv(&server_socket_kernel, resp, resp_size);
 		printf("CPU : receiving message from server >> msg : %s\n", resp);
 		if (received_bytes <= 0) {
-			printf("CPU : server %d disconnected\n", server_socket);
+			printf("CPU : server %d disconnected\n", server_socket_kernel);
 			return EXIT_FAILURE;
 		}
 
@@ -119,8 +119,8 @@ void load_properties(void) {
 	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/Debug/cpu.cfg");
 	cpu_conf = malloc(sizeof(t_cpu_conf));
 	cpu_conf->kernel_ip = config_get_string_value(conf, "IP_KERNEL");
-	cpu_conf->kernel_port = config_get_int_value(conf, "PUERTO_KERNEL");
+	cpu_conf->kernel_port = config_get_string_value(conf, "PUERTO_KERNEL");
 	cpu_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
-	cpu_conf->memory_port = config_get_int_value(conf, "PUERTO_MEMORIA");
+	cpu_conf->memory_port = config_get_string_value(conf, "PUERTO_MEMORIA");
 	free(conf);
 }

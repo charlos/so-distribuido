@@ -44,6 +44,6 @@ void moverCursor(t_descriptor_archivo, t_valor_variable);
 void escribir(t_descriptor_archivo, void *, t_valor_variable);
 void leer(t_descriptor_archivo, t_puntero, t_valor_variable);
 
-int server_socket;
+int server_socket_kernel, server_socket_memoria;
 
 #endif /* FUNCIONESPARSER_H_ */
