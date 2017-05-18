@@ -13,16 +13,16 @@
 #define SHARED_LIBRARY_MEMORY_PROTOCOL_H_
 
 #define INIT_PROCESS_OC     			1
-#define	ASSIGN_PAGE_OC 						2
-#define	READ_OC			 							3
-#define	WRITE_OC									4
-#define	END_PROCESS_OC						5
+#define	ASSIGN_PAGE_OC 					2
+#define	READ_OC			 				3
+#define	WRITE_OC						4
+#define	END_PROCESS_OC					5
 
-#define	SUCCESS										1
-#define	ERROR											200
+#define	SUCCESS							1
+#define	ERROR							200
 #define	DISCONNECTED_CLIENT				201
 #define	DISCONNECTED_SERVER				202
-#define	ENOSPC										203
+#define	ENOSPC							203
 
 /**	╔═════════════════════════════════╗
 	║ MEMORY - RECEIVE OPERATION CODE ║
@@ -62,7 +62,7 @@ typedef struct {
  *
  * @PARAMS
  */
-t_init_process_response * memory_init_process(int, int, int, t_log *);
+uint8_t memory_init_process(int, int, int, t_log *);
 
 /**
  * @NAME
@@ -80,7 +80,13 @@ t_init_process_request * init_process_recv_req(int *, t_log *);
  */
 void init_process_send_resp(int *, int);
 
-
+/**
+ * @NAME
+ * @DESC
+ *
+ * @PARAMS
+ */
+uint8_t memory_init_process_recv_resp(int);
 
 /**	╔════════════════╗
 	║ MEMORY - WRITE ║

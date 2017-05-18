@@ -36,7 +36,7 @@ t_memory_conf * memory_conf;
 t_log * logger;
 char * memory_ptr;
 
-t_reg_invert_table * invert_table;
+char * invert_table;
 t_list * available_frame_list;
 t_list * pages_per_process_list;
 
@@ -74,7 +74,7 @@ int main(int argc, char * argv[]) {
 
 	// socket thread
 	int * new_sock;
-	listenning_socket = open_socket(SOCKET_BACKLOG, memory_conf->port);
+	listenning_socket = open_socket(SOCKET_BACKLOG, (memory_conf->port));
 	for (;;) {
 		new_sock = malloc(1);
 		* new_sock = accept_connection(listenning_socket);
@@ -95,7 +95,6 @@ int main(int argc, char * argv[]) {
 /**
  * @NAME load_memory_properties
  * @DESC Carga las configuraciones del proceso, desde un archivo de configuración
- * @PARAMS
  */
 void load_memory_properties(void) {
 	t_config * conf = config_create("/home/utnso/memoria.cfg"); // TODO : Ver porque no lo toma del workspace
@@ -117,14 +116,14 @@ void load_memory_properties(void) {
  */
 void print_memory_properties(void) {
 	log_info(logger, "MEMORY PROCESS" );
-	log_info(logger, "------ PORT: %u" , memory_conf->port);
-	log_info(logger, "------ FRAMES: %u" , memory_conf->frames);
-	log_info(logger, "------ FRAME SIZE: %u" , memory_conf->frame_size);
-	log_info(logger, "------ CACHE ENTRIES: %u" , memory_conf->cache_entries);
-	log_info(logger, "------ CACHE_X_PROC: %u" , memory_conf->cache_x_process);
-	log_info(logger, "------ MEMORY DELAY: %u" , memory_conf->memory_delay);
-	log_info(logger, "------ CACHE ALGORITHM: %s" , memory_conf->cache_algorithm);
-	log_info(logger, "------ LOGFILE: %s" , memory_conf->logfile);
+	log_info(logger, "------ PORT: %u" , (memory_conf->port));
+	log_info(logger, "------ FRAMES: %u" , (memory_conf->frames));
+	log_info(logger, "------ FRAME SIZE: %u" , (memory_conf->frame_size));
+	log_info(logger, "------ CACHE ENTRIES: %u" , (memory_conf->cache_entries));
+	log_info(logger, "------ CACHE_X_PROC: %u" , (memory_conf->cache_x_process));
+	log_info(logger, "------ MEMORY DELAY: %u" , (memory_conf->memory_delay));
+	log_info(logger, "------ CACHE ALGORITHM: %s" , (memory_conf->cache_algorithm));
+	log_info(logger, "------ LOGFILE: %s" , (memory_conf->logfile));
 }
 
 /**
@@ -132,7 +131,7 @@ void print_memory_properties(void) {
  * @DESC Crea el archivo log del proceso
  */
 void create_logger(void) {
-	logger = log_create(memory_conf->logfile, "MEMORY_PROCESS", true, LOG_LEVEL_TRACE);
+	logger = log_create((memory_conf->logfile), "MEMORY_PROCESS", true, LOG_LEVEL_TRACE);
 }
 
 /**
@@ -153,22 +152,23 @@ void load(void) {
 	// 				(checkpoint 3: no se requiere que la estructura de páginas se encuentre en memoria principal)
 
 	// invert table
-	invert_table = (t_reg_invert_table *) malloc(memory_conf->frames * sizeof(t_reg_invert_table));
+	invert_table = malloc((memory_conf->frames) * (sizeof(t_reg_invert_table)));
+	t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
+
 	// available frames list
 	available_frame_list = list_create();
 
-	t_reg_invert_table * inv_table_aux = invert_table;
-	int i = 0;
-	int * node;
-	while (i < memory_conf->frames) {
-		inv_table_aux += i;
-		inv_table_aux->frame = i;
-		inv_table_aux->page = 0;
-		inv_table_aux->pid = 0;
-		node = malloc(sizeof(int));
-		memcpy(node, &i, sizeof(int));
-		list_add(available_frame_list, node);
-		i++;
+	int i;
+	t_reg_invert_table * reg;
+	for (i = 0; i < (memory_conf->frames); i++) {
+		reg = malloc(sizeof(t_reg_invert_table));
+		reg->frame = i;
+		reg->page = 0;
+		reg->pid = 0;
+		memcpy(inv_table_ptr, reg, sizeof(t_reg_invert_table));
+		free(reg);
+		inv_table_ptr++;
+		list_add(available_frame_list, i);
 	}
 
 	// pages per process
@@ -183,9 +183,9 @@ void load(void) {
  * @PARAMS client_socket
  */
 void process_request(int * client_socket) {
-	t_ope_code * request_ope_code = recv_operation_code(logger, client_socket);
-	while (request_ope_code->exec_code == SUCCESS) {
-		log_info(logger, "------ CLIENT %d >> operation code : %d", * client_socket, request_ope_code->ope_code);
+	t_ope_code * request_ope_code = recv_operation_code(client_socket, logger);
+	while ((request_ope_code->exec_code) == SUCCESS) {
+		log_info(logger, "------ CLIENT %d >> operation code : %d", * client_socket, (request_ope_code->ope_code));
 		pthread_mutex_lock(&m_lock); // TODO : checkpoint 3 es válido atender los pedidos de forma secuencial
 		switch (request_ope_code->ope_code) {
 			case INIT_PROCESS_OC:
@@ -208,7 +208,7 @@ void process_request(int * client_socket) {
 		pthread_mutex_unlock(&m_lock); // TODO : checkpoint 3 es válido atender los pedidos de forma secuencial
 
 		free(request_ope_code);
-		request_ope_code = recv_operation_code(logger, client_socket);
+		request_ope_code = recv_operation_code(client_socket, logger);
 	}
 	close_client(* client_socket);
 	free(client_socket);
@@ -222,8 +222,8 @@ void process_request(int * client_socket) {
  */
 void inicialize_process(int * client_socket) {
 	t_init_process_request * init_req = init_process_recv_req(client_socket, logger);
-	if (init_req->exec_code == DISCONNECTED_CLIENT) return;
-	int resp_code = assign_pages_to_process(init_req->pid, init_req->pages);
+	if ((init_req->exec_code) == DISCONNECTED_CLIENT) return;
+	int resp_code = assign_pages_to_process((init_req->pid), (init_req->pages));
 	free(init_req);
 	init_process_send_resp(client_socket, resp_code);
 }
@@ -231,12 +231,12 @@ void inicialize_process(int * client_socket) {
 /**
  * @NAME assign_pages_to_process
  * @DESC Asigna páginas a un proceso
- * @PARAMS 						pid : process id
+ * @PARAMS 					pid : process id
  *				 required_pages : cantidad de páginas requeridas
  */
 int assign_pages_to_process(int pid, int required_pages) {
 
-	if (available_frame_list->elements_count < required_pages) { // check available frames for request
+	if ((available_frame_list->elements_count) < required_pages) { // check available frames for request
 		return ENOSPC;
 	}
 
@@ -246,8 +246,8 @@ int assign_pages_to_process(int pid, int required_pages) {
 		int index = 0;
 		while (located < 0) {
 			pages_per_process = (t_reg_pages_process_table *) list_get(pages_per_process_list, index);
-			if (pages_per_process->pid == pid) {
-				located = index; // process exists on list
+			if ((pages_per_process->pid) == pid) {
+				located = 1; // process exists on list
 				break;
 			}
 			index++;
@@ -267,7 +267,7 @@ int assign_pages_to_process(int pid, int required_pages) {
 	int i;
 	for (i = 0; i < required_pages; i++) {
 		(pages_per_process->pages_count)++;
-		inicialize_page(pid, (pages_per_process->pages_count) - 1);
+		inicialize_page(pid, ((pages_per_process->pages_count) - 1));
 	}
 
 	return SUCCESS;
@@ -277,11 +277,11 @@ int assign_pages_to_process(int pid, int required_pages) {
  * @NAME inicialize_page
  * @DESC Asigna un marco (frame) a una página de un proceso (utilizando la tabla de páginas invertida)
  * @PARAMS 						pid : process id
- *				  				 page : nro. página a asignarle un marco (frame)
+ *				  			   page : nro. página a asignarle un marco (frame)
  */
 void inicialize_page(int pid, int page) {
 	int free_frame = get_available_frame(); // getting available frame
-	t_reg_invert_table * inv_table_aux_ptr = invert_table;
+	t_reg_invert_table * inv_table_aux_ptr = (t_reg_invert_table *) invert_table;
 	inv_table_aux_ptr += free_frame;
 	inv_table_aux_ptr->pid = pid;
 	inv_table_aux_ptr->page = page;
@@ -292,10 +292,7 @@ void inicialize_page(int pid, int page) {
  * @DESC Obtiene un marco disponible (frame)
  */
 int get_available_frame(void) {
-	int * aux = (int *) list_remove(available_frame_list, 0);
-	int frame = * aux;
-	free(aux);
-	return frame;
+	return list_remove(available_frame_list, 0);
 }
 
 /**
@@ -304,17 +301,17 @@ int get_available_frame(void) {
  * @PARAMS client_socket
  */
 void write_page(int * client_socket) {
-	t_write_request * w_req = write_recv_req(logger, client_socket);
-	if (w_req->exec_code == DISCONNECTED_CLIENT) return;
+	t_write_request * w_req = write_recv_req(client_socket, logger);
+	if ((w_req->exec_code) == DISCONNECTED_CLIENT) return;
 
 	// TODO : ver protección de memoria para los distintos segmentos
 
 	// getting associated frame
-	int frame = get_frame(w_req->pid, w_req->page);
+	int frame = get_frame((w_req->pid), (w_req->page));
 	// getting write position
-	char * write_pos = memory_ptr + (frame * (memory_conf->frame_size)) + w_req->offset;
+	char * write_pos = (char *) (memory_ptr + (frame * (memory_conf->frame_size)) + (w_req->offset));
 	// writing
-	memcpy(&write_pos, w_req->buffer, w_req->size);
+	memcpy(write_pos, (w_req->buffer), (w_req->size));
 
 	free(w_req->buffer);
 	free(w_req);
@@ -324,19 +321,19 @@ void write_page(int * client_socket) {
 /**
  * @NAME get_frame
  * @DESC Obtiene el nro. de marco (frame) para un proceso y página (buscando en la tabla de páginas invertida)
- * @PARAMS 						pid : process id
- *				  				 page : nro. página del proceso
+ * @PARAMS 		pid : process id
+ *			   page : nro. página del proceso
  */
 int get_frame(int pid, int page) {
 	// TODO : implementar función hash para realizar la búsqueda dentro de la tabla de páginas invertida
-	t_reg_invert_table * inv_table_aux_ptr = invert_table;
+	t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
 	int frame = 0;
 	while (frame < (memory_conf->frames)) {
-		inv_table_aux_ptr += frame;
-		if (((inv_table_aux_ptr->pid) == pid) && ((inv_table_aux_ptr->page) == page)) {
+		if (((inv_table_ptr->pid) == pid) && ((inv_table_ptr->page) == page)) {
 			break;
 		} else {
 			frame++;
+			inv_table_ptr++;
 		}
 	}
 	return frame;
@@ -348,16 +345,16 @@ int get_frame(int pid, int page) {
  * @PARAMS client_socket
  */
 void read_page(int * client_socket) {
-	t_read_request * r_req = read_recv_req(logger, client_socket);
-	if (r_req->exec_code == DISCONNECTED_CLIENT) return;
+	t_read_request * r_req = read_recv_req(client_socket, logger);
+	if ((r_req->exec_code) == DISCONNECTED_CLIENT) return;
 
 	void * buff = malloc(r_req->size);
-	int frame = get_frame(r_req->pid, r_req->page);
-	void * read_pos = memory_ptr +  (frame * memory_conf->frame_size) + r_req->offset;
-	memcpy(buff, read_pos, r_req->size);
+	int frame = get_frame((r_req->pid), (r_req->page));
+	void * read_pos = memory_ptr +  (frame * (memory_conf->frame_size)) + (r_req->offset);
+	memcpy(buff, read_pos, (r_req->size));
 	free(r_req);
 
-	read_send_resp(client_socket, SUCCESS, r_req->size, buff);
+	read_send_resp(client_socket, SUCCESS, (r_req->size), buff);
 	free(buff);
 }
 
@@ -380,7 +377,7 @@ void finalize_process(int * client_socket) {
 }
 
 void console(void * unused) {
-	t_log * console = log_create(memory_conf->consolefile, "MEMORY_CONSOLE", true, LOG_LEVEL_TRACE);
+	t_log * console = log_create((memory_conf->consolefile), "MEMORY_CONSOLE", true, LOG_LEVEL_TRACE);
 	char * input = NULL;
 	char * command = NULL;
 	char * param = NULL;
@@ -392,7 +389,7 @@ void console(void * unused) {
 
 			char * token = strtok(input, " ");
 			if (token != NULL) command = token;
-			token = strtok(input, " ");
+			token = strtok(NULL, " ");
 			if (token != NULL) param = token;
 			if (strcmp(command, DELAY_CMD) == 0) {
 				log_info(console, "DELAY COMMAND");
@@ -407,12 +404,12 @@ void console(void * unused) {
 					log_info(console, "INVERT TABLE");
 					log_info(console, "    #FRAME        PID           #PAG");
 					log_info(console, "    ══════════    ══════════    ══════════");
-					t_reg_invert_table * inv_table_aux_ptr = invert_table;
+					t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
 					int frame = 0;
 					while (frame < (memory_conf->frames)) {
-						inv_table_aux_ptr += frame;
-						log_info(console, "    %10d    %10d    %10d", inv_table_aux_ptr->frame, inv_table_aux_ptr->pid, inv_table_aux_ptr->page);
+						log_info(console, "    %10d    %10d    %10d", (inv_table_ptr->frame), (inv_table_ptr->pid), (inv_table_ptr->page));
 						frame++;
+						inv_table_ptr++;
 					}
 					log_info(console, "END INVERT TABLE");
 				} else if (strcmp(param, DUMP_MEMORY_CONTENT_CMD) == 0) {
@@ -420,13 +417,14 @@ void console(void * unused) {
 					char * read_pos = memory_ptr;
 					char * frame_content;
 					int frame = 0;
-					while (frame < memory_conf->frames) {
-						read_pos += frame;
-						frame_content = malloc(memory_conf->frame_size);
-						memcpy(frame_content, read_pos, memory_conf->frame_size);
+					while (frame < (memory_conf->frames)) {
+						frame_content = malloc((memory_conf->frame_size) + 1);
+						memcpy(frame_content, read_pos, (memory_conf->frame_size));
+						frame_content[(memory_conf->frame_size)] = "\0";
 						log_info(console, frame_content);
 						free(frame_content);
 						frame++;
+						read_pos += (memory_conf->frame_size);
 					}
 					log_info(console, "END MEMORY CONTENT");
 				}
@@ -439,9 +437,9 @@ void console(void * unused) {
 				log_info(console, "SIZE COMMAND");
 				if (strcmp(param, SIZE_MEMORY_CMD) == 0) {
 					log_info(console, "MEMORY SIZE");
-					log_info(console, "FRAMES ------------> %10d", memory_conf->frames);
-					log_info(console, "AVAILABLE FRAMES --> %10d", available_frame_list->elements_count);
-					log_info(console, "BUSY FRAMES -------> %10d", (memory_conf->frames) - (available_frame_list->elements_count));
+					log_info(console, "FRAMES ------------> %10d", (memory_conf->frames));
+					log_info(console, "AVAILABLE FRAMES --> %10d", (available_frame_list->elements_count));
+					log_info(console, "BUSY FRAMES -------> %10d", ((memory_conf->frames) - (available_frame_list->elements_count)));
 					log_info(console, "END MEMORY SIZE");
 				} else {
 

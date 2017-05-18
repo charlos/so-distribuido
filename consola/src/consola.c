@@ -12,8 +12,10 @@
 
 t_log* logger;
 console_cfg * console_config;
+
 int main_console_socket;
 t_list * thread_list;
+
 
 int main(int argc, char* argv[]) {
 

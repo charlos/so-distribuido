@@ -31,7 +31,7 @@ t_ope_code * recv_operation_code(int * client_socket, t_log * logger) {
 /**	╔═══════════════════════╗
 	║ MEMORY - INIT PROCESS ║
 	╚═══════════════════════╝ **/
-t_init_process_response * memory_init_process(int server_socket, int pid, int pages, t_log * logger) {
+uint8_t memory_init_process(int server_socket, int pid, int pages, t_log * logger) {
 	/**	╔═════════════════════════╦═══════════════╦═════════════════╗
 		║ operation_code (1 byte) ║ pid (4 bytes) ║ pages (4 bytes) ║
 		╚═════════════════════════╩═══════════════╩═════════════════╝ **/
@@ -52,15 +52,15 @@ t_init_process_response * memory_init_process(int server_socket, int pid, int pa
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
 
-	t_init_process_response * response = malloc(sizeof(t_init_process_response));
+//	t_init_process_response * response = malloc(sizeof(t_init_process_response));
 	uint8_t resp_prot_code = 1;
-	int received_bytes = socket_recv(&server_socket, &(response->resp_code), resp_prot_code);
+	uint8_t response;
+	int received_bytes = socket_recv(&server_socket, &response, resp_prot_code);
 	if (received_bytes <= 0) {
-		response->exec_code = DISCONNECTED_SERVER;
+		uint8_t error = 202;
 		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
-		return response;
+		return error;
 	}
-	response->exec_code = SUCCESS;
 	return response;
 };
 
