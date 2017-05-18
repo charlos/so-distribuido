@@ -147,6 +147,10 @@ void manage_select(int port){
 					void * buffer;
 					int ret = connection_recv(fd_seleccionado, &operation_code, &buf);
 
+					if(operation_code == OC_SOLICITUD_PROGRAMA_NUEVO) {
+						//TODO: Crear PCB y asignar PID
+					}
+
 					if(!ret) {
 						FD_CLR(fd_seleccionado, &master);
 						close_client(fd_seleccionado);
