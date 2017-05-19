@@ -32,6 +32,18 @@ typedef struct{
 }posicion_memoria;
 
 typedef struct{
+	int offset;
+	int size;
+}t_indice_codigo;
+
+typedef struct{
+	char* id;
+	int pagina;
+	int offset;
+	int size;
+}t_args_vars;
+
+typedef struct{
 	t_list* args;
 	t_list* vars;
 	int retPos;

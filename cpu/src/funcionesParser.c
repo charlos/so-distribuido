@@ -47,8 +47,27 @@ return retorno->puntero
 
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
-	    queue_push(llamadas, crearLlamada("definirVariable", 1, identificador_variable));
-	    CON_RETORNO_PUNTERO;
+	    //queue_push(llamadas, crearLlamada("definirVariable", 1, identificador_variable));
+	    //CON_RETORNO_PUNTERO;
+	if (    strcmp(identificador_variable,"0")==0||
+			strcmp(identificador_variable,"1")==0||
+			strcmp(identificador_variable,"2")==0||
+			strcmp(identificador_variable,"3")==0||
+			strcmp(identificador_variable,"4")==0||
+			strcmp(identificador_variable,"5")==0||
+			strcmp(identificador_variable,"6")==0||
+			strcmp(identificador_variable,"7")==0||
+			strcmp(identificador_variable,"8")==0||
+			strcmp(identificador_variable,"9")==0) {
+		t_args_vars * newarg = malloc(sizeof(t_args_vars));
+		//pedirStackMemoria();
+
+	} else {
+		t_args_vars * newvar = malloc(sizeof(t_args_vars));
+
+	}
+
+
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
