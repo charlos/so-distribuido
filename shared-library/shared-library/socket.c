@@ -98,6 +98,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	uint8_t message_size_value;
 
 	switch ((int)operation_code) {
+		case OC_CODIGO:
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
 			//message_size_value = *(uint8_t*) message;
 			//(uint8_t *)message++;
