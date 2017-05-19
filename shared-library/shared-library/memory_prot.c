@@ -290,6 +290,7 @@ t_read_response * memory_read(int server_socket, int pid, int page, int offset, 
 		return response;
 	}
 	if ((response->buffer_size) > 0) {
+		response->buffer = malloc((response->buffer_size));
 		received_bytes = socket_recv(&server_socket, (response->buffer), (response->buffer_size));
 		if (received_bytes <= 0) {
 			response->exec_code = DISCONNECTED_SERVER;
