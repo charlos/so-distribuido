@@ -72,10 +72,8 @@ void enter_command() {
 int read_command(char* command) {
 
 	int caracter = 0;
-	int car = string_length(command);
-	//while (command[caracter] != '\n') caracter++;
-	//command[caracter] = '\0';
-	command[string_length(command)] = '\0';
+	while (command[caracter] != '\n') caracter++;
+	command[caracter] = '\0';
 
 	char** palabras = string_n_split(command, 2, " ");
 
