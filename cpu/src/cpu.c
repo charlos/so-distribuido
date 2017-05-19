@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
 #include <shared-library/socket.h>
 #include <parser/metadata_program.h>
 #include "cpu.h"
@@ -18,86 +19,56 @@
 AnSISOP_funciones * funciones;
 AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
+t_log* logger;
 
 void procesarMsg(char * msg);
 
 int main(void) {
 
+	//int byte_ejecutados
+
+	crear_logger("", &logger, true, LOG_LEVEL_TRACE);
+	log_trace(logger, "Log Creado!!");
+
 	load_properties();
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
-
-	char * msg = NULL;
-	size_t len = 0;
-	ssize_t read;
-	printf("CPU : enter message ([ctrl + d] to quit)\n");
-	while ((read = getline(&msg, &len, stdin)) != -1) {
-		if (read > 0) {
-			msg[read-1] = '\0';
-			printf("CPU : read %zd chars from stdin, allocated %zd bytes for message : %s\n", read, len, msg);
-		}
-		printf("CPU : sending message to server >> msg : %s\n", msg);
-		// << sending message >>
-		// operation code
-		uint8_t prot_ope_code_size = 1;
-		uint8_t req_ope_code = rand() % 20; // random int between 0 and 19
-		// msg
-		uint8_t prot_msg_size = 4;
-		uint32_t req_msg_size = strlen(msg);
-
-		int buffer_size = sizeof(char) * (prot_ope_code_size + prot_msg_size + req_msg_size);
-		void * buffer = malloc(buffer_size);
-		memcpy(buffer, &req_ope_code, prot_ope_code_size);
-		memcpy(buffer + prot_ope_code_size, &req_msg_size, prot_msg_size);
-		memcpy(buffer + prot_ope_code_size + prot_msg_size, msg, req_msg_size);
-		socket_send(&server_socket_kernel, buffer, buffer_size, 0);
-		free(buffer);
+	inicializarFuncionesParser();
 
 
-		// << receiving message >>
-		// response code
-		uint8_t prot_resp_code_size = 1;
-		uint8_t resp_code;
-		int received_bytes = socket_recv(&server_socket_kernel, &resp_code, prot_resp_code_size);
-		if (received_bytes <= 0) {
-			printf("CPU : server %d disconnected\n", server_socket_kernel);
-			return EXIT_FAILURE;
-		}
-		printf("CPU : receiving message from server >> resp code : %d\n", resp_code);
-		// msg response
-		uint8_t prot_resp_size = 4;
-		uint32_t resp_size;
-		received_bytes = socket_recv(&server_socket_kernel, &resp_size, prot_resp_size);
-		printf("CPU : receiving message from server >> resp size : %d\n", resp_size);
-		if (received_bytes <= 0) {
-			printf("CPU : server %d disconnected\n", server_socket_kernel);
-			return EXIT_FAILURE;
-		}
-		char * resp = malloc(resp_size);
-		received_bytes = socket_recv(&server_socket_kernel, resp, resp_size);
-		printf("CPU : receiving message from server >> msg : %s\n", resp);
-		if (received_bytes <= 0) {
-			printf("CPU : server %d disconnected\n", server_socket_kernel);
-			return EXIT_FAILURE;
-		}
+	//TODO: loop de esto
+	t_PCB* pcb = malloc(sizeof(t_PCB));
+	uint8_t operation_code;
+	connection_recv(server_socket_kernel, &operation_code, pcb);
 
-		//TODO: loop de esto
-		t_PCB* pcb = malloc(sizeof(t_PCB));
-		uint8_t operation_code;
-		connection_recv(server_socket_kernel, &operation_code, pcb);
-		char * instruccion = list_get(pcb->indice_codigo, pcb->PC);
-		pcb->PC++;
-		inicializarFuncionesParser();
+	int pc, page;
+	for( pc = 0 ; pc <= list_size(pcb->indice_codigo) ; pc++){
+
+		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
+		icodigo = (t_indice_codigo*)list_get(pcb->indice_codigo, pcb->PC);
+
+		page = calcularPagina(icodigo);
+
+		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
+
+		char * instruccion;
+		strcpy(instruccion, read_response->buffer);
+		t_element_stack* regIndicestack = malloc(sizeof(t_element_stack));
+		stack_push(pcb->indice_stack,regIndicestack);
 		procesarMsg(instruccion);
-		//free(instruccion);
 
-		printf ("CPU : enter message ([ctrl + d] to quit)\n");
+		pcb->PC++;
+		free(instruccion);
+		free(read_response->buffer);
+		free(read_response);
+		free(icodigo);
 
 	}
-	free(msg);
+
 	return EXIT_SUCCESS;
 
 }
+
 void inicializarFuncionesParser(void) {
 	funciones->AnSISOP_definirVariable = definirVariable;
 	funciones->AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable;
@@ -114,11 +85,11 @@ void inicializarFuncionesParser(void) {
 }
 void procesarMsg(char * msg) {
 
-	char ** lineas = string_split(msg, "\n");
-	int ipointer;
-	for(ipointer = 0; lineas[ipointer] != NULL; ipointer++) {
-		analizadorLinea(lineas[ipointer],funciones, func_kernel);
-	}
+//	char ** lineas = string_split(msg, "\n");
+//	int ipointer;
+//	for(ipointer = 0; lineas[ipointer] != NULL; ipointer++) {
+		analizadorLinea(msg,funciones, func_kernel);
+//	}
 }
 
 void load_properties(void) {
@@ -129,4 +100,31 @@ void load_properties(void) {
 	cpu_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
 	cpu_conf->memory_port = config_get_string_value(conf, "PUERTO_MEMORIA");
 	free(conf);
+}
+
+t_link_element* stack_pop(t_stack* stack){
+	t_link_element* elemento = list_remove(stack, list_size(stack) - 1);
+	return elemento;
+}
+
+void stack_push(t_stack* stack, t_element_stack* element){
+	list_add(stack, element);
+}
+
+//TODO: calcular la pagina donde está la instruccion
+int calcularPagina(t_indice_codigo* icodigo){
+	int page;
+
+	page=0;
+
+	return page;
+}
+
+uint8_t handshake_kernel(int socket){
+	uint8_t op_code, *buffer;
+	uint32_t* msg = malloc(sizeof(uint32_t));
+	*msg = 1;
+	connection_send(socket, OC_HANDSHAKE_CPU, msg);
+	//connection_recv(socket, &op_code, &buffer);
+	return *buffer;
 }

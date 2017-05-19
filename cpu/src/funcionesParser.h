@@ -12,6 +12,8 @@
 #include <commons/log.h>
 #include <commons/collections/queue.h>
 #include <shared-library/socket.h>
+#include <shared-library/generales.h>
+
 
 typedef union {
 	t_nombre_variable nombre_variable;
@@ -45,5 +47,10 @@ void escribir(t_descriptor_archivo, void *, t_valor_variable);
 void leer(t_descriptor_archivo, t_puntero, t_valor_variable);
 
 int server_socket_kernel, server_socket_memoria;
+
+
+
+
+posicion_memoria pedirStackMemoria();
 
 #endif /* FUNCIONESPARSER_H_ */

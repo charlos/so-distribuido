@@ -13,11 +13,5 @@
 #include <shared-library/generales.h>
 #include "kernel_generales.h"
 
-
-typedef struct{
-	int start;
-	int offset;
-}t_indice_codigo;
-
 t_indice_codigo* obtener_indice_codigo(char* codigo);
 #endif /* SOLICITUDES_H_ */
