@@ -48,6 +48,7 @@ void print_memory_properties(void);
 void load(void);
 void console(void *);
 void process_request(int *);
+void mem_handshake(int *);
 void inicialize_process(int *);
 void read_page(int *);
 void write_page(int *);
@@ -183,11 +184,14 @@ void load(void) {
  * @PARAMS client_socket
  */
 void process_request(int * client_socket) {
-	t_ope_code * request_ope_code = recv_operation_code(client_socket, logger);
-	while ((request_ope_code->exec_code) == SUCCESS) {
-		log_info(logger, "------ CLIENT %d >> operation code : %d", * client_socket, (request_ope_code->ope_code));
+	int ope_code = recv_operation_code(client_socket, logger);
+	while (ope_code != DISCONNECTED_CLIENT) {
+		log_info(logger, "------ CLIENT %d >> operation code : %d", * client_socket, ope_code);
 		pthread_mutex_lock(&m_lock); // TODO : checkpoint 3 es válido atender los pedidos de forma secuencial
-		switch (request_ope_code->ope_code) {
+		switch (ope_code) {
+			case HANDSHAKE_OC:
+				mem_handshake(client_socket);
+				break;
 			case INIT_PROCESS_OC:
 				inicialize_process(client_socket);
 				break;
@@ -206,13 +210,20 @@ void process_request(int * client_socket) {
 			default:;
 		}
 		pthread_mutex_unlock(&m_lock); // TODO : checkpoint 3 es válido atender los pedidos de forma secuencial
-
-		free(request_ope_code);
-		request_ope_code = recv_operation_code(client_socket, logger);
+		ope_code = recv_operation_code(client_socket, logger);
 	}
 	close_client(* client_socket);
 	free(client_socket);
 	return;
+}
+
+/**
+ * @NAME handshake
+ * @DESC
+ * @PARAMS client_socket
+ */
+void mem_handshake(int * client_socket) {
+	handshake_resp(client_socket, (memory_conf->frame_size));
 }
 
 /**
@@ -244,7 +255,7 @@ int assign_pages_to_process(int pid, int required_pages) {
 	t_reg_pages_process_table * pages_per_process;
 	if ((pages_per_process_list->elements_count) > 0) { // searching process on pages per process list
 		int index = 0;
-		while (located < 0) {
+		while (located < 0 && index < (pages_per_process_list->elements_count)) {
 			pages_per_process = (t_reg_pages_process_table *) list_get(pages_per_process_list, index);
 			if ((pages_per_process->pid) == pid) {
 				located = 1; // process exists on list
@@ -348,9 +359,9 @@ void read_page(int * client_socket) {
 	t_read_request * r_req = read_recv_req(client_socket, logger);
 	if ((r_req->exec_code) == DISCONNECTED_CLIENT) return;
 
-	void * buff = malloc(r_req->size);
+	char * buff = malloc(sizeof(char) * (r_req->size));
 	int frame = get_frame((r_req->pid), (r_req->page));
-	void * read_pos = memory_ptr +  (frame * (memory_conf->frame_size)) + (r_req->offset);
+	char * read_pos = memory_ptr +  (frame * (memory_conf->frame_size)) + (r_req->offset);
 	memcpy(buff, read_pos, (r_req->size));
 	free(r_req);
 
@@ -364,7 +375,11 @@ void read_page(int * client_socket) {
  * @PARAMS client_socket
  */
 void assign_page(int * client_socket) {
-	// TODO
+	t_assign_pages_request * assign_req = init_process_recv_req(client_socket, logger);
+	if ((assign_req->exec_code) == DISCONNECTED_CLIENT) return;
+	int resp_code = assign_pages_to_process((assign_req->pid), (assign_req->pages));
+	free(assign_req);
+	init_process_send_resp(client_socket, resp_code);
 }
 
 /**
@@ -373,8 +388,56 @@ void assign_page(int * client_socket) {
  * @PARAMS client_socket
  */
 void finalize_process(int * client_socket) {
-	// TODO
+	t_finalize_process_request * finalize_req = finalize_process_recv_req(client_socket, logger);
+	if ((finalize_req->exec_code) == DISCONNECTED_CLIENT) return;
+	int resp_code = cleaning_process_entries((finalize_req->pid));
+	finalize_process_send_resp(client_socket, resp_code);
 }
+
+int cleaning_process_entries(int pid) {
+	t_reg_pages_process_table * pages_per_process;
+	int index = 0;
+	while (index < (pages_per_process_list->elements_count)) { // searching process on pages per process list
+		pages_per_process = (t_reg_pages_process_table *) list_get(pages_per_process_list, index);
+		if ((pages_per_process->pid) == pid) {
+			pages_per_process = list_remove(pages_per_process_list, index);
+			free(pages_per_process);
+			break;
+		}
+		index++;
+	}
+
+	t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
+	int frame = 0;
+	while (frame < (memory_conf->frames)) {
+		if (((inv_table_ptr->pid) == pid)) {
+			inv_table_ptr->pid = 0;
+			inv_table_ptr->page = 0;
+			list_add(available_frame_list, frame);
+		} else {
+			frame++;
+			inv_table_ptr++;
+		}
+	}
+	return SUCCESS;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void console(void * unused) {
 	t_log * console = log_create((memory_conf->consolefile), "MEMORY_CONSOLE", true, LOG_LEVEL_TRACE);
@@ -421,7 +484,8 @@ void console(void * unused) {
 						frame_content = malloc((memory_conf->frame_size) + 1);
 						memcpy(frame_content, read_pos, (memory_conf->frame_size));
 						frame_content[(memory_conf->frame_size)] = "\0";
-						log_info(console, frame_content);
+						//log_info(console, frame_content);
+						printf(":%s\n", frame_content);
 						free(frame_content);
 						frame++;
 						read_pos += (memory_conf->frame_size);

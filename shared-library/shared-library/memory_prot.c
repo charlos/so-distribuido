@@ -10,20 +10,61 @@
 #include "memory_prot.h"
 #include "socket.h"
 
+
+
 /**	╔═════════════════════════════════╗
 	║ MEMORY - RECEIVE OPERATION CODE ║
 	╚═════════════════════════════════╝ **/
-t_ope_code * recv_operation_code(int * client_socket, t_log * logger) {
-	t_ope_code * request_ope_code = malloc(sizeof(t_ope_code));
-	uint8_t prot_ope_code_size = 1;
-	int received_bytes = socket_recv(client_socket, &(request_ope_code->ope_code), prot_ope_code_size);
+
+int recv_operation_code(int * client_socket, t_log * logger) {
+	uint8_t prot_ope_code = 1;
+	uint8_t ope_code;
+	int received_bytes = socket_recv(client_socket, &ope_code, prot_ope_code);
 	if (received_bytes <= 0) {
-		request_ope_code->exec_code = DISCONNECTED_CLIENT;
+		ope_code = DISCONNECTED_CLIENT;
 		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
-		return request_ope_code;
 	}
-	request_ope_code->exec_code = SUCCESS;
-	return request_ope_code;
+	return ope_code;
+}
+
+
+
+/**	╔════════════════════╗
+	║ MEMORY - HANDSHAKE ║
+	╚════════════════════╝ **/
+
+int handshake(int * server_socket, t_log * logger) {
+
+	/**	╔═════════════════════════╗
+		║ operation_code (1 byte) ║
+		╚═════════════════════════╝ **/
+
+	uint8_t prot_ope_code = 1;
+	uint8_t req_ope_code = HANDSHAKE_OC;
+
+	int msg_size = sizeof(char) * (prot_ope_code);
+	void * request = malloc(msg_size);
+	memcpy(request, &req_ope_code, prot_ope_code);
+	socket_send(&server_socket, request, msg_size, 0);
+	free(request);
+
+	uint8_t resp_prot_code = 4;
+	uint32_t memory_size;
+	int received_bytes = socket_recv(&server_socket, &memory_size, resp_prot_code);
+	if (received_bytes <= 0) {
+		memory_size = DISCONNECTED_SERVER;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+	}
+	return memory_size;
+}
+
+void handshake_resp(int * client_socket, int memory_size) {
+	uint8_t resp_prot_code = 4;
+	int response_size = sizeof(char) * (resp_prot_code);
+	void * response = malloc(response_size);
+	memcpy(response, &memory_size, resp_prot_code);
+	socket_write(client_socket, response, response_size);
+	free(response);
 }
 
 
@@ -31,7 +72,9 @@ t_ope_code * recv_operation_code(int * client_socket, t_log * logger) {
 /**	╔═══════════════════════╗
 	║ MEMORY - INIT PROCESS ║
 	╚═══════════════════════╝ **/
-uint8_t memory_init_process(int server_socket, int pid, int pages, t_log * logger) {
+
+int memory_init_process(int server_socket, int pid, int pages, t_log * logger) {
+
 	/**	╔═════════════════════════╦═══════════════╦═════════════════╗
 		║ operation_code (1 byte) ║ pid (4 bytes) ║ pages (4 bytes) ║
 		╚═════════════════════════╩═══════════════╩═════════════════╝ **/
@@ -52,14 +95,14 @@ uint8_t memory_init_process(int server_socket, int pid, int pages, t_log * logge
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
 
-	uint8_t resp_prot_code = 1;
-	uint8_t response;
-	int received_bytes = socket_recv(&server_socket, &response, resp_prot_code);
+	uint8_t resp_prot_code = 2;
+	int16_t code;
+	int received_bytes = socket_recv(&server_socket, &code, resp_prot_code);
 	if (received_bytes <= 0) {
-		response = DISCONNECTED_SERVER;
+		code = DISCONNECTED_SERVER;
 		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
 	}
-	return response;
+	return code;
 };
 
 t_init_process_request * init_process_recv_req(int * client_socket, t_log * logger) {
@@ -83,7 +126,7 @@ t_init_process_request * init_process_recv_req(int * client_socket, t_log * logg
 }
 
 void init_process_send_resp(int * client_socket, int resp_code) {
-	uint8_t resp_prot_code = 1;
+	uint8_t resp_prot_code = 2;
 	int response_size = sizeof(char) * (resp_prot_code);
 	void * response = malloc(response_size);
 	memcpy(response, &resp_code, resp_prot_code);
@@ -96,7 +139,8 @@ void init_process_send_resp(int * client_socket, int resp_code) {
 /**	╔════════════════╗
 	║ MEMORY - WRITE ║
 	╚════════════════╝ **/
-t_write_response * memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer, t_log * logger) {
+
+int memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer, t_log * logger) {
 
 	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╦══════════════╦════════╗
 		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║ buffer size  ║ buffer ║
@@ -128,16 +172,14 @@ t_write_response * memory_write(int server_socket, int pid, int page, int offset
 	socket_send(&server_socket, request, msg_size, 0);
 	free(request);
 
-	t_write_response * response = malloc(sizeof(t_write_response));
-	uint8_t resp_prot_code = 1;
-	int received_bytes = socket_recv(&server_socket, &(response->resp_code), resp_prot_code);
+	uint8_t resp_prot_code = 2;
+	int16_t code;
+	int received_bytes = socket_recv(&server_socket, &code, resp_prot_code);
 	if (received_bytes <= 0) {
-		response->exec_code = DISCONNECTED_SERVER;
+		code = DISCONNECTED_SERVER;
 		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
-		return response;
 	}
-	response->exec_code = SUCCESS;
-	return response;
+	return code;
 };
 
 t_write_request * write_recv_req(int * client_socket, t_log * logger) {
@@ -190,7 +232,7 @@ t_write_request * write_recv_req(int * client_socket, t_log * logger) {
 }
 
 void write_send_resp(int * client_socket, int resp_code) {
-	uint8_t resp_prot_code = 1;
+	uint8_t resp_prot_code = 2;
 	int response_size = sizeof(char) * (resp_prot_code);
 	void * response = malloc(response_size);
 	memcpy(response, &resp_code, resp_prot_code);
@@ -203,6 +245,7 @@ void write_send_resp(int * client_socket, int resp_code) {
 /**	╔═══════════════╗
 	║ MEMORY - READ ║
 	╚═══════════════╝ **/
+
 t_read_response * memory_read(int server_socket, int pid, int page, int offset, int size, t_log * logger) {
 
 	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╗
@@ -232,14 +275,14 @@ t_read_response * memory_read(int server_socket, int pid, int page, int offset, 
 	free(request);
 
 	t_read_response * response = malloc(sizeof(t_read_response));
-	uint8_t resp_prot_code = 1;
-	int received_bytes = socket_recv(&server_socket, &(response->resp_code), resp_prot_code);
+	uint8_t resp_prot_code = 2;
+	int received_bytes = socket_recv(&server_socket, &(response->exec_code), resp_prot_code);
 	if (received_bytes <= 0) {
 		response->exec_code = DISCONNECTED_SERVER;
 		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
 		return response;
 	}
-	uint8_t resp_prot_buff_size = 1;
+	uint8_t resp_prot_buff_size = 4;
 	received_bytes = socket_recv(&server_socket, &(response->buffer_size), resp_prot_buff_size);
 	if (received_bytes <= 0) {
 		response->exec_code = DISCONNECTED_SERVER;
@@ -247,14 +290,13 @@ t_read_response * memory_read(int server_socket, int pid, int page, int offset, 
 		return response;
 	}
 	if ((response->buffer_size) > 0) {
-		received_bytes = socket_recv(&server_socket, response->buffer, response->buffer_size);
+		received_bytes = socket_recv(&server_socket, (response->buffer), (response->buffer_size));
 		if (received_bytes <= 0) {
 			response->exec_code = DISCONNECTED_SERVER;
 			if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
 			return response;
 		}
 	}
-	response->exec_code = SUCCESS;
 	return response;
 };
 
@@ -292,8 +334,8 @@ t_read_request * read_recv_req(int * client_socket, t_log * logger) {
 	return request;
 }
 
-void read_send_resp(int * client_socket, int resp_code, int buffer_size, void * buffer) {
-	uint8_t resp_prot_code = 1;
+void read_send_resp(int * client_socket, int resp_code, int buffer_size, char * buffer) {
+	uint8_t resp_prot_code = 2;
 	uint8_t resp_prot_buff_size = 4;
 	int response_size = sizeof(char) * (resp_prot_code + resp_prot_buff_size + ((buffer_size > 0) ? buffer_size : 0));
 	void * response = malloc(response_size);
@@ -302,6 +344,130 @@ void read_send_resp(int * client_socket, int resp_code, int buffer_size, void * 
 	if (buffer_size > 0) {
 		memcpy(response + resp_prot_code + resp_prot_buff_size, buffer, buffer_size);
 	}
+	socket_write(client_socket, response, response_size);
+	free(response);
+}
+
+
+
+/**	╔═══════════════════════╗
+	║ MEMORY - ASSIGN PAGES ║
+	╚═══════════════════════╝ **/
+
+int memory_assign_pages(int server_socket, int pid, int pages, t_log * logger) {
+
+	/**	╔═════════════════════════╦═══════════════╦═════════════════╗
+		║ operation_code (1 byte) ║ pid (4 bytes) ║ pages (4 bytes) ║
+		╚═════════════════════════╩═══════════════╩═════════════════╝ **/
+
+	uint8_t prot_ope_code = 1;
+	uint8_t prot_pid = 4;
+	uint8_t prot_pages = 4;
+
+	uint8_t  req_ope_code = ASSIGN_PAGE_OC;
+	uint32_t req_pid = pid;
+	uint32_t req_pages = pages;
+
+	int msg_size = sizeof(char) * (prot_ope_code + prot_pid + prot_pages);
+	void * request = malloc(msg_size);
+	memcpy(request, &req_ope_code, prot_ope_code);
+	memcpy(request + prot_ope_code, &req_pid, prot_pid);
+	memcpy(request + prot_ope_code + prot_pid, &req_pages, prot_pages);
+	socket_send(&server_socket, request, msg_size, 0);
+	free(request);
+
+	uint8_t resp_prot_code = 2;
+	int16_t code;
+	int received_bytes = socket_recv(&server_socket, &code, resp_prot_code);
+	if (received_bytes <= 0) {
+		code = DISCONNECTED_SERVER;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+	}
+	return code;
+};
+
+t_assign_pages_request * assign_pages_recv_req(int * client_socket, t_log * logger) {
+	t_assign_pages_request * request = malloc(sizeof(t_assign_pages_request));
+	uint8_t prot_req_pid = 4;
+	int received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
+	}
+	uint8_t prot_req_pages = 4;
+	received_bytes = socket_recv(client_socket, &(request->pages), prot_req_pages);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
+	}
+	request->exec_code = SUCCESS;
+	return request;
+}
+
+void assign_pages_send_resp(int * client_socket, int resp_code) {
+	uint8_t resp_prot_code = 2;
+	int response_size = sizeof(char) * (resp_prot_code);
+	void * response = malloc(response_size);
+	memcpy(response, &resp_code, resp_prot_code);
+	socket_write(client_socket, response, response_size);
+	free(response);
+}
+
+
+
+/**	╔═══════════════════════════╗
+	║ MEMORY - FINALIZE PROCESS ║
+	╚═══════════════════════════╝ **/
+
+int memory_finalize_process(int server_socket, int pid, t_log * logger) {
+
+	/**	╔═════════════════════════╦═══════════════╗
+		║ operation_code (1 byte) ║ pid (4 bytes) ║
+		╚═════════════════════════╩═══════════════╝ **/
+
+	uint8_t prot_ope_code = 1;
+	uint8_t prot_pid = 4;
+
+	uint8_t  req_ope_code = ASSIGN_PAGE_OC;
+	uint32_t req_pid = pid;
+
+	int msg_size = sizeof(char) * (prot_ope_code + prot_pid);
+	void * request = malloc(msg_size);
+	memcpy(request, &req_ope_code, prot_ope_code);
+	memcpy(request + prot_ope_code, &req_pid, prot_pid);
+	socket_send(&server_socket, request, msg_size, 0);
+	free(request);
+
+	uint8_t resp_prot_code = 2;
+	uint16_t code;
+	int received_bytes = socket_recv(&server_socket, &code, resp_prot_code);
+	if (received_bytes <= 0) {
+		code = DISCONNECTED_SERVER;
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+	}
+	return code;
+};
+
+t_finalize_process_request * finalize_process_recv_req(int * client_socket, t_log * logger) {
+	t_finalize_process_request * request = malloc(sizeof(t_finalize_process_request));
+	uint8_t prot_req_pid = 4;
+	int received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
+	if (received_bytes <= 0) {
+		request->exec_code = DISCONNECTED_CLIENT;
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		return request;
+	}
+	request->exec_code = SUCCESS;
+	return request;
+}
+
+void finalize_process_send_resp(int * client_socket, int resp_code) {
+	uint8_t resp_prot_code = 2;
+	int response_size = sizeof(char) * (resp_prot_code);
+	void * response = malloc(response_size);
+	memcpy(response, &resp_code, resp_prot_code);
 	socket_write(client_socket, response, response_size);
 	free(response);
 }
