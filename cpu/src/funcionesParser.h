@@ -38,7 +38,8 @@ void asignar(t_puntero, t_valor_variable);
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta);
 t_puntero alocar(t_valor_variable);
 void liberar(t_puntero);
-
+void llamarSinRetorno(t_nombre_etiqueta etiqueta);
+void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 t_descriptor_archivo abrir(t_direccion_archivo, t_banderas);
 void borrar(t_descriptor_archivo);
 void cerrar(t_descriptor_archivo);

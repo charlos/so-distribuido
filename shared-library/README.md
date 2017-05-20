@@ -1,4 +1,6 @@
-# Shared library - Memoria: Funciones principales
+# Shared library 
+
+# Memoria: Funciones principales
 
 ## handshake
 ```
@@ -105,3 +107,67 @@ Pedido de finalización del proceso:
 
 Respuesta:
 - int = código respuesta finalización del proceso (SUCCESS=1, DISCONNECTED_SERVER=-202)
+
+
+## Proceso ejemplo utilizando todas las funciones
+```
+#include <stdio.h>
+#include <stdlib.h>
+#include <shared-library/socket.h>
+#include <shared-library/memory_prot.h>
+
+int server_socket;
+
+int main(void) {
+	char * server_ip = "127.0.0.1";
+	char * server_port = "5003";
+	server_socket = connect_to_socket(server_ip, server_port);
+
+	//handshake
+	int mem_size = handshake(server_socket, NULL);
+	printf("CPU ::: handshake memory ::: frame size %d bytes\n", mem_size);
+
+	// init process
+	int pid = 1;
+	int pages = 5;
+	int resp = memory_init_process(server_socket, pid, pages, NULL);
+	printf("CPU ::: memory init process ::: pid %d pages %d ::: response code %d\n", pid, pages, resp);
+
+	// writing
+	int page = 2;
+	int offset = 0;
+	char * msg = NULL;
+	size_t len = 0;
+	ssize_t read;
+	printf("CPU ::: enter message to write in page 2 ([ctrl + d] to quit)\n");
+	while ((read = getline(&msg, &len, stdin)) != -1) {
+		if (read > 0) msg[read-1] = '\0';
+		printf("CPU ::: sending to memory ::: msg : %s\n", msg);
+		resp = memory_write(server_socket, pid, page, offset, strlen(msg) + 1, strlen(msg) + 1, msg, NULL);
+		printf("CPU ::: memory write ::: response code %d\n", resp);
+		break;
+	}
+	free(msg);
+
+	// reading
+	printf("CPU ::: reading page %d in memory\n", page);
+	t_read_response * read_resp = memory_read(server_socket, pid, page, offset, mem_size, NULL);
+	((char *)(read_resp->buffer))[(read_resp->buffer_size) - 1] = "\0";
+	printf("CPU ::: page 2 content ::: %s\n", read_resp->buffer);
+	free(read_resp->buffer);
+	free(read_resp);
+
+	// assigning pages
+	pages = 3;
+	printf("CPU ::: assigning %d pages to process %d\n", pages, pid);
+	resp = memory_assign_pages(server_socket, pid, pages, NULL);
+	printf("CPU ::: assigning pages ::: response code %d\n", resp);
+
+	// ending process
+	printf("CPU ::: ending process %d\n", pid);
+	resp = memory_finalize_process(server_socket, pid, NULL);
+	printf("CPU ::: ending process ::: response code %d\n", resp);
+
+	return EXIT_SUCCESS;
+}
+```

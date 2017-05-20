@@ -7,6 +7,7 @@
 
 #include "funcionesParser.h"
 
+
 t_queue* llamadas = NULL;
 t_queue* retornos = NULL;
 t_log* logger = NULL;
@@ -45,6 +46,8 @@ queue_push(retornos, retorno);\
 log_trace(logger, "\tdevuelve [%" FORMATO "]", retorno->TIPO);\
 return retorno->puntero
 
+
+
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
 	    //queue_push(llamadas, crearLlamada("definirVariable", 1, identificador_variable));
@@ -66,7 +69,14 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		t_args_vars * newvar = malloc(sizeof(t_args_vars));
 
 	}
+}
 
+void llamarSinRetorno(t_nombre_etiqueta etiqueta){
+	nuevoContexto();
+}
+
+void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
+	nuevoContexto();
 
 }
 
@@ -110,6 +120,7 @@ void liberar(t_puntero puntero){
 char* boolToChar(bool boolean) {
     return boolean ? "✔" : "✖";
 }
+
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     log_trace(logger, "Abrir [%s] Lectura: %s. Escritura: %s, Creacion: %s", direccion,
               boolToChar(banderas.lectura), boolToChar(banderas.escritura), boolToChar(banderas.creacion));
@@ -124,6 +135,7 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     free(buffer);
     CON_RETORNO_DESCRIPTOR;
 }
+
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
     queue_push(llamadas, crearLlamada("borrar", 1, descriptor));

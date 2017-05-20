@@ -25,6 +25,6 @@ void inicializarFuncionesParser(void);
 void procesarMsg(char* ) ;
 void stack_push(t_stack* , t_element_stack* );
 t_link_element* stack_pop(t_stack* );
-int calcularPagina(t_indice_codigo*);
-uint8_t handshake_kernel(int);
+int calcularPagina();
+int nuevoContexto();
 #endif /* CPU_H_ */
