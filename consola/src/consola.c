@@ -92,13 +92,19 @@ int read_command(char* command) {
 			char * file_content = read_file(path);
 
 			if(*file_content != NULL) {
+
 				pthread_t thread_program;
 				pthread_attr_t attr;
+
+				threadpid* thread_recon = malloc(sizeof(threadpid));
+				thread_recon->thread = thread_program;
+				thread_recon->file_content = file_content;
+
 				pthread_attr_init(&attr);
-				pthread_create(&thread_program, &attr, &thread_subprograma, file_content);
+				pthread_create(&thread_program, &attr, &thread_subprograma, thread_recon);
 				pthread_attr_destroy(&attr);
 
-				list_add(thread_list, &thread_program);
+				list_add(thread_list, thread_recon);
 
 				return 1;
 			}
@@ -110,14 +116,28 @@ int read_command(char* command) {
 				return -1;
 		}
 		else {
+			int pid = strtol(palabras[1], NULL, 10);
 
+			int _coincidePid(threadpid* recon) {
+				return (recon->pid == pid);
+			}
+			threadpid* hilo_a_matar = list_find(thread_list, (void *) _coincidePid);
+			pthread_kill(hilo_a_matar->thread, SIGKILL);
+			//pthread_join(hilo_a_matar->thread, NULL);
+			connection_send(main_console_socket, OC_KILL_CONSOLA, hilo_a_matar->pid);
+			list_remove_and_destroy_by_condition(thread_list, (void *) _coincidePid);
 		}
 	}
 	else if(strcmp(palabras[0], "disconnect") ==0 ) {
 
+		void _killThread(threadpid * recon) {
+			pthread_kill(recon->thread, SIGKILL);
+		}
+		list_iterate(thread_list, (void*) _killThread);
+		exit();
 	}
 	else if(strcmp(palabras[0], "clean")==0) {
-
+		__fpurge(stdout);
 	}
 	else return -2;
 }
@@ -140,18 +160,25 @@ void mandarScriptAKernel(char * string) {
 	free(buffer);*/
 
 }
-void thread_subprograma(char * string) {
+void thread_subprograma(threadpid* thread_recon) {
 
-	uint8_t pid, operation_code;
+	uint8_t operation_code;
 	int sub_console_socket;
 	void * buffer;
 
 	sub_console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
-	connection_send(sub_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, string);
+	connection_send(sub_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, thread_recon->file_content);
 	int result = connection_recv(sub_console_socket, &operation_code, &buffer);
 
 	if(result > 1 && operation_code == OC_NUEVA_CONSOLA_PID)
-		pid = *(uint8_t *) buffer;
+		thread_recon->pid = *(uint8_t *) buffer;
+
+	int active = 1;
+	while(active) {
+		result = connection_recv(sub_console_socket, &operation_code, &buffer);
+		if(operation_code == OC_INSTRUCCION_CONSOLA)
+			printf("[%d] %s\n", thread_recon->pid, (char *) buffer);
+	}
 
 }
 char * read_file(char * path) {
