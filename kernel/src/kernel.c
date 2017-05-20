@@ -19,6 +19,7 @@
 
 int main(int argc, char* argv[]) {
 
+	cola_listos = queue_create();
 	registro_pid = 0;
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]) {
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
-	TAMANIO_PAGINAS = handshake_memory(memory_socket);
+	TAMANIO_PAGINAS = handshake(memory_socket, logger);
 
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
 
