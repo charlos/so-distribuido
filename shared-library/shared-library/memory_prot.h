@@ -153,7 +153,7 @@ typedef struct {
 typedef struct {
 	int16_t exec_code;
 	uint32_t buffer_size;
-	char * buffer;
+	void * buffer;
 } t_read_response;
 
 /**
@@ -178,7 +178,7 @@ t_read_request * read_recv_req(int *, t_log *);
  *
  * @PARAMS
  */
-void read_send_resp(int *, int, int, char *);
+void read_send_resp(int *, int, int, void *);
 
 
 

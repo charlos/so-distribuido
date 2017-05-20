@@ -34,9 +34,9 @@ const char * SIZE_MEMORY_CMD = "memory";
 int listenning_socket;
 t_memory_conf * memory_conf;
 t_log * logger;
-char * memory_ptr;
+void * memory_ptr;
 
-char * invert_table;
+void * invert_table;
 t_list * available_frame_list;
 t_list * pages_per_process_list;
 
@@ -320,7 +320,7 @@ void write_page(int * client_socket) {
 	// getting associated frame
 	int frame = get_frame((w_req->pid), (w_req->page));
 	// getting write position
-	char * write_pos = (char *) (memory_ptr + (frame * (memory_conf->frame_size)) + (w_req->offset));
+	void * write_pos = (memory_ptr + (frame * (memory_conf->frame_size)) + (w_req->offset));
 	// writing
 	memcpy(write_pos, (w_req->buffer), (w_req->size));
 
@@ -359,9 +359,9 @@ void read_page(int * client_socket) {
 	t_read_request * r_req = read_recv_req(client_socket, logger);
 	if ((r_req->exec_code) == DISCONNECTED_CLIENT) return;
 
-	char * buff = malloc(sizeof(char) * (r_req->size));
+	void * buff = malloc(sizeof(char) * (r_req->size));
 	int frame = get_frame((r_req->pid), (r_req->page));
-	char * read_pos = memory_ptr +  (frame * (memory_conf->frame_size)) + (r_req->offset);
+	void * read_pos = memory_ptr +  (frame * (memory_conf->frame_size)) + (r_req->offset);
 	memcpy(buff, read_pos, (r_req->size));
 	free(r_req);
 
@@ -414,10 +414,9 @@ int cleaning_process_entries(int pid) {
 			inv_table_ptr->pid = 0;
 			inv_table_ptr->page = 0;
 			list_add(available_frame_list, frame);
-		} else {
-			frame++;
-			inv_table_ptr++;
 		}
+		frame++;
+		inv_table_ptr++;
 	}
 	return SUCCESS;
 }
@@ -477,7 +476,7 @@ void console(void * unused) {
 					log_info(console, "END INVERT TABLE");
 				} else if (strcmp(param, DUMP_MEMORY_CONTENT_CMD) == 0) {
 					log_info(console, "MEMORY CONTENT");
-					char * read_pos = memory_ptr;
+					void * read_pos = memory_ptr;
 					char * frame_content;
 					int frame = 0;
 					while (frame < (memory_conf->frames)) {
