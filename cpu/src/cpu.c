@@ -20,6 +20,7 @@ AnSISOP_funciones * funciones;
 AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
 t_log* logger;
+int pagesize;
 
 void procesarMsg(char * msg);
 
@@ -27,14 +28,14 @@ int main(void) {
 
 	//int byte_ejecutados
 
-	crear_logger("", &logger, true, LOG_LEVEL_TRACE);
+	crear_logger("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/cpu", &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
 	load_properties();
-	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
+	//server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 	inicializarFuncionesParser();
-
+	pagesize = handshake(server_socket_memoria, logger);
 
 	//TODO: loop de esto
 	t_PCB* pcb = malloc(sizeof(t_PCB));
@@ -70,12 +71,14 @@ int main(void) {
 }
 
 void inicializarFuncionesParser(void) {
+	funciones = malloc(sizeof(AnSISOP_funciones));
 	funciones->AnSISOP_definirVariable = definirVariable;
 	funciones->AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable;
 	funciones->AnSISOP_dereferenciar = dereferenciar;
 	funciones->AnSISOP_asignar = asignar;
 	funciones->AnSISOP_irAlLabel = irAlLabel;
 
+	func_kernel = malloc(sizeof(AnSISOP_kernel));
 	func_kernel->AnSISOP_abrir = abrir;
 	func_kernel->AnSISOP_cerrar = cerrar;
 	func_kernel->AnSISOP_borrar = borrar;
@@ -120,11 +123,12 @@ int calcularPagina(t_indice_codigo* icodigo){
 	return page;
 }
 
-uint8_t handshake_kernel(int socket){
+uint8_t handshake_memory(int socket){
 	uint8_t op_code, *buffer;
 	uint32_t* msg = malloc(sizeof(uint32_t));
 	*msg = 1;
-	connection_send(socket, OC_HANDSHAKE_CPU, msg);
-	//connection_recv(socket, &op_code, &buffer);
+	connection_send(server_socket_memoria, OC_HANDSHAKE_MEMORY, msg);
+	connection_recv(server_socket_memoria, &op_code, &buffer);
 	return *buffer;
 }
+

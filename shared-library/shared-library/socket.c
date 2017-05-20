@@ -111,7 +111,6 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
 		case OC_TERMINO_INSTRUCCION:
-		case OC_HANDSHAKE_CPU:
 		case OC_HANDSHAKE_MEMORY:
 			message_size_value = sizeof(uint8_t);
 			break;

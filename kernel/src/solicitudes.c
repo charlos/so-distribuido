@@ -7,6 +7,7 @@
 
 #include "solicitudes.h"
 #include <parser/metadata_program.h>
+#include <parser/parser.h>
 
 void solve_request(int socket){
 	uint8_t operation_code;

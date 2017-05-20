@@ -66,8 +66,6 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		t_args_vars * newvar = malloc(sizeof(t_args_vars));
 
 	}
-
-
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
