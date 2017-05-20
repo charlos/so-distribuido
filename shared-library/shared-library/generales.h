@@ -16,11 +16,16 @@
 typedef t_list t_stack;
 
 typedef struct{
+	int offset;
+	int size;
+}t_indice_codigo;
+
+typedef struct{
 	int pid;
 	int PC;
 	int cantidad_paginas;
 	t_stack* indice_stack;
-	t_list* indice_codigo;
+	t_indice_codigo* indice_codigo;
 	// tabla de archivos
 	int exit_code;
 }t_PCB;
@@ -30,11 +35,6 @@ typedef struct{
 	int offset;
 	int size;
 }posicion_memoria;
-
-typedef struct{
-	int offset;
-	int size;
-}t_indice_codigo;
 
 typedef struct{
 	char* id;
