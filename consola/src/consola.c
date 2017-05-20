@@ -125,7 +125,12 @@ int read_command(char* command) {
 			pthread_kill(hilo_a_matar->thread, SIGKILL);
 			//pthread_join(hilo_a_matar->thread, NULL);
 			connection_send(main_console_socket, OC_KILL_CONSOLA, hilo_a_matar->pid);
-			list_remove_and_destroy_by_condition(thread_list, (void *) _coincidePid);
+
+			void _destroy(threadpid* deon){
+				free(deon->file_content);
+				free(deon);
+			}
+			list_remove_and_destroy_by_condition(thread_list, (void *) _coincidePid, (void *)_destroy);
 		}
 	}
 	else if(strcmp(palabras[0], "disconnect") ==0 ) {
@@ -134,7 +139,7 @@ int read_command(char* command) {
 			pthread_kill(recon->thread, SIGKILL);
 		}
 		list_iterate(thread_list, (void*) _killThread);
-		exit();
+		exit(0);
 	}
 	else if(strcmp(palabras[0], "clean")==0) {
 		__fpurge(stdout);
