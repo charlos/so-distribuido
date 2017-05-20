@@ -13,5 +13,6 @@
 #include <shared-library/generales.h>
 #include "kernel_generales.h"
 
+void mandar_codigo_a_memoria(char* codigo, int pid);
 t_indice_codigo* obtener_indice_codigo(char* codigo);
 #endif /* SOLICITUDES_H_ */

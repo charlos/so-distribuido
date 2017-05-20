@@ -27,9 +27,20 @@ void solve_request(int socket){
 			exit(1);
 		}
 
+		mandar_codigo_a_memoria(buffer, pcb->pid);
 		pcb->cantidad_paginas += cant_paginas;
+		pcb->PC = 0;
+
 
 		connection_send(socket, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
+
+		t_indice_codigo* indice_codigo = obtener_indice_codigo(buffer);
+
+		pcb->indice_codigo = indice_codigo;
+//		queue_push(cola_listos, pcb);
+		int i = 0;
+		while(indice_codigo[i].offset != NULL)i++;
+
 		// Mandar Codigo a memoria
 	}
 
@@ -51,22 +62,25 @@ int calcular_paginas_necesarias(char* codigo){
 }
 
 
-void mandar_codigo_a_memoria(char* codigo){
+void mandar_codigo_a_memoria(char* codigo, int pid){
 	int paginas_codigo = calcular_paginas_de_codigo(codigo);
 	int i, offset = 0;
 	void* buffer = malloc(strlen(codigo));
 	for(i=0; i < (paginas_codigo-1); i++){
 		memcpy(buffer, codigo + offset, TAMANIO_PAGINAS);
-		connection_send(memory_socket, OC_CODIGO, buffer);
+		memory_write(memory_socket, pid, i, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, buffer, logger);
+//		connection_send(memory_socket, OC_CODIGO, buffer);
 		offset += TAMANIO_PAGINAS;
 	}
 	if(strlen(codigo) % TAMANIO_PAGINAS){
 		int bytes_restantes = strlen(codigo) - (paginas_codigo * TAMANIO_PAGINAS);
 		memcpy(buffer, codigo + offset, bytes_restantes);
+		memory_write(memory_socket, pid, i+1, 0, bytes_restantes, bytes_restantes, buffer, logger);
 	} else {
 		memcpy(buffer, codigo + offset, TAMANIO_PAGINAS);
+		memory_write(memory_socket, pid, i+1, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, buffer, logger);
 	}
-	connection_send(memory_socket, OC_CODIGO, buffer);
+//	connection_send(memory_socket, OC_CODIGO, buffer);
 }
 
 
@@ -77,5 +91,6 @@ t_indice_codigo* obtener_indice_codigo(char* codigo){
 	for(i = 0; i < metadata->instrucciones_size; i++){
 		memcpy((indice_codigo + i), (metadata->instrucciones_serializado )+ i, sizeof(t_indice_codigo));
 	}
+	metadata_destruir(metadata);
 	return indice_codigo;
 }
