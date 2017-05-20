@@ -27,7 +27,8 @@ int main(int argc, char* argv[]) {
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
-	TAMANIO_PAGINAS = handshake_memory(memory_socket);
+	//TAMANIO_PAGINAS = handshake_memory(memory_socket);
+	TAMANIO_PAGINAS = handshake(memory_socket, logger);
 
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
 
@@ -108,7 +109,7 @@ uint8_t handshake_memory(int socket){
 	uint8_t op_code, *buffer;
 	uint32_t* msg = malloc(sizeof(uint32_t));
 	*msg = 1;
-	connection_send(socket, OC_HANDSHAKE_MEMORY, msg);
+	connection_send(socket, HANDSHAKE_OC, msg); //OC_HANDSHAKE_MEMORY
 	connection_recv(socket, &op_code, &buffer);
 	return *buffer;
 }

@@ -21,6 +21,7 @@ AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
 t_log* logger;
 int pagesize;
+t_PCB* pcb;
 
 void procesarMsg(char * msg);
 
@@ -32,30 +33,41 @@ int main(void) {
 	log_trace(logger, "Log Creado!!");
 
 	load_properties();
-	//server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
+	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 	inicializarFuncionesParser();
 	pagesize = handshake(server_socket_memoria, logger);
 
+	if (pagesize>0){
+		log_trace(logger, "Handshake con Memoria. El tamaño de la página es %d",pagesize);
+	} else {
+		log_trace(logger, "Problema con Handshake con Memoria.");
+	}
+
 	//TODO: loop de esto
-	t_PCB* pcb = malloc(sizeof(t_PCB));
+	pcb = malloc(sizeof(t_PCB));
 	uint8_t operation_code;
 	connection_recv(server_socket_kernel, &operation_code, pcb);
 
 	int pc, page;
+
 	for( pc = 0 ; pc <= list_size(pcb->indice_codigo) ; pc++){
 
+		if(list_size(pcb->indice_stack)==0){
+			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
+			nuevoContexto();
+		}
 		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
 		icodigo = (t_indice_codigo*)list_get(pcb->indice_codigo, pcb->PC);
 
-		page = calcularPagina(icodigo);
+		page = calcularPagina(pcb);
 
+		//pido leer la instruccion a la memoria
 		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
 
 		char * instruccion;
 		strcpy(instruccion, read_response->buffer);
-		t_element_stack* regIndicestack = malloc(sizeof(t_element_stack));
-		stack_push(pcb->indice_stack,regIndicestack);
+
 		procesarMsg(instruccion);
 
 		pcb->PC++;
@@ -77,6 +89,8 @@ void inicializarFuncionesParser(void) {
 	funciones->AnSISOP_dereferenciar = dereferenciar;
 	funciones->AnSISOP_asignar = asignar;
 	funciones->AnSISOP_irAlLabel = irAlLabel;
+	funciones->AnSISOP_llamarSinRetorno = llamarSinRetorno;
+	funciones->AnSISOP_llamarConRetorno = llamarConRetorno;
 
 	func_kernel = malloc(sizeof(AnSISOP_kernel));
 	func_kernel->AnSISOP_abrir = abrir;
@@ -115,20 +129,22 @@ void stack_push(t_stack* stack, t_element_stack* element){
 }
 
 //TODO: calcular la pagina donde está la instruccion
-int calcularPagina(t_indice_codigo* icodigo){
-	int page;
-
-	page=0;
+int calcularPagina(){
+	int page,pc,bytes_codigo;
+	bytes_codigo=0;
+	t_indice_codigo* icodigo;
+	for( pc = 0 ; pc <= pcb->PC ; pc++){
+		icodigo = (t_indice_codigo*) list_get(pcb->indice_codigo, pc);
+		bytes_codigo += icodigo->size;
+	}
+	page=bytes_codigo/pagesize;
 
 	return page;
 }
 
-uint8_t handshake_memory(int socket){
-	uint8_t op_code, *buffer;
-	uint32_t* msg = malloc(sizeof(uint32_t));
-	*msg = 1;
-	connection_send(server_socket_memoria, OC_HANDSHAKE_MEMORY, msg);
-	connection_recv(server_socket_memoria, &op_code, &buffer);
-	return *buffer;
-}
+int nuevoContexto(){
+	t_element_stack* regIndicestack = malloc(sizeof(t_element_stack));
+	stack_push(pcb->indice_stack,regIndicestack);
 
+	return list_size(pcb->indice_stack);
+}
