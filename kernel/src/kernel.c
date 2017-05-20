@@ -109,7 +109,7 @@ uint8_t handshake_memory(int socket){
 	uint8_t op_code, *buffer;
 	uint32_t* msg = malloc(sizeof(uint32_t));
 	*msg = 1;
-	connection_send(socket, OC_HANDSHAKE_MEMORY, msg);
+	connection_send(socket, HANDSHAKE_OC, msg); //OC_HANDSHAKE_MEMORY
 	connection_recv(socket, &op_code, &buffer);
 	return *buffer;
 }
