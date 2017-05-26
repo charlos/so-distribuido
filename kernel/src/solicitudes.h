@@ -14,5 +14,6 @@
 #include "kernel_generales.h"
 
 void mandar_codigo_a_memoria(char* codigo, int pid);
-t_indice_codigo* obtener_indice_codigo(char* codigo);
+t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata);
+t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata);
 #endif /* SOLICITUDES_H_ */

@@ -12,6 +12,8 @@
 #include <commons/string.h>
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
+#include <commons/collections/dictionary.h>
+#include <parser/metadata_program.h>
 
 typedef t_list t_stack;
 
@@ -26,6 +28,7 @@ typedef struct{
 	int cantidad_paginas;
 	t_stack* indice_stack;
 	t_indice_codigo* indice_codigo;
+	t_dictionary* indice_etiquetas;
 	// tabla de archivos
 	int exit_code;
 }t_PCB;
