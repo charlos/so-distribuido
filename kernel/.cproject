@@ -40,6 +40,7 @@
 								</option>
 								<option id="gnu.c.link.option.libs.472482748" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="commons"/>
+									<listOptionValue builtIn="false" value="parser-ansisop"/>
 									<listOptionValue builtIn="false" value="pthread"/>
 									<listOptionValue builtIn="false" value="shared-library"/>
 								</option>
