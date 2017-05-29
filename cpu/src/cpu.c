@@ -21,7 +21,6 @@ AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
 t_log* logger;
 int pagesize;
-t_PCB* pcb;
 
 void procesarMsg(char * msg);
 
