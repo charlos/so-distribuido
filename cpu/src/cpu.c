@@ -15,12 +15,15 @@
 #include <shared-library/socket.h>
 #include <parser/metadata_program.h>
 #include "cpu.h"
+#include "funcionesCPU.h"
 
 AnSISOP_funciones * funciones;
 AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
 t_log* logger;
 int pagesize;
+int stackPointer;
+int lastPageOffset[1][2];
 t_PCB* pcb;
 
 void procesarMsg(char * msg);
@@ -44,12 +47,14 @@ int main(void) {
 		log_trace(logger, "Problema con Handshake con Memoria.");
 	}
 
-	//TODO: loop de esto
+	//TODO: loop de esto y dentro del loop el reciv para quedar a la espera de que kernel nos envíe un pcb
+	// una vez que recibimos procesamos una línea, devolvemos el pbc y quedamos a la espera de recibir el proximo
 	pcb = malloc(sizeof(t_PCB));
 	uint8_t operation_code;
 	connection_recv(server_socket_kernel, &operation_code, pcb);
 
 	int pc, page;
+	loadlastPosStack();
 
 	for( pc = 0 ; pc <= list_size(pcb->indice_codigo) ; pc++){
 
@@ -59,8 +64,8 @@ int main(void) {
 		}
 		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
 		icodigo = (t_indice_codigo*)list_get(pcb->indice_codigo, pcb->PC);
-
-		page = calcularPagina(pcb);
+//TODO ver de cambiar la esctructura indice de codigo
+		page = calcularPagina();
 
 		//pido leer la instruccion a la memoria
 		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
@@ -80,71 +85,4 @@ int main(void) {
 
 	return EXIT_SUCCESS;
 
-}
-
-void inicializarFuncionesParser(void) {
-	funciones = malloc(sizeof(AnSISOP_funciones));
-	funciones->AnSISOP_definirVariable = definirVariable;
-	funciones->AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable;
-	funciones->AnSISOP_dereferenciar = dereferenciar;
-	funciones->AnSISOP_asignar = asignar;
-	funciones->AnSISOP_irAlLabel = irAlLabel;
-	funciones->AnSISOP_llamarSinRetorno = llamarSinRetorno;
-	funciones->AnSISOP_llamarConRetorno = llamarConRetorno;
-
-	func_kernel = malloc(sizeof(AnSISOP_kernel));
-	func_kernel->AnSISOP_abrir = abrir;
-	func_kernel->AnSISOP_cerrar = cerrar;
-	func_kernel->AnSISOP_borrar = borrar;
-	func_kernel->AnSISOP_escribir = escribir;
-	func_kernel->AnSISOP_leer = leer;
-	func_kernel->AnSISOP_moverCursor = moverCursor;
-}
-void procesarMsg(char * msg) {
-
-//	char ** lineas = string_split(msg, "\n");
-//	int ipointer;
-//	for(ipointer = 0; lineas[ipointer] != NULL; ipointer++) {
-		analizadorLinea(msg,funciones, func_kernel);
-//	}
-}
-
-void load_properties(void) {
-	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/Debug/cpu.cfg");
-	cpu_conf = malloc(sizeof(t_cpu_conf));
-	cpu_conf->kernel_ip = config_get_string_value(conf, "IP_KERNEL");
-	cpu_conf->kernel_port = config_get_string_value(conf, "PUERTO_KERNEL");
-	cpu_conf->memory_ip = config_get_string_value(conf, "IP_MEMORIA");
-	cpu_conf->memory_port = config_get_string_value(conf, "PUERTO_MEMORIA");
-	free(conf);
-}
-
-t_link_element* stack_pop(t_stack* stack){
-	t_link_element* elemento = list_remove(stack, list_size(stack) - 1);
-	return elemento;
-}
-
-void stack_push(t_stack* stack, t_element_stack* element){
-	list_add(stack, element);
-}
-
-//TODO: calcular la pagina donde está la instruccion
-int calcularPagina(){
-	int page,pc,bytes_codigo;
-	bytes_codigo=0;
-	t_indice_codigo* icodigo;
-	for( pc = 0 ; pc <= pcb->PC ; pc++){
-		icodigo = (t_indice_codigo*) list_get(pcb->indice_codigo, pc);
-		bytes_codigo += icodigo->size;
-	}
-	page=bytes_codigo/pagesize;
-
-	return page;
-}
-
-int nuevoContexto(){
-	t_element_stack* regIndicestack = malloc(sizeof(t_element_stack));
-	stack_push(pcb->indice_stack,regIndicestack);
-
-	return list_size(pcb->indice_stack);
 }

@@ -6,11 +6,14 @@
  */
 
 #include "funcionesParser.h"
+#include <shared-library/generales.h>
+#include "cpu.h"
 
 
 t_queue* llamadas = NULL;
 t_queue* retornos = NULL;
 t_log* logger = NULL;
+
 
 Llamada* crearLlamada(char* nombre, int cantidadParametros, ...){
     va_list parametrosVa;
@@ -63,10 +66,12 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			strcmp(identificador_variable,"8")==0||
 			strcmp(identificador_variable,"9")==0) {
 		t_args_vars * newarg = malloc(sizeof(t_args_vars));
-		//pedirStackMemoria();
+
+		agregarAStack(newarg,ARG_STACK);
 
 	} else {
 		t_args_vars * newvar = malloc(sizeof(t_args_vars));
+		agregarAStack(newvar,VAR_STACK);
 
 	}
 }
@@ -163,3 +168,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
     queue_push(llamadas, crearLlamada("leer", 3, descriptor, informacion, tamanio));
 }
+
+
+
+

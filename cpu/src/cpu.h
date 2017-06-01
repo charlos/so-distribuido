@@ -13,6 +13,10 @@
 #include <shared-library/memory_prot.h>
 #include <commons/collections/list.h>
 
+
+#define VAR_STACK		0
+#define ARG_STACK		1
+
 typedef struct{
 	char* memory_ip;
 	char* memory_port;
@@ -26,5 +30,5 @@ void procesarMsg(char* ) ;
 void stack_push(t_stack* , t_element_stack* );
 t_link_element* stack_pop(t_stack* );
 int calcularPagina();
-int nuevoContexto();
+//int nuevoContexto();
 #endif /* CPU_H_ */
