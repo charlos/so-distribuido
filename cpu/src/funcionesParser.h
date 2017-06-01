@@ -48,6 +48,7 @@ void escribir(t_descriptor_archivo, void *, t_valor_variable);
 void leer(t_descriptor_archivo, t_puntero, t_valor_variable);
 
 int server_socket_kernel, server_socket_memoria;
+t_PCB* pcb;
 
 
 

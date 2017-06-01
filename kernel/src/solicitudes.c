@@ -34,13 +34,13 @@ void solve_request(int socket){
 
 		connection_send(socket, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
 
-		t_indice_codigo* indice_codigo = obtener_indice_codigo(buffer);
+		t_metadata_program* metadata = metadata_desde_literal(buffer);
 
-		pcb->indice_codigo = indice_codigo;
+
+		pcb->indice_codigo = obtener_indice_codigo(metadata);
+		pcb->indice_etiquetas = obtener_indice_etiquetas(metadata);
 //		queue_push(cola_listos, pcb);
-		int i = 0;
-		while(indice_codigo[i].offset != NULL)i++;
-
+		metadata_destruir(metadata);
 		// Mandar Codigo a memoria
 	}
 
@@ -84,13 +84,30 @@ void mandar_codigo_a_memoria(char* codigo, int pid){
 }
 
 
-t_indice_codigo* obtener_indice_codigo(char* codigo){
-	t_metadata_program* metadata = metadata_desde_literal(codigo);
+t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata){
 	int i = 0;
 	t_indice_codigo* indice_codigo = malloc(sizeof(t_indice_codigo) * metadata->instrucciones_size);
 	for(i = 0; i < metadata->instrucciones_size; i++){
 		memcpy((indice_codigo + i), (metadata->instrucciones_serializado )+ i, sizeof(t_indice_codigo));
 	}
-	metadata_destruir(metadata);
 	return indice_codigo;
+}
+
+t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata){
+	t_dictionary* indice_etiquetas = dictionary_create();
+	char* key;
+	int *value, offset = 0;
+	value = malloc(sizeof(t_puntero_instruccion));
+	int i, cantidad_etiquetas_total = metadata->cantidad_de_etiquetas + metadata->cantidad_de_funciones;	// cantidad de tokens que espero sacar del bloque de bytes
+	for(i=0; i < cantidad_etiquetas_total; i++){
+		int cant_letras_token = 0;
+		while(metadata->etiquetas[cant_letras_token + offset] != '\0')cant_letras_token++;
+		key = malloc(cant_letras_token + 1);
+		memcpy(key, metadata->etiquetas + offset, cant_letras_token + 1);		// copio los bytes de metadata->etiquetas desplazado las palabras que ya copie
+		offset += cant_letras_token + 1;										// el offset suma el largo de la palabra + '\0'
+		memcpy(value, metadata->etiquetas+offset,sizeof(t_puntero_instruccion)); //	copio el puntero de instruccion
+		offset += sizeof(t_puntero_instruccion);
+		dictionary_put(indice_etiquetas, key, *value);
+	}
+	return indice_etiquetas;
 }

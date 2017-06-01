@@ -96,7 +96,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	╚══════════════════════════════════════════════╩══════════════════════════════════════════╩══════════════════════════════╝ **/
 
 	uint8_t operation_code_value = operation_code;
-	uint8_t message_size_value;
+	uint32_t message_size_value;
 	int i= 0;
 	t_PCB* pcb;
 
@@ -129,7 +129,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	}
 
 	uint8_t operation_code_length = sizeof(uint8_t);
-	uint8_t message_size_length = sizeof(uint8_t);
+	uint8_t message_size_length = sizeof(uint32_t);
 	void * buffer = malloc(operation_code_length + message_size_length + message_size_value);
 	memcpy(buffer, &operation_code_value, operation_code_length);
 	memcpy(buffer + operation_code_length, &message_size_value, message_size_length);
@@ -146,8 +146,8 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 	╚══════════════════════════════════════════════╩══════════════════════════════════════════╩══════════════════════════════╝ **/
 
 	uint8_t prot_ope_code_size = sizeof(uint8_t);
-	uint8_t prot_message_size = sizeof(uint8_t);
-	uint8_t message_size;
+	uint8_t prot_message_size = sizeof(uint32_t);
+	uint32_t message_size;
 	int status = 1;
 	int ret = 0;
 	char* buffer;

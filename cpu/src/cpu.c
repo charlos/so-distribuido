@@ -22,6 +22,7 @@ AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
 t_log* logger;
 int pagesize;
+
 int stackPointer;
 int lastPageOffset[1][2];
 t_PCB* pcb;

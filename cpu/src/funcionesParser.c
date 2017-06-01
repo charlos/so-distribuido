@@ -88,15 +88,28 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
     log_trace(logger, "Obtener posicion variable [%c]", nombre_variable);
 
-    queue_push(llamadas, crearLlamada("obtenerPosicionVariable", 1, nombre_variable));
-    CON_RETORNO_PUNTERO;
+   t_puntero data = dictionary_get(pcb->indice_etiquetas, nombre_variable);
+
+   return data;
+    //queue_push(llamadas, crearLlamada("obtenerPosicionVariable", 1, nombre_variable));
+    //CON_RETORNO_PUNTERO;
 }
 
-t_valor_variable dereferenciar(t_puntero puntero){
-    log_trace(logger, "Dereferenciar [%p]", puntero);
+t_valor_variable dereferenciar(t_puntero direccion_variable){
+    log_trace(logger, "Dereferenciar [%p]", direccion_variable);
 
-    queue_push(llamadas, crearLlamada("dereferenciar", 1, puntero));
-    CON_RETORNO_VALOR;
+    //Voy a la direccion de la variable. Comunico con Memoria
+    //connection_send(server_socket_memoria, OC_DEREFERENCIAR, direccion_variable);
+    //Recibo contenido
+    //t_valor_variable * buffer;
+    //connection_recv(server_socket_memoria, OC_VALORMEMORIA, &buffer);
+    //retorno
+    //return buffer;
+    //???
+    //Profit.
+
+    //queue_push(llamadas, crearLlamada("dereferenciar", 1, puntero));
+    //CON_RETORNO_VALOR;
 }
 
 void asignar(t_puntero puntero, t_valor_variable valor_variable){
