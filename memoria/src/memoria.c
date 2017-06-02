@@ -36,7 +36,8 @@ t_memory_conf * memory_conf;
 t_log * logger;
 void * memory_ptr;
 
-void * invert_table;
+t_reg_invert_table * invert_table;
+
 t_list * available_frame_list;
 t_list * pages_per_process_list;
 
@@ -149,27 +150,32 @@ void load(void) {
 	// memory
 	memory_ptr = malloc((memory_conf->frames) * (memory_conf->frame_size));
 
-	// TODO : la estructura de páginas se debe encuentrar en memoria principal
-	// 				(checkpoint 3: no se requiere que la estructura de páginas se encuentre en memoria principal)
-
-	// invert table
-	invert_table = malloc((memory_conf->frames) * (sizeof(t_reg_invert_table)));
-	t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
-
 	// available frames list
 	available_frame_list = list_create();
 
-	int i;
+	// invert table
+	invert_table = (t_reg_invert_table *) memory_ptr;
+	t_reg_invert_table * invert_table_ptr = invert_table;
 	t_reg_invert_table * reg;
-	for (i = 0; i < (memory_conf->frames); i++) {
+
+	int invert_table_size = sizeof(t_reg_invert_table) * (memory_conf->frames);
+	int first_free_frame = (invert_table_size / (memory_conf->frame_size)) + ((((invert_table_size % (memory_conf->frame_size)) > 0) ? 1 : 0));
+	int frame = 0;
+	while (frame < (memory_conf->frames)) {
 		reg = malloc(sizeof(t_reg_invert_table));
-		reg->frame = i;
-		reg->page = 0;
-		reg->pid = 0;
-		memcpy(inv_table_ptr, reg, sizeof(t_reg_invert_table));
+		reg->frame = frame;
+		if (frame < first_free_frame) {
+			reg->page = frame;
+			reg->pid = -1;
+		} else {
+			list_add(available_frame_list, frame);
+			reg->page = 0;
+			reg->pid = 0;
+		}
+		memcpy(invert_table_ptr, reg, sizeof(t_reg_invert_table));
 		free(reg);
-		inv_table_ptr++;
-		list_add(available_frame_list, i);
+		frame++;
+		invert_table_ptr++;
 	}
 
 	// pages per process
@@ -292,10 +298,10 @@ int assign_pages_to_process(int pid, int required_pages) {
  */
 void inicialize_page(int pid, int page) {
 	int free_frame = get_available_frame(); // getting available frame
-	t_reg_invert_table * inv_table_aux_ptr = (t_reg_invert_table *) invert_table;
-	inv_table_aux_ptr += free_frame;
-	inv_table_aux_ptr->pid = pid;
-	inv_table_aux_ptr->page = page;
+	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
+	invert_table_ptr += free_frame;
+	invert_table_ptr->pid = pid;
+	invert_table_ptr->page = page;
 }
 
 /**
@@ -337,14 +343,14 @@ void write_page(int * client_socket) {
  */
 int get_frame(int pid, int page) {
 	// TODO : implementar función hash para realizar la búsqueda dentro de la tabla de páginas invertida
-	t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
+	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 	int frame = 0;
 	while (frame < (memory_conf->frames)) {
-		if (((inv_table_ptr->pid) == pid) && ((inv_table_ptr->page) == page)) {
+		if (((invert_table_ptr->pid) == pid) && ((invert_table_ptr->page) == page)) {
 			break;
 		} else {
 			frame++;
-			inv_table_ptr++;
+			invert_table_ptr++;
 		}
 	}
 	return frame;
@@ -407,16 +413,16 @@ int cleaning_process_entries(int pid) {
 		index++;
 	}
 
-	t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
+	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 	int frame = 0;
 	while (frame < (memory_conf->frames)) {
-		if (((inv_table_ptr->pid) == pid)) {
-			inv_table_ptr->pid = 0;
-			inv_table_ptr->page = 0;
+		if (((invert_table_ptr->pid) == pid)) {
+			invert_table_ptr->pid = 0;
+			invert_table_ptr->page = 0;
 			list_add(available_frame_list, frame);
 		}
 		frame++;
-		inv_table_ptr++;
+		invert_table_ptr++;
 	}
 	return SUCCESS;
 }
@@ -465,25 +471,30 @@ void console(void * unused) {
 				} else if (strcmp(param, DUMP_MEMORY_STRUCT_CMD) == 0) {
 					log_info(console, "INVERT TABLE");
 					log_info(console, "    #FRAME        PID           #PAG");
-					log_info(console, "    ══════════    ══════════    ══════════");
-					t_reg_invert_table * inv_table_ptr = (t_reg_invert_table *) invert_table;
+					log_info(console, "    __________    __________    __________");
+					t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 					int frame = 0;
 					while (frame < (memory_conf->frames)) {
-						log_info(console, "    %10d    %10d    %10d", (inv_table_ptr->frame), (inv_table_ptr->pid), (inv_table_ptr->page));
+						log_info(console, "    %10d    %10d    %10d", (invert_table_ptr->frame), (invert_table_ptr->pid), (invert_table_ptr->page));
 						frame++;
-						inv_table_ptr++;
+						invert_table_ptr++;
 					}
 					log_info(console, "END INVERT TABLE");
 				} else if (strcmp(param, DUMP_MEMORY_CONTENT_CMD) == 0) {
 					log_info(console, "MEMORY CONTENT");
-					void * read_pos = memory_ptr;
-					char * frame_content;
+					t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 					int frame = 0;
+					while (frame < (memory_conf->frames) && (invert_table_ptr->pid < 0)) {
+						frame++;
+						invert_table_ptr++;
+					}
+					void * read_pos = memory_ptr + (frame * (memory_conf->frame_size));
+					char * frame_content;
 					while (frame < (memory_conf->frames)) {
 						frame_content = malloc((memory_conf->frame_size) + 1);
 						memcpy(frame_content, read_pos, (memory_conf->frame_size));
 						frame_content[(memory_conf->frame_size)] = "\0";
-						//log_info(console, frame_content);
+						log_info(console, frame_content);
 						printf(":%s\n", frame_content);
 						free(frame_content);
 						frame++;
