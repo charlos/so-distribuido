@@ -152,10 +152,10 @@ void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
 t_puntero alocar(t_valor_variable espacio){
     log_trace(logger, "Reserva [%d] espacio", espacio);
 
-    connection_send(server_socket_kernel, OC_ALOCAR_MEMORIA, &espacio);
+    connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, &espacio);
 
-    t_puntero * buffer;
-    connection_recv(server_socket_kernel, OC_RECIBIR_POS_MEM, &buffer);
+    t_puntero * buffer = malloc(sizeof(t_direccion_archivo));
+    connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &buffer);
 
     return *buffer;
     //CON_RETORNO_PUNTERO;
@@ -163,6 +163,9 @@ t_puntero alocar(t_valor_variable espacio){
 
 void liberar(t_puntero puntero){
     log_trace(logger, "Reserva [%p] espacio", puntero);
+
+    connection_send(server_socket_kernel, OC_FUNCION_LIBERAR, puntero);
+
 }
 
 char* boolToChar(bool boolean) {
@@ -184,25 +187,70 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
+
+    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, descriptor);
 }
 
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
+
+    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, descriptor);
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
     log_trace(logger, "Mover descriptor [%d] a [%d]", descriptor, posicion);
 
+    void * buffer = malloc(sizeof(t_descriptor_archivo)+sizeof(t_valor_variable));
+    memcpy(buffer, &descriptor, sizeof(t_descriptor_archivo));
+    memcpy(buffer + sizeof(t_descriptor_archivo), &posicion, sizeof(t_valor_variable));
+    connect_send(server_socket_kernel, OC_FUNCION_MOVER_CURSOR, buffer);
+
+    free(buffer);
 }
 
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
     log_trace(logger, "Escribir [%.*s]:%d a [%d]", tamanio, informacion, tamanio, desc);
+
+    t_archivo * arch = malloc(sizeof(t_archivo));
+
+    arch->descriptor_archivo = desc;
+    arch->informacion = informacion;
+    arch->tamanio = tamanio;
+
+    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, *arch);
+
+    void * buffer = malloc(tamanio);
+    connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
     log_trace(logger, "Leer desde [%d] a [%p] con tamaño [%d]", descriptor, informacion, tamanio);
+
+    t_archivo * arch = malloc(sizeof(t_archivo));
+
+    arch->descriptor_archivo = descriptor;
+    arch->informacion = informacion;
+    arch->tamanio = tamanio;
+
+    connection_send(server_socket_kernel, OC_FUNCION_LEER, *arch);
+
+    void * buffer = malloc(tamanio);
+    connection_recv(server_socket_kernel, OC_RESP_LEER, buffer);
+
+    //TODO: ver como retornar la informacion devuelta por kernel
+}
+void signal(t_nombre_semaforo identificador_semaforo) {
+	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);
+
+	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, identificador_semaforo);
+
 }
 
+void wait(t_nombre_semaforo identificador_semaforo) {
+	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
+
+	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
+}
 
 
 

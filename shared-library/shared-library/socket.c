@@ -122,7 +122,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_HANDSHAKE_MEMORY:
 			message_size_value = sizeof(uint8_t);
 			break;
-		case OC_ALOCAR_MEMORIA:
+		case OC_FUNCION_RESERVAR:
 			message_size_value = sizeof(int);
 			break;
 //		DEFINIR COMPORTAMIENTO
@@ -209,7 +209,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (uint8_t *)buffer;
 				break;
-			case OC_ALOCAR_MEMORIA:
+			case OC_FUNCION_RESERVAR:
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (int *) buffer;
 				break;

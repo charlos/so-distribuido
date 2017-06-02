@@ -86,6 +86,10 @@ void inicializarFuncionesParser(void) {
 	func_kernel->AnSISOP_escribir = escribir;
 	func_kernel->AnSISOP_leer = leer;
 	func_kernel->AnSISOP_moverCursor = moverCursor;
+	func_kernel->AnSISOP_reservar = alocar;
+	func_kernel->AnSISOP_liberar = liberar;
+	func_kernel->AnSISOP_wait = wait;
+	func_kernel->AnSISOP_signal = signal;
 }
 void procesarMsg(char * msg) {
 

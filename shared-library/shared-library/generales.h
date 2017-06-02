@@ -53,6 +53,11 @@ typedef struct{
 	posicion_memoria* retVar;
 }t_element_stack;
 
+typedef struct {
+	t_descriptor_archivo descriptor_archivo;
+	t_puntero informacion;
+	t_valor_variable tamanio;
+} t_archivo;
 
 char* obtener_nombre_proceso(char*);
 
