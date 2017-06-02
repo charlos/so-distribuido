@@ -18,8 +18,7 @@
 #include "cpu.h"
 
 int nuevoContexto();
-int agregarAStack(t_args_vars ,int );
-
+int agregarAStack(t_args_vars*, int );
 t_link_element* stack_pop(t_stack*);
 void stack_push(t_stack*, t_element_stack* );
 t_args_vars* arg_var_pop(t_list*);
@@ -29,5 +28,6 @@ void procesarMsg(char *);
 void load_properties(void);
 int calcularPagina();
 void loadlastPosStack();
+void updatePageAvailable(u_int32_t);
 
 #endif /* FUNCIONESCPU_H_ */
