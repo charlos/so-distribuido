@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t frame;
-	uint32_t pid;
+	int32_t pid;
 	uint32_t page;
 } t_reg_invert_table;
 

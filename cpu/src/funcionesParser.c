@@ -8,12 +8,15 @@
 #include "funcionesParser.h"
 #include <shared-library/generales.h>
 #include "cpu.h"
-
+#include "funcionesCPU.h"
 
 t_queue* llamadas = NULL;
 t_queue* retornos = NULL;
 t_log* logger = NULL;
 
+extern int pagesize;
+extern t_page_offset* lastPageOffset;
+extern int stackPointer;
 
 Llamada* crearLlamada(char* nombre, int cantidadParametros, ...){
     va_list parametrosVa;
@@ -55,25 +58,34 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
 	    //queue_push(llamadas, crearLlamada("definirVariable", 1, identificador_variable));
 	    //CON_RETORNO_PUNTERO;
-	if (    strcmp(identificador_variable,"0")==0||
-			strcmp(identificador_variable,"1")==0||
-			strcmp(identificador_variable,"2")==0||
-			strcmp(identificador_variable,"3")==0||
-			strcmp(identificador_variable,"4")==0||
-			strcmp(identificador_variable,"5")==0||
-			strcmp(identificador_variable,"6")==0||
-			strcmp(identificador_variable,"7")==0||
-			strcmp(identificador_variable,"8")==0||
-			strcmp(identificador_variable,"9")==0) {
+	if (identificador_variable >= '0' && identificador_variable <= '9') {
 		t_args_vars * newarg = malloc(sizeof(t_args_vars));
+		newarg->id = identificador_variable;
 
+		updatePageAvailable(sizeof(t_puntero)); //actualizo la pagina que usaré revisando si hay espacio en la pagina actual para la nueva variable
+												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
+												//TODO quedo a la espera de respuesta de issue para saber si hay que validar ahora o al escribir
+
+		newarg->pagina = lastPageOffset->page;
+		newarg->offset = lastPageOffset->offset;
+		newarg->size = sizeof(t_puntero);
 		agregarAStack(newarg,ARG_STACK);
 
 	} else {
 		t_args_vars * newvar = malloc(sizeof(t_args_vars));
+		newvar->id = identificador_variable;
+
+		updatePageAvailable(sizeof(t_puntero)); //actualizo la pagina que usaré revisando si hay espacio en pa pagina actual para la nueva variable
+												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
+												//TODO quedo a la espera de respuesta de issue para saber si hay que validar ahora o al escribir
+
+		newvar->pagina = lastPageOffset->page;
+		newvar->offset = lastPageOffset->offset;
+		newvar->size = sizeof(t_puntero);
 		agregarAStack(newvar,VAR_STACK);
 
 	}
+	return lastPageOffset->page*pagesize+lastPageOffset->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
@@ -86,13 +98,25 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
-    log_trace(logger, "Obtener posicion variable [%c]", nombre_variable);
+   log_trace(logger, "Obtener posicion variable [%c]", nombre_variable);
 
-   t_puntero data = dictionary_get(pcb->indice_etiquetas, nombre_variable);
 
-   return data;
-    //queue_push(llamadas, crearLlamada("obtenerPosicionVariable", 1, nombre_variable));
-    //CON_RETORNO_PUNTERO;
+   int _findbyname(t_args_vars * reg){
+	   return reg->id==nombre_variable;
+   }
+   t_args_vars * reg;
+   t_element_stack* regContextStack = list_get(pcb->indice_stack,stackPointer);
+
+   if (nombre_variable >= '0' && nombre_variable <= '9') {
+	   reg = list_find(regContextStack->args, (void*) _findbyname);
+	}else{
+		reg = list_find(regContextStack->vars, (void*) _findbyname);
+	}
+
+   //t_puntero data = dictionary_get(pcb->indice_etiquetas, nombre_variable);
+
+   return reg->pagina*pagesize+reg->offset;
+
 }
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
