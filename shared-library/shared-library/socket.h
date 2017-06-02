@@ -36,6 +36,9 @@
 #define OC_FUNCION_LEER 33
 #define OC_FUNCION_ESCRIBIR 34
 
+#define OC_ALOCAR_MEMORIA 40
+#define OC_RECIBIR_POS_MEM 41
+
 	/**
 	 * @NAME   open_socket
 	 * @DESC   Permite crear un socket "servidor" o "de escucha" El mismo abre un puerto en la red y después espera a que un cliente se conecte a ese puerto

@@ -119,20 +119,26 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
 
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
     log_trace(logger, "Ir al Label [%s]", nombre_etiqueta);
-    queue_push(llamadas, crearLlamada("irAlLabel", 1, string_duplicate(nombre_etiqueta)));
+
+    int posicion = dictionary_get(pcb->indice_etiquetas, nombre_etiqueta);
+
+    pcb->PC = posicion;
 }
 
 t_puntero alocar(t_valor_variable espacio){
     log_trace(logger, "Reserva [%d] espacio", espacio);
 
-    queue_push(llamadas, crearLlamada("alocar", 1, espacio));
-    CON_RETORNO_PUNTERO;
+    connection_send(server_socket_kernel, OC_ALOCAR_MEMORIA, &espacio);
+
+    t_puntero * buffer;
+    connection_recv(server_socket_kernel, OC_RECIBIR_POS_MEM, &buffer);
+
+    return *buffer;
+    //CON_RETORNO_PUNTERO;
 }
 
 void liberar(t_puntero puntero){
     log_trace(logger, "Reserva [%p] espacio", puntero);
-
-    queue_push(llamadas, crearLlamada("liberar", 1, puntero));
 }
 
 char* boolToChar(bool boolean) {
@@ -142,8 +148,6 @@ char* boolToChar(bool boolean) {
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     log_trace(logger, "Abrir [%s] Lectura: %s. Escritura: %s, Creacion: %s", direccion,
               boolToChar(banderas.lectura), boolToChar(banderas.escritura), boolToChar(banderas.creacion));
-
-    queue_push(llamadas, crearLlamada("abrir", 2, direccion, banderas));
 
     void * buffer = malloc(sizeof(t_direccion_archivo)+sizeof(t_banderas));
     memcpy(buffer, &direccion, sizeof(t_direccion_archivo));
@@ -156,30 +160,23 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
-    queue_push(llamadas, crearLlamada("borrar", 1, descriptor));
 }
 
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
-    queue_push(llamadas, crearLlamada("cerrar", 1, descriptor));
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
     log_trace(logger, "Mover descriptor [%d] a [%d]", descriptor, posicion);
-    queue_push(llamadas, crearLlamada("mover", 2, descriptor, posicion));
 
 }
 
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
     log_trace(logger, "Escribir [%.*s]:%d a [%d]", tamanio, informacion, tamanio, desc);
-
-    queue_push(llamadas, crearLlamada("escribir", 3, desc, string_duplicate(informacion), tamanio));
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
     log_trace(logger, "Leer desde [%d] a [%p] con tamaño [%d]", descriptor, informacion, tamanio);
-
-    queue_push(llamadas, crearLlamada("leer", 3, descriptor, informacion, tamanio));
 }
 
 
