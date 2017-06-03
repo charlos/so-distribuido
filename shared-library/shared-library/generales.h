@@ -14,6 +14,7 @@
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
 #include <parser/metadata_program.h>
+#include <stdint.h>
 
 typedef t_list t_stack;
 
@@ -26,6 +27,8 @@ typedef struct{
 	int pid;
 	int PC;
 	int cantidad_paginas;
+	uint16_t SP;
+	uint16_t cantidad_instrucciones;
 	t_stack* indice_stack;
 	t_indice_codigo* indice_codigo;
 	t_dictionary* indice_etiquetas;
@@ -53,6 +56,7 @@ typedef struct{
 	posicion_memoria* retVar;
 }t_element_stack;
 
+fd_set master;
 
 char* obtener_nombre_proceso(char*);
 
