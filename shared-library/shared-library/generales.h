@@ -62,7 +62,6 @@ typedef struct {
 	t_valor_variable tamanio;
 } t_archivo;
 
-fd_set master;
 
 char* obtener_nombre_proceso(char*);
 

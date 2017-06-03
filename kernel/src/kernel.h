@@ -26,7 +26,7 @@
  *
  * @PARAMS int port: puerto de escucha
  */
-void manage_select(int port);
+void manage_select(t_aux* estructura);
 
 
 

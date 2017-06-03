@@ -233,7 +233,7 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     arch->informacion = informacion;
     arch->tamanio = tamanio;
 
-    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, *arch);
+    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, arch);
 
     void * buffer = malloc(tamanio);
     connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
@@ -248,7 +248,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
     arch->informacion = informacion;
     arch->tamanio = tamanio;
 
-    connection_send(server_socket_kernel, OC_FUNCION_LEER, *arch);
+    connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 
     void * buffer = malloc(tamanio);
     connection_recv(server_socket_kernel, OC_RESP_LEER, buffer);
