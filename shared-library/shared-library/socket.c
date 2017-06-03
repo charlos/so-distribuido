@@ -122,6 +122,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_HANDSHAKE_MEMORY:
 			message_size_value = sizeof(uint8_t);
 			break;
+		case OC_FUNCION_RESERVAR:
+			message_size_value = sizeof(int);
+			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
@@ -205,6 +208,10 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (uint8_t *)buffer;
+				break;
+			case OC_FUNCION_RESERVAR:
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = (int *) buffer;
 				break;
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);

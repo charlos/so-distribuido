@@ -24,6 +24,11 @@ typedef struct{
 	char* kernel_port;
 }t_cpu_conf;
 
+typedef struct{
+	u_int32_t page;
+	u_int32_t offset;
+}t_page_offset;
+
 void load_properties(void);
 void inicializarFuncionesParser(void);
 void procesarMsg(char* ) ;

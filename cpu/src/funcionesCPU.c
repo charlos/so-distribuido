@@ -13,10 +13,11 @@
 #include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include "cpu.h"
+#include "funcionesCPU.h"
 
 extern t_PCB* pcb;
 extern int stackPointer;
-extern int lastPageOffset[1][2]; // [Page][Offset]
+extern t_page_offset* lastPageOffset;
 extern AnSISOP_funciones * funciones;
 extern AnSISOP_kernel * func_kernel;
 extern t_cpu_conf* cpu_conf;
@@ -31,20 +32,21 @@ int nuevoContexto(){
 	return list_size(pcb->indice_stack)-1;
 }
 
-int agregarAStack(t_args_vars new_arg_var,int tipo){
+int agregarAStack(t_args_vars* new_arg_var,int tipo){
 	t_element_stack* regContextStack = list_get(pcb->indice_stack,stackPointer);
-
+	int resp;
 	switch (tipo) {
 	case VAR_STACK:
-		arg_var_push(regContextStack->vars,new_arg_var);
+		arg_var_push(regContextStack->vars, new_arg_var);
 		break;
 	case ARG_STACK:
-		arg_var_push(regContextStack->args,new_arg_var);
+		arg_var_push(regContextStack->args, new_arg_var);
 		break;
 	default:
+		resp = -3;
 		break;
 	}
-
+	return resp;
 }
 
 t_link_element* stack_pop(t_stack* stack){
@@ -84,6 +86,10 @@ void inicializarFuncionesParser(void) {
 	func_kernel->AnSISOP_escribir = escribir;
 	func_kernel->AnSISOP_leer = leer;
 	func_kernel->AnSISOP_moverCursor = moverCursor;
+	func_kernel->AnSISOP_reservar = alocar;
+	func_kernel->AnSISOP_liberar = liberar;
+	func_kernel->AnSISOP_wait = wait;
+	func_kernel->AnSISOP_signal = signal;
 }
 void procesarMsg(char * msg) {
 
@@ -107,10 +113,12 @@ void load_properties(void) {
 
 int calcularPagina(){
 	int page,pc,bytes_codigo;
+	//TODO cambiar este valor fijo por el que recibamos durante la recepción del PCB
+	int cantInstrucciones = 10;
 	bytes_codigo=0;
 	t_indice_codigo* icodigo;
-	for( pc = 0 ; pc <= pcb->PC ; pc++){
-		icodigo = list_get(pcb->indice_codigo, pc);
+	for( pc = 0 ; pc <= cantInstrucciones ; pc++){
+		icodigo = ((t_indice_codigo*) pcb->indice_codigo)+ pc;
 		bytes_codigo += icodigo->size;
 	}
 	page=bytes_codigo/pagesize;
@@ -122,7 +130,7 @@ void loadlastPosStack(){
 	t_args_vars* lastPosStack = malloc(sizeof(t_args_vars));
 	stackPointer = list_size(pcb->indice_stack)-1;
 	t_element_stack* lastcontext = list_get(pcb->indice_stack,stackPointer);
-	int pagina,offset;
+	u_int32_t pagina,offset;
 
 	if (list_size(lastcontext->args)>0){
 		lastPosStack = list_get(lastcontext->args,list_size(lastcontext->args)-1);
@@ -145,10 +153,21 @@ void loadlastPosStack(){
 		}
 	}
 
-	lastPageOffset[0][0]=pagina;
-	lastPageOffset[0][1]=offset;
+	lastPageOffset->page=pagina;
+	lastPageOffset->offset=offset;
 
 	free(lastPosStack);
+
+}
+
+void updatePageAvailable(u_int32_t size){
+	int page;
+	if (lastPageOffset->offset+size > pagesize){
+		lastPageOffset->page=lastPageOffset->page+1;
+		lastPageOffset->offset=0;
+	}else{
+		lastPageOffset->page;
+	}
 
 }
 

@@ -8,12 +8,15 @@
 #include "funcionesParser.h"
 #include <shared-library/generales.h>
 #include "cpu.h"
-
+#include "funcionesCPU.h"
 
 t_queue* llamadas = NULL;
 t_queue* retornos = NULL;
 t_log* logger = NULL;
 
+extern int pagesize;
+extern t_page_offset* lastPageOffset;
+extern int stackPointer;
 
 Llamada* crearLlamada(char* nombre, int cantidadParametros, ...){
     va_list parametrosVa;
@@ -55,25 +58,34 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
 	    //queue_push(llamadas, crearLlamada("definirVariable", 1, identificador_variable));
 	    //CON_RETORNO_PUNTERO;
-	if (    strcmp(identificador_variable,"0")==0||
-			strcmp(identificador_variable,"1")==0||
-			strcmp(identificador_variable,"2")==0||
-			strcmp(identificador_variable,"3")==0||
-			strcmp(identificador_variable,"4")==0||
-			strcmp(identificador_variable,"5")==0||
-			strcmp(identificador_variable,"6")==0||
-			strcmp(identificador_variable,"7")==0||
-			strcmp(identificador_variable,"8")==0||
-			strcmp(identificador_variable,"9")==0) {
+	if (identificador_variable >= '0' && identificador_variable <= '9') {
 		t_args_vars * newarg = malloc(sizeof(t_args_vars));
+		newarg->id = identificador_variable;
 
+		updatePageAvailable(sizeof(t_puntero)); //actualizo la pagina que usaré revisando si hay espacio en la pagina actual para la nueva variable
+												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
+												//TODO quedo a la espera de respuesta de issue para saber si hay que validar ahora o al escribir
+
+		newarg->pagina = lastPageOffset->page;
+		newarg->offset = lastPageOffset->offset;
+		newarg->size = sizeof(t_puntero);
 		agregarAStack(newarg,ARG_STACK);
 
 	} else {
 		t_args_vars * newvar = malloc(sizeof(t_args_vars));
+		newvar->id = identificador_variable;
+
+		updatePageAvailable(sizeof(t_puntero)); //actualizo la pagina que usaré revisando si hay espacio en pa pagina actual para la nueva variable
+												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
+												//TODO quedo a la espera de respuesta de issue para saber si hay que validar ahora o al escribir
+
+		newvar->pagina = lastPageOffset->page;
+		newvar->offset = lastPageOffset->offset;
+		newvar->size = sizeof(t_puntero);
 		agregarAStack(newvar,VAR_STACK);
 
 	}
+	return lastPageOffset->page*pagesize+lastPageOffset->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
@@ -86,13 +98,25 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
-    log_trace(logger, "Obtener posicion variable [%c]", nombre_variable);
+   log_trace(logger, "Obtener posicion variable [%c]", nombre_variable);
 
-   t_puntero data = dictionary_get(pcb->indice_etiquetas, nombre_variable);
 
-   return data;
-    //queue_push(llamadas, crearLlamada("obtenerPosicionVariable", 1, nombre_variable));
-    //CON_RETORNO_PUNTERO;
+   int _findbyname(t_args_vars * reg){
+	   return reg->id==nombre_variable;
+   }
+   t_args_vars * reg;
+   t_element_stack* regContextStack = list_get(pcb->indice_stack,stackPointer);
+
+   if (nombre_variable >= '0' && nombre_variable <= '9') {
+	   reg = list_find(regContextStack->args, (void*) _findbyname);
+	}else{
+		reg = list_find(regContextStack->vars, (void*) _findbyname);
+	}
+
+   //t_puntero data = dictionary_get(pcb->indice_etiquetas, nombre_variable);
+
+   return reg->pagina*pagesize+reg->offset;
+
 }
 
 t_valor_variable dereferenciar(t_puntero direccion_variable){
@@ -119,20 +143,32 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
 
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
     log_trace(logger, "Ir al Label [%s]", nombre_etiqueta);
-    queue_push(llamadas, crearLlamada("irAlLabel", 1, string_duplicate(nombre_etiqueta)));
+
+    int posicion = dictionary_get(pcb->indice_etiquetas, nombre_etiqueta);
+
+    int i = list_size(pcb->indice_stack) - 1;
+    t_element_stack * element = list_get(pcb->indice_stack, i);
+    element->retPos = pcb->PC;
+    pcb->PC = posicion;
 }
 
 t_puntero alocar(t_valor_variable espacio){
     log_trace(logger, "Reserva [%d] espacio", espacio);
 
-    queue_push(llamadas, crearLlamada("alocar", 1, espacio));
-    CON_RETORNO_PUNTERO;
+    connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, &espacio);
+
+    t_puntero * buffer = malloc(sizeof(t_direccion_archivo));
+    connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &buffer);
+
+    return *buffer;
+    //CON_RETORNO_PUNTERO;
 }
 
 void liberar(t_puntero puntero){
     log_trace(logger, "Reserva [%p] espacio", puntero);
 
-    queue_push(llamadas, crearLlamada("liberar", 1, puntero));
+    connection_send(server_socket_kernel, OC_FUNCION_LIBERAR, puntero);
+
 }
 
 char* boolToChar(bool boolean) {
@@ -142,8 +178,6 @@ char* boolToChar(bool boolean) {
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     log_trace(logger, "Abrir [%s] Lectura: %s. Escritura: %s, Creacion: %s", direccion,
               boolToChar(banderas.lectura), boolToChar(banderas.escritura), boolToChar(banderas.creacion));
-
-    queue_push(llamadas, crearLlamada("abrir", 2, direccion, banderas));
 
     void * buffer = malloc(sizeof(t_direccion_archivo)+sizeof(t_banderas));
     memcpy(buffer, &direccion, sizeof(t_direccion_archivo));
@@ -156,32 +190,70 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
-    queue_push(llamadas, crearLlamada("borrar", 1, descriptor));
+
+    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, descriptor);
 }
 
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
-    queue_push(llamadas, crearLlamada("cerrar", 1, descriptor));
+
+    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, descriptor);
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
     log_trace(logger, "Mover descriptor [%d] a [%d]", descriptor, posicion);
-    queue_push(llamadas, crearLlamada("mover", 2, descriptor, posicion));
 
+    void * buffer = malloc(sizeof(t_descriptor_archivo)+sizeof(t_valor_variable));
+    memcpy(buffer, &descriptor, sizeof(t_descriptor_archivo));
+    memcpy(buffer + sizeof(t_descriptor_archivo), &posicion, sizeof(t_valor_variable));
+    connect_send(server_socket_kernel, OC_FUNCION_MOVER_CURSOR, buffer);
+
+    free(buffer);
 }
 
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
     log_trace(logger, "Escribir [%.*s]:%d a [%d]", tamanio, informacion, tamanio, desc);
 
-    queue_push(llamadas, crearLlamada("escribir", 3, desc, string_duplicate(informacion), tamanio));
+    t_archivo * arch = malloc(sizeof(t_archivo));
+
+    arch->descriptor_archivo = desc;
+    arch->informacion = informacion;
+    arch->tamanio = tamanio;
+
+    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, *arch);
+
+    void * buffer = malloc(tamanio);
+    connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
     log_trace(logger, "Leer desde [%d] a [%p] con tamaño [%d]", descriptor, informacion, tamanio);
 
-    queue_push(llamadas, crearLlamada("leer", 3, descriptor, informacion, tamanio));
+    t_archivo * arch = malloc(sizeof(t_archivo));
+
+    arch->descriptor_archivo = descriptor;
+    arch->informacion = informacion;
+    arch->tamanio = tamanio;
+
+    connection_send(server_socket_kernel, OC_FUNCION_LEER, *arch);
+
+    void * buffer = malloc(tamanio);
+    connection_recv(server_socket_kernel, OC_RESP_LEER, buffer);
+
+    //TODO: ver como retornar la informacion devuelta por kernel
+}
+void signal(t_nombre_semaforo identificador_semaforo) {
+	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);
+
+	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, identificador_semaforo);
+
 }
 
+void wait(t_nombre_semaforo identificador_semaforo) {
+	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
+
+	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
+}
 
 
 

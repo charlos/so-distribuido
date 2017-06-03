@@ -24,7 +24,7 @@ t_log* logger;
 int pagesize;
 
 int stackPointer;
-int lastPageOffset[1][2];
+t_page_offset* lastPageOffset;
 t_PCB* pcb;
 
 void procesarMsg(char * msg);
@@ -54,17 +54,23 @@ int main(void) {
 	uint8_t operation_code;
 	connection_recv(server_socket_kernel, &operation_code, pcb);
 
-	int pc, page;
+	int pc, page, cantInstrucciones;
+	//TODO cambiar este valor fijo por el que recibamos durante la recepción del PCB
+	cantInstrucciones = 10;
+	lastPageOffset= malloc(sizeof(lastPageOffset));
 	loadlastPosStack();
 
-	for( pc = 0 ; pc <= list_size(pcb->indice_codigo) ; pc++){
+	//Se incrementa Program Counter para comenzar la ejecución
+	pcb->PC++;
+
+	for( pc = pcb->PC ; pc <= cantInstrucciones ; pc++){
 
 		if(list_size(pcb->indice_stack)==0){
 			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
 			nuevoContexto();
 		}
 		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
-		icodigo = (t_indice_codigo*)list_get(pcb->indice_codigo, pcb->PC);
+		icodigo = ((t_indice_codigo*) pcb->indice_codigo)+pc;
 //TODO ver de cambiar la esctructura indice de codigo
 		page = calcularPagina();
 
@@ -76,7 +82,6 @@ int main(void) {
 
 		procesarMsg(instruccion);
 
-		pcb->PC++;
 		free(instruccion);
 		free(read_response->buffer);
 		free(read_response);
