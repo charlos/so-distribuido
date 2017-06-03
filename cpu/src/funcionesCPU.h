@@ -17,7 +17,7 @@
 #include <shared-library/memory_prot.h>
 #include "cpu.h"
 
-int nuevoContexto();
+t_element_stack* nuevoContexto();
 int agregarAStack(t_args_vars*, int );
 t_link_element* stack_pop(t_stack*);
 void stack_push(t_stack*, t_element_stack* );
@@ -29,5 +29,7 @@ void load_properties(void);
 int calcularPagina();
 void loadlastPosStack();
 void updatePageAvailable(u_int32_t);
+u_int32_t getPageofPos(t_puntero);
+u_int32_t getOffsetofPos(t_puntero);
 
 #endif /* FUNCIONESCPU_H_ */

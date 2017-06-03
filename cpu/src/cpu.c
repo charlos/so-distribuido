@@ -27,6 +27,8 @@ int stackPointer;
 t_page_offset* lastPageOffset;
 t_PCB* pcb;
 
+int server_socket_kernel, server_socket_memoria;
+
 void procesarMsg(char * msg);
 
 int main(void) {

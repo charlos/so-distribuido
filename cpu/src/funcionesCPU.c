@@ -24,12 +24,12 @@ extern t_cpu_conf* cpu_conf;
 extern t_log* logger;
 extern int pagesize;
 
-int nuevoContexto(){
+t_element_stack* nuevoContexto(){
 	t_element_stack* regIndicestack = malloc(sizeof(t_element_stack));
 
 	stack_push(pcb->indice_stack,regIndicestack);
-	stackPointer++;
-	return list_size(pcb->indice_stack)-1;
+
+	return regIndicestack;
 }
 
 int agregarAStack(t_args_vars* new_arg_var,int tipo){
@@ -43,7 +43,7 @@ int agregarAStack(t_args_vars* new_arg_var,int tipo){
 		arg_var_push(regContextStack->args, new_arg_var);
 		break;
 	default:
-		resp = -3;
+		resp = -1;
 		break;
 	}
 	return resp;
@@ -51,11 +51,13 @@ int agregarAStack(t_args_vars* new_arg_var,int tipo){
 
 t_link_element* stack_pop(t_stack* stack){
 	t_link_element* elemento = list_remove(stack, list_size(stack) - 1);
+	stackPointer--;
 	return elemento;
 }
 
 void stack_push(t_stack* stack, t_element_stack* element){
 	list_add(stack, element);
+	stackPointer++;
 }
 
 
@@ -78,6 +80,7 @@ void inicializarFuncionesParser(void) {
 	funciones->AnSISOP_irAlLabel = irAlLabel;
 	funciones->AnSISOP_llamarSinRetorno = llamarSinRetorno;
 	funciones->AnSISOP_llamarConRetorno = llamarConRetorno;
+	funciones->AnSISOP_finalizar = finalizar;
 
 	func_kernel = malloc(sizeof(AnSISOP_kernel));
 	func_kernel->AnSISOP_abrir = abrir;
@@ -113,7 +116,7 @@ void load_properties(void) {
 
 int calcularPagina(){
 	int page,pc,bytes_codigo;
-	//TODO cambiar este valor fijo por el que recibamos durante la recepción del PCB
+	//TODO cambiar este valor fijo por el que recibamos en el PCB
 	int cantInstrucciones = 10;
 	bytes_codigo=0;
 	t_indice_codigo* icodigo;
@@ -125,6 +128,7 @@ int calcularPagina(){
 
 	return page;
 }
+
 
 void loadlastPosStack(){
 	t_args_vars* lastPosStack = malloc(sizeof(t_args_vars));
@@ -161,13 +165,17 @@ void loadlastPosStack(){
 }
 
 void updatePageAvailable(u_int32_t size){
-	int page;
 	if (lastPageOffset->offset+size > pagesize){
 		lastPageOffset->page=lastPageOffset->page+1;
 		lastPageOffset->offset=0;
-	}else{
-		lastPageOffset->page;
 	}
-
 }
 
+u_int32_t getPageofPos(t_puntero pos){
+	return pos/pagesize;
+}
+
+u_int32_t getOffsetofPos(t_puntero pos){
+	u_int32_t page = getPageofPos(pos);
+	return pos - (page * pagesize);
+}
