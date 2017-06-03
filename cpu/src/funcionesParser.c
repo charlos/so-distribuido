@@ -157,6 +157,11 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
     log_trace(logger, "Ir al Label [%s]", nombre_etiqueta);
     int posicion = dictionary_get(pcb->indice_etiquetas, nombre_etiqueta);
+
+    int i = list_size(pcb->indice_stack) - 1;
+    t_element_stack * element = list_get(pcb->indice_stack, i);
+    element->retPos = pcb->PC;
+
     pcb->PC = posicion;
 }
 
@@ -262,6 +267,3 @@ void wait(t_nombre_semaforo identificador_semaforo) {
 
 	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
 }
-
-
-
