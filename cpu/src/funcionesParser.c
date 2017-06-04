@@ -155,7 +155,10 @@ void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
 t_puntero alocar(t_valor_variable espacio){
     log_trace(logger, "Reserva [%d] espacio", espacio);
 
-    connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, &espacio);
+    void * buff = malloc(sizeof(int) + sizeof(t_valor_variable));
+    memcpy(buff, &(pcb->pid), sizeof(int));
+    memcpy(buff + sizeof(int), &espacio, sizeof(t_valor_variable));
+    connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, buff);
 
     t_puntero * buffer = malloc(sizeof(t_direccion_archivo));
     connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &buffer);
