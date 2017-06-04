@@ -9,10 +9,12 @@
 #include <parser/metadata_program.h>
 #include <parser/parser.h>
 
-void solve_request(int socket){
+void solve_request(int socket, fd_set* set){
 	uint8_t operation_code;
+	int status;
 	char* buffer;
-	connection_recv(socket, &operation_code, &buffer);
+	status = connection_recv(socket, &operation_code, &buffer);
+	if(status <= 0)	FD_CLR(socket, set);
 
 	switch(operation_code){
 	case OC_SOLICITUD_PROGRAMA_NUEVO:{
@@ -24,6 +26,7 @@ void solve_request(int socket){
 		response = memory_init_process(memory_socket, pcb->pid, cant_paginas, logger);
 
 		if(response == -1){
+			log_error(logger, "Se desconecto Memoria");
 			exit(1);
 		}
 
@@ -36,7 +39,8 @@ void solve_request(int socket){
 
 		t_metadata_program* metadata = metadata_desde_literal(buffer);
 
-
+		pcb->SP = 0;
+		pcb->cantidad_instrucciones = metadata->instrucciones_size;
 		pcb->indice_codigo = obtener_indice_codigo(metadata);
 		pcb->indice_etiquetas = obtener_indice_etiquetas(metadata);
 //		queue_push(cola_listos, pcb);
@@ -63,24 +67,16 @@ int calcular_paginas_necesarias(char* codigo){
 
 
 void mandar_codigo_a_memoria(char* codigo, int pid){
-	int paginas_codigo = calcular_paginas_de_codigo(codigo);
-	int i, offset = 0;
-	void* buffer = malloc(strlen(codigo));
-	for(i=0; i < (paginas_codigo-1); i++){
-		memcpy(buffer, codigo + offset, TAMANIO_PAGINAS);
-		memory_write(memory_socket, pid, i, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, buffer, logger);
-//		connection_send(memory_socket, OC_CODIGO, buffer);
+	int i = 0, offset = 0, cant_a_mandar = strlen(codigo);
+	while(cant_a_mandar > TAMANIO_PAGINAS){
+		memory_write(memory_socket, pid, i, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, codigo + offset, logger);
 		offset += TAMANIO_PAGINAS;
+		cant_a_mandar -= TAMANIO_PAGINAS;
+		i++;
 	}
-	if(strlen(codigo) % TAMANIO_PAGINAS){
-		int bytes_restantes = strlen(codigo) - (paginas_codigo * TAMANIO_PAGINAS);
-		memcpy(buffer, codigo + offset, bytes_restantes);
-		memory_write(memory_socket, pid, i+1, 0, bytes_restantes, bytes_restantes, buffer, logger);
-	} else {
-		memcpy(buffer, codigo + offset, TAMANIO_PAGINAS);
-		memory_write(memory_socket, pid, i+1, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, buffer, logger);
+	if(cant_a_mandar > 0){
+		memory_write(memory_socket, pid, i, 0, cant_a_mandar, cant_a_mandar, codigo + offset, logger);
 	}
-//	connection_send(memory_socket, OC_CODIGO, buffer);
 }
 
 

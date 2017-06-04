@@ -36,7 +36,13 @@ typedef struct{
 	int quantum;
 }t_cpu;
 
+typedef struct{
+	int port;
+	fd_set master;
+//	fd_set lectura;
+}t_aux;
 
+fd_set master_cpu, master_prog;
 int registro_pid;
 t_log* logger;
 t_queue* cola_listos;
