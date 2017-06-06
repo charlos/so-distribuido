@@ -50,6 +50,49 @@ int main(void) {
 		log_trace(logger, "Problema con Handshake con Memoria.");
 	}
 
+	/*while(1) {
+		pcb = malloc(sizeof(t_PCB));
+		uint8_t operation_code;
+
+		connection_recv(server_socket_kernel, &operation_code, pcb);
+
+		int pc, page, cantInstrucciones;
+
+		cantInstrucciones = pcb->cantidad_paginas;
+		lastPageOffset = malloc(sizeof(lastPageOffset));
+
+		loadlastPosStack();
+
+		if(list_size(pcb->indice_stack) == 0) {
+
+			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
+			nuevoContexto();
+		}
+
+		t_indice_codigo * icodigo = malloc(sizeof(t_indice_codigo));
+		icodigo = ((t_indice_codigo*) pcb->indice_codigo)+pc;
+
+		//TODO ver de cambiar la esctructura indice de codigo
+		page = calcularPagina();
+
+		//pido leer la instruccion a la memoria
+		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
+
+		char * instruccion;
+		strcpy(instruccion, read_response->buffer);
+
+		procesarMsg(instruccion);
+
+		free(instruccion);
+		free(read_response->buffer);
+		free(read_response);
+		free(icodigo);
+
+		pcb->PC++;
+
+		connection_send(server_socket_kernel, OC_PCB, pcb);
+	}*/
+
 	//TODO: loop de esto y dentro del loop el reciv para quedar a la espera de que kernel nos envíe un pcb
 	// una vez que recibimos procesamos una línea, devolvemos el pbc y quedamos a la espera de recibir el proximo
 	pcb = malloc(sizeof(t_PCB));
