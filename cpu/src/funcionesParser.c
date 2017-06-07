@@ -132,9 +132,9 @@ void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
     log_trace(logger, "Ir al Label [%s]", nombre_etiqueta);
     int posicion = dictionary_get(pcb->indice_etiquetas, nombre_etiqueta);
 
-    int i = list_size(pcb->indice_stack) - 1;
-    t_element_stack * element = list_get(pcb->indice_stack, i);
-    element->retPos = pcb->PC;
+    //int i = list_size(pcb->indice_stack) - 1;
+    //t_element_stack * element = list_get(pcb->indice_stack, i);
+    //element->retPos = pcb->PC;
 
     pcb->PC = posicion;
 }
