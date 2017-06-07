@@ -26,10 +26,12 @@ void arg_var_push(t_list*, t_args_vars*);
 void inicializarFuncionesParser(void);
 void procesarMsg(char *);
 void load_properties(void);
-int calcularPagina();
-void loadlastPosStack();
-void updatePageAvailable(u_int32_t);
+int calcularPaginaProxInstruccion();
+void getNextPosStack();
+void updatePageOffsetAvailable(u_int32_t);
 u_int32_t getPageofPos(t_puntero);
 u_int32_t getOffsetofPos(t_puntero);
 
+t_indice_codigo* obtener_indice_codigo(t_metadata_program*);
+t_dictionary* obtener_indice_etiquetas(t_metadata_program*);
 #endif /* FUNCIONESCPU_H_ */

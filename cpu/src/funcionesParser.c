@@ -16,46 +16,10 @@ t_queue* retornos = NULL;
 t_log* logger = NULL;
 
 extern int pagesize;
-extern t_page_offset* lastPageOffset;
-extern int stackPointer;
+extern t_page_offset* nextPageOffsetInStack;
 extern int server_socket_kernel, server_socket_memoria;
 extern t_PCB* pcb;
-/*
 
-Llamada* crearLlamada(char* nombre, int cantidadParametros, ...){
-    va_list parametrosVa;
-    Parametro* parametros = malloc(10*sizeof(Parametro));
-
-    va_start (parametrosVa , cantidadParametros);
-    int x;
-    for (x = 0; x < cantidadParametros; x++ ){
-        parametros[x] = va_arg (parametrosVa, Parametro);
-    }
-    va_end ( parametrosVa );
-
-    Llamada* retorno = malloc(sizeof(Llamada));
-    retorno->nombre = nombre;
-    retorno->parametros = parametros;
-    return retorno;
-}
-
-Parametro* crearRetorno(){
-    static int num = 4;
-    Parametro* ret = malloc(sizeof(Parametro));
-    ret->valor_variable = num++;
-    return ret;
-}
-
-#define CON_RETORNO_PUNTERO     CON_RETORNO("p", puntero)
-#define CON_RETORNO_VALOR     CON_RETORNO("d", valor_variable)
-#define CON_RETORNO_DESCRIPTOR CON_RETORNO_VALOR
-
-#define CON_RETORNO(FORMATO, TIPO) \
-Parametro *retorno = crearRetorno(); \
-queue_push(retornos, retorno);\
-log_trace(logger, "\tdevuelve [%" FORMATO "]", retorno->TIPO);\
-return retorno->puntero
-*/
 void finalizar(void){
 	t_link_element* regIndicestack = stack_pop(pcb->indice_stack);
 	//todo terminar esto, para quitar del todo el elemento del stack y volver a cambiar PC
@@ -64,36 +28,35 @@ void finalizar(void){
 
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
-	    //queue_push(llamadas, crearLlamada("definirVariable", 1, identificador_variable));
-	    //CON_RETORNO_PUNTERO;
 	if (identificador_variable >= '0' && identificador_variable <= '9') {
 		t_args_vars * newarg = malloc(sizeof(t_args_vars));
 		newarg->id = identificador_variable;
 
-		updatePageAvailable(sizeof(t_puntero)); //actualizo la pagina que usaré revisando si hay espacio en la pagina actual para la nueva variable
+		updatePageOffsetAvailable(sizeof(t_puntero)); //actualizo la pagina y offset que usaré revisando si hay espacio en la pagina actual para la nueva variable
 												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
 												//no hay que validar ahora, cuando mandemos a escribir en memoria ésta nos dará error
 
-		newarg->pagina = lastPageOffset->page;
-		newarg->offset = lastPageOffset->offset;
+		newarg->pagina = nextPageOffsetInStack->page;
+		newarg->offset = nextPageOffsetInStack->offset;
 		newarg->size = sizeof(t_puntero);
 		agregarAStack(newarg,ARG_STACK);
+
 
 	} else {
 		t_args_vars * newvar = malloc(sizeof(t_args_vars));
 		newvar->id = identificador_variable;
 
-		updatePageAvailable(sizeof(t_puntero)); //actualizo la pagina que usaré revisando si hay espacio en pa pagina actual para la nueva variable
+		updatePageOffsetAvailable(sizeof(t_puntero)); //actualizo la pagina y offset que usaré revisando si hay espacio en pa pagina actual para la nueva variable
 												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
 												//no hay que validar ahora, cuando mandemos a escribir en memoria ésta nos dará error
 
-		newvar->pagina = lastPageOffset->page;
-		newvar->offset = lastPageOffset->offset;
+		newvar->pagina = nextPageOffsetInStack->page;
+		newvar->offset = nextPageOffsetInStack->offset;
 		newvar->size = sizeof(t_puntero);
 		agregarAStack(newvar,VAR_STACK);
 
 	}
-	return lastPageOffset->page*pagesize+lastPageOffset->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
+	return nextPageOffsetInStack->page*pagesize+nextPageOffsetInStack->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
@@ -117,19 +80,20 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
    log_trace(logger, "Obtener posicion variable [%c]", nombre_variable);
 
 
-   int _findbyname(t_args_vars * reg){
+   bool _findbyname(t_args_vars * reg){
 	   return reg->id==nombre_variable;
    }
    t_args_vars * reg;
-   t_element_stack* regContextStack = list_get(pcb->indice_stack,stackPointer);
+   t_element_stack* regContextStack = list_get(pcb->indice_stack,pcb->SP);
 
    if (nombre_variable >= '0' && nombre_variable <= '9') {
 	   reg = list_find(regContextStack->args, (void*) _findbyname);
 	}else{
-		reg = list_find(regContextStack->vars, (void*) _findbyname);
+	   reg = list_find(regContextStack->vars, (void*) _findbyname);
 	}
-
-   return reg->pagina*pagesize+reg->offset;
+   log_trace(logger, "encontrado en Stack (id pagina offset size): [%c] [%d] [%d] [%d]", reg->id,reg->pagina,reg->offset,reg->size);
+   log_trace(logger, "Retorno el t_puntero [%d]", ((reg->pagina)*(pagesize))+reg->offset);
+   return ((reg->pagina)*(pagesize))+reg->offset;
 
 }
 
@@ -144,14 +108,24 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
     t_valor_variable * buffer = malloc(respuesta_memoria->buffer_size);
 
 	memcpy(buffer, respuesta_memoria->buffer, respuesta_memoria->buffer_size);
-    return (t_valor_variable) buffer;
+    return *buffer;
 
     free(buffer);
 }
 
 void asignar(t_puntero puntero, t_valor_variable valor_variable){
     log_trace(logger, "Asignar a [%p] el valor [%d]", puntero, valor_variable);
-    //queue_push(llamadas, crearLlamada("asignar", 2, puntero, valor_variable));
+    int resp, page, offset, size;
+
+    page = getPageofPos(puntero);
+    offset =  getOffsetofPos(puntero);
+    size = sizeof(t_valor_variable);
+
+    resp = memory_write(server_socket_memoria,  pcb->pid, page, offset, size, size, &valor_variable, logger);
+
+    if (resp!=1){
+    	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", page, offset,valor_variable);
+    }
 }
 
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
@@ -177,7 +151,7 @@ t_puntero alocar(t_valor_variable espacio){
     connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &buffer);
 
     return *buffer;
-    //CON_RETORNO_PUNTERO;
+
 }
 
 void liberar(t_puntero puntero){
@@ -201,7 +175,7 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
     free(buffer);
-    //CON_RETORNO_DESCRIPTOR;
+
 }
 
 void borrar(t_descriptor_archivo descriptor){

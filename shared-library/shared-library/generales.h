@@ -43,7 +43,7 @@ typedef struct{
 }posicion_memoria;
 
 typedef struct{
-	char* id;
+	char id;
 	int pagina;
 	int offset;
 	int size;

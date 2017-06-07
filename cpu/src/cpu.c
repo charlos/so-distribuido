@@ -23,8 +23,8 @@ t_cpu_conf* cpu_conf;
 t_log* logger;
 int pagesize;
 
-int stackPointer;
-t_page_offset* lastPageOffset;
+//int stackPointer;
+t_page_offset* nextPageOffsetInStack;
 t_PCB* pcb;
 
 int server_socket_kernel, server_socket_memoria;
@@ -52,43 +52,51 @@ int main(void) {
 
 	//TODO: loop de esto y dentro del loop el reciv para quedar a la espera de que kernel nos envíe un pcb
 	// una vez que recibimos procesamos una línea, devolvemos el pbc y quedamos a la espera de recibir el proximo
-	pcb = malloc(sizeof(t_PCB));
+//	pcb = malloc(sizeof(t_PCB));
 	uint8_t operation_code;
-	connection_recv(server_socket_kernel, &operation_code, pcb);
+	//connection_recv(server_socket_kernel, &operation_code, pcb);
 
-	int pc, page, cantInstrucciones;
-	//TODO cambiar este valor fijo por el que recibamos durante la recepción del PCB
-	cantInstrucciones = 10;
-	lastPageOffset= malloc(sizeof(lastPageOffset));
-	loadlastPosStack();
+	pcb = crear_PCB_Prueba();
+
+	int pc, page;
+	nextPageOffsetInStack = malloc(sizeof(t_page_offset));
+	getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
 
 	//Se incrementa Program Counter para comenzar la ejecución
-	pcb->PC++;
+	//pcb->PC++;
 
-	for( pc = pcb->PC ; pc <= cantInstrucciones ; pc++){
-
-		if(list_size(pcb->indice_stack)==0){
+	//for( pc = pcb->PC ; pc <= pcb->cantidad_instrucciones ; pc++){
+	while (pcb->PC < pcb->cantidad_instrucciones){
+		if(pcb->SP==0){
 			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
 			nuevoContexto();
+			pcb->SP--; //Al crear un nuevo contexto se incrementó el StackPointer, pero en este caso, cuando no había contexto alguno, corresponde que SP
+					   //quede en 0 al ser el primer contexto de ejecución.
 		}
 		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
-		icodigo = ((t_indice_codigo*) pcb->indice_codigo)+pc;
-//TODO ver de cambiar la esctructura indice de codigo
-		page = calcularPagina();
+
+		memcpy(icodigo, ((t_indice_codigo*) pcb->indice_codigo)+pcb->PC, sizeof(t_indice_codigo));
+
+		page = calcularPaginaProxInstruccion();
 
 		//pido leer la instruccion a la memoria
 		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
 
-		char * instruccion;
-		strcpy(instruccion, read_response->buffer);
+		if (read_response->exec_code!=1){
+			log_error(logger, "Error al leer de memoria (Page [%d] |Offset [%d])", page, icodigo->offset);
+		}
+		((char *)(read_response->buffer))[(read_response->buffer_size) - 1] = '\0';
 
-		procesarMsg(instruccion);
+		log_trace(logger, "Evaluando instruccion: %s",read_response->buffer);
 
-		free(instruccion);
+		procesarMsg(read_response->buffer);
+
+		//free(instruccion);
 		free(read_response->buffer);
 		free(read_response);
 		free(icodigo);
 
+		pcb->PC++;
 	}
 
 	return EXIT_SUCCESS;
