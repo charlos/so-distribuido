@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t frame;
-	int32_t pid;
+	int32_t  pid;
 	uint32_t page;
 } t_reg_invert_table;
 
@@ -30,5 +30,16 @@ typedef struct {
 	uint32_t pid;
 	uint32_t pages_count;
 } t_reg_pages_process_table;
+
+typedef struct {
+	int32_t pid;
+	int32_t page;
+	void *  content;
+} t_cache_memory;
+
+typedef struct {
+	int32_t pid;
+	int16_t entries;
+} t_cache_x_process;
 
 #endif /* MEMORIA_H_ */
