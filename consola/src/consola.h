@@ -27,6 +27,7 @@ typedef struct {
 	pthread_t thread;
 	char * file_content;
 	int pid;
+	int terminate;
 } threadpid;
 
 void load_config(char * path);
