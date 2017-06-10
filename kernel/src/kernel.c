@@ -21,11 +21,13 @@ int main(int argc, char* argv[]) {
 
 	cola_listos = queue_create();
 	registro_pid = 1;
-	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
+
+	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
 	load_kernel_properties();
 
+	tabla_paginas_heap = list_create();
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
 	TAMANIO_PAGINAS = handshake(memory_socket, logger);
@@ -103,7 +105,6 @@ void manage_select(t_aux* estructura){
 				} else {
 
 					solve_request(fd_seleccionado, &(estructura->master));
-					//TODO Borrar sockets que se desconectan
 				}
 			}
 		}
