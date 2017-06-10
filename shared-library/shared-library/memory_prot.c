@@ -142,9 +142,9 @@ void init_process_send_resp(int * client_socket, int resp_code) {
 
 int memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer, t_log * logger) {
 
-	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╦══════════════╦════════╗
-		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║ buffer size  ║ buffer ║
-		╚═════════════════════════╩═══════════════╩════════════════╩══════════════════╩════════════════╩══════════════╩════════╝ **/
+	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╦════════════════════════╦════════╗
+		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║ buffer size (4 bytes)  ║ buffer ║
+		╚═════════════════════════╩═══════════════╩════════════════╩══════════════════╩════════════════╩════════════════════════╩════════╝ **/
 
 	uint8_t prot_ope_code = 1;
 	uint8_t prot_pid = 4;
