@@ -938,7 +938,7 @@ void memory_console(void * unused) {
 							if ((pages_per_process->pid) == pid) {
 								log_info(console, "pid : %d", pid);
 								log_info(console, "frames ------------> %d", (pages_per_process->pages_count));
-								log_info(console, "size --------------> %d", (pages_per_process->pages_count) * (memory_conf->frame_size));
+								log_info(console, "size --------------> %d bytes", (pages_per_process->pages_count) * (memory_conf->frame_size));
 								break;
 							}
 							index++;
