@@ -12,7 +12,7 @@
 #include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include <commons/collections/list.h>
-
+#include "funcionesCPU.h"
 
 #define VAR_STACK		0
 #define ARG_STACK		1
@@ -32,8 +32,6 @@ typedef struct{
 void load_properties(void);
 void inicializarFuncionesParser(void);
 void procesarMsg(char* ) ;
-void stack_push(t_stack* , t_element_stack* );
-t_link_element* stack_pop(t_stack* );
 int calcularPagina();
 //int nuevoContexto();
 #endif /* CPU_H_ */

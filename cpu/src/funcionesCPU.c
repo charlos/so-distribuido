@@ -53,8 +53,8 @@ int agregarAStack(t_args_vars* new_arg_var,int tipo){
 	return resp;
 }
 
-t_link_element* stack_pop(t_stack* stack){
-	t_link_element* elemento = list_remove(stack, list_size(stack) - 1);
+t_element_stack* stack_pop(t_stack* stack){
+	t_element_stack* elemento = list_remove(stack, pcb->SP);
 	pcb->SP--;
 	return elemento;
 }
@@ -74,6 +74,18 @@ void arg_var_push(t_list* lista, t_args_vars* element){
 	list_add(lista, element);
 }
 
+void eliminarContexto(t_element_stack* contexto){
+
+	list_destroy_and_destroy_elements(contexto->args, (void*) args_vars_destroy);
+	list_destroy_and_destroy_elements(contexto->vars, (void*) args_vars_destroy);
+
+	free(contexto->retVar);
+	free(contexto);
+}
+
+void args_vars_destroy(t_args_vars *elem) {
+   free(elem);
+}
 
 void inicializarFuncionesParser(void) {
 	funciones = malloc(sizeof(AnSISOP_funciones));
@@ -85,6 +97,9 @@ void inicializarFuncionesParser(void) {
 	funciones->AnSISOP_llamarSinRetorno = llamarSinRetorno;
 	funciones->AnSISOP_llamarConRetorno = llamarConRetorno;
 	funciones->AnSISOP_finalizar = finalizar;
+	funciones->AnSISOP_obtenerValorCompartida = obtenerValorCompartida;
+	funciones->AnSISOP_asignarValorCompartida = asignarValorCompartida;
+	funciones->AnSISOP_retornar = retornar;
 
 	func_kernel = malloc(sizeof(AnSISOP_kernel));
 	func_kernel->AnSISOP_abrir = abrir;
@@ -97,6 +112,7 @@ void inicializarFuncionesParser(void) {
 	func_kernel->AnSISOP_liberar = liberar;
 	func_kernel->AnSISOP_wait = wait;
 	func_kernel->AnSISOP_signal = signal;
+
 }
 void procesarMsg(char * msg) {
 		analizadorLinea(msg,funciones, func_kernel);
@@ -195,14 +211,35 @@ t_PCB* crear_PCB_Prueba(){
 	pcb->pid = 1;
 
 	char* PROGRAMA =
-			"#!/usr/bin/ansisop\n"
+
+			 "#!/usr/bin/ansisop\n"
 			"begin\n"
-			"variables a, b\n"
-			"a = 3\n"
-			"b = 5\n"
-			"a = b + 12\n"
+			"variables a,g\n"
+			"a = 1\n"
+			"g <- doble a\n"
+			"prints s g\n"
+			"end\n"
+			"\n"
+			"function doble\n"
+			"variables f\n"
+			"f = $0 + $0\n"
+			"return f\n"
 			"end\n"
 			"\n";
+
+
+
+/*			"#!/usr/bin/ansisop\n"
+						"begin\n"
+						"variables a, b\n"
+						"a = 64999\n"
+						"b = 64000\n"
+						"a = b + 12\n"
+						"end\n"
+						"\n";
+*/
+
+
 	char *programa = strdup(PROGRAMA);
 
 	pcb->cantidad_paginas = 1;
@@ -214,6 +251,14 @@ t_PCB* crear_PCB_Prueba(){
 	pcb->cantidad_instrucciones = metadata->instrucciones_size;
 	pcb->indice_codigo = obtener_indice_codigo(metadata);
 	pcb->indice_etiquetas = obtener_indice_etiquetas(metadata);
+
+
+//	void _testdic(char* etiqueta, int* linea) {
+//		log_trace(logger, "Etiqueta [%s] linea [%d]", etiqueta,*linea);
+//	}
+
+//	log_trace(logger, "Luego de obtener indice etiquetas");
+//	dictionary_iterator(pcb->indice_etiquetas, (void*) _testdic);
 
 	pcb->indice_stack = list_create();
 

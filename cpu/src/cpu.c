@@ -110,7 +110,7 @@ int main(void) {
 
 	//for( pc = pcb->PC ; pc <= pcb->cantidad_instrucciones ; pc++){
 	while (pcb->PC < pcb->cantidad_instrucciones){
-		if(pcb->SP==0){
+		if(list_size(pcb->indice_stack)==0){
 			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
 			nuevoContexto();
 			pcb->SP--; //Al crear un nuevo contexto se incrementó el StackPointer, pero en este caso, cuando no había contexto alguno, corresponde que SP
