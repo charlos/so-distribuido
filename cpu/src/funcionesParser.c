@@ -21,6 +21,7 @@ extern int server_socket_kernel, server_socket_memoria;
 extern t_PCB* pcb;
 
 void finalizar(void){
+	log_trace(logger, "Finalizar (en construcción)");
 	t_link_element* regIndicestack = stack_pop(pcb->indice_stack);
 	//todo terminar esto, para quitar del todo el elemento del stack y volver a cambiar PC
 }
@@ -61,10 +62,14 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
 	nuevoContexto();
+    int* posicion = (int*)dictionary_get(pcb->indice_etiquetas, etiqueta);
+    pcb->PC = *posicion;
+    log_trace(logger, "Llamar sin Retorno. Ir a la linea [%d]", pcb->PC);
+    pcb->PC--; //decremento porque al terminar de ejecutar se incrementará PC
 }
 
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
-	log_trace(logger, "Llamar con Retorno [%d]", donde_retornar);
+	log_trace(logger, "Llamar con Retorno a [%d] y id [%s]", donde_retornar,etiqueta);
 	t_element_stack* regIndicestack = nuevoContexto();
 
 	posicion_memoria* retVar = malloc(sizeof(posicion_memoria));
@@ -74,6 +79,11 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 
 	regIndicestack->retVar = retVar;
 	regIndicestack->retPos = pcb->PC;
+
+    int* posicion = (int*)dictionary_get(pcb->indice_etiquetas, etiqueta);
+    pcb->PC = *posicion;
+    pcb->PC--; //decremento porque al terminar de ejecutar se incrementará PC
+    log_trace(logger, "Ir a la linea [%d]", pcb->PC);
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){
@@ -108,9 +118,11 @@ t_valor_variable dereferenciar(t_puntero direccion_variable){
     t_valor_variable * buffer = malloc(respuesta_memoria->buffer_size);
 
 	memcpy(buffer, respuesta_memoria->buffer, respuesta_memoria->buffer_size);
-    return *buffer;
+	t_valor_variable resp = *buffer;
 
-    free(buffer);
+	//free(buffer);
+
+	return resp;
 }
 
 void asignar(t_puntero puntero, t_valor_variable valor_variable){
@@ -129,18 +141,49 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
 }
 
 void irAlLabel(t_nombre_etiqueta nombre_etiqueta) {
-    log_trace(logger, "Ir al Label [%s]", nombre_etiqueta);
-    int posicion = dictionary_get(pcb->indice_etiquetas, nombre_etiqueta);
 
-    //int i = list_size(pcb->indice_stack) - 1;
-    //t_element_stack * element = list_get(pcb->indice_stack, i);
-    //element->retPos = pcb->PC;
-
-    pcb->PC = posicion;
+    int* posicion = (int*)dictionary_get(pcb->indice_etiquetas, nombre_etiqueta);
+    pcb->PC = *posicion;
+    log_trace(logger, "Ir a la linea [%d]", pcb->PC);
+    pcb->PC--; //decremento porque al terminar de ejecutar se incrementará PC
 }
 
+void retornar(t_valor_variable retorno){
+	 /*
+	  * Cambia el Contexto de Ejecución Actual para volver al Contexto anterior al que se está ejecutando,
+	  * recuperando el Cursor de Contexto Actual, el Program Counter y la direccion donde retornar,
+	  * asignando el valor de retorno en esta, previamente apilados en el Stack.
+	 */
+	int resp;
+	t_element_stack* contexto = stack_pop(pcb->indice_stack);
+
+	posicion_memoria* retVar =contexto->retVar;
+
+    resp = memory_write(server_socket_memoria,  pcb->pid, retVar->pagina, retVar->offset, retVar->size, retVar->size, &retorno, logger);
+
+    if (resp!=1){
+    	log_error(logger, "PID:%d Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", pcb->pid, retVar->pagina, retVar->offset,retorno);
+    }
+
+    pcb->PC = contexto->retPos;
+    //pcb->PC--; //decremento 1 porque al finalizar CPU incrementará antes de devolver el PCB a kernel
+
+    eliminarContexto(contexto);
+
+}
+
+
+t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
+
+}
+
+t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+
+}
+
+
 t_puntero alocar(t_valor_variable espacio){
-    log_trace(logger, "Reserva [%d] espacio", espacio);
+    log_trace(logger, "Reserva [%d] espacio en Heap", espacio);
 
     void * buff = malloc(sizeof(int) + sizeof(t_valor_variable));
     memcpy(buff, &(pcb->pid), sizeof(int));

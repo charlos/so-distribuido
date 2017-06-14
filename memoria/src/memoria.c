@@ -866,7 +866,7 @@ void memory_console(void * unused) {
 					pthread_mutex_unlock(&mutex_lock);
 
 				} else if (strcmp(param, DUMP_MEMORY_CONTENT_CMD) == 0) {
-					log_info(console, "memory content");
+					printf("\nmemory content");
 					t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 					int frame = 0;
 					while (frame < (memory_conf->frames) && (invert_table_ptr->pid < 0)) {
@@ -875,19 +875,29 @@ void memory_console(void * unused) {
 					}
 					void * read_pos = memory_ptr + (frame * (memory_conf->frame_size));
 					char * frame_content;
-					log_info(console, "    #frame   #content");
-					log_info(console, "__________   ");
+					printf("\n    #frame   #content");
+					printf("\n__________   ");
+					int i;
 					while (frame < (memory_conf->frames)) {
 						rw_lock_unlock(memory_locks, LOCK_READ, frame);
-						frame_content = malloc((memory_conf->frame_size) + 1);
+						frame_content = malloc((memory_conf->frame_size));
 						memcpy(frame_content, read_pos, (memory_conf->frame_size));
-						frame_content[(memory_conf->frame_size)] = "\0";
-						log_info(console, "%10d | %s ", frame, frame_content);
+						printf("\n%10d | ", frame);
+						for (i = 0; i < (memory_conf->frame_size); i++) {
+							if (frame_content[i] == '\0') {
+								printf("%s", "\\0");
+							} else if (frame_content[i] == '\n') {
+								printf("%s", "\\n");
+							} else {
+								printf("%c", frame_content[i]);
+							}
+						};
 						free(frame_content);
 						rw_lock_unlock(memory_locks, UNLOCK, frame);
 						frame++;
 						read_pos += (memory_conf->frame_size);
 					}
+					printf("\n");
 				}
 			} else if (strcmp(command, FLUSH_CMD) == 0) {
 				log_info(console, "flush command");
@@ -938,7 +948,7 @@ void memory_console(void * unused) {
 							if ((pages_per_process->pid) == pid) {
 								log_info(console, "pid : %d", pid);
 								log_info(console, "frames ------------> %d", (pages_per_process->pages_count));
-								log_info(console, "size --------------> %d", (pages_per_process->pages_count) * (memory_conf->frame_size));
+								log_info(console, "size --------------> %d bytes", (pages_per_process->pages_count) * (memory_conf->frame_size));
 								break;
 							}
 							index++;

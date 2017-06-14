@@ -77,12 +77,13 @@ int read_command(char* command) {
 
 	char** palabras = string_n_split(command, 2, " ");
 
+	int i=0;
+		while(palabras[i]) {
+		i++;
+	}
+
 	if(strcmp(palabras[0], "init") == 0) {
 
-		int i=0;
-		while(palabras[i]) {
-			i++;
-		}
 		if(i != 2) {
 			printf("Cantidad de parametros erronea\n");
 			return -1;
@@ -111,7 +112,7 @@ int read_command(char* command) {
 		}
 	}
 	else if(strcmp(palabras[0], "kill")==0) {
-		if((sizeof(palabras)/sizeof(palabras[0])) != 2) {
+		if(i != 2) {
 			printf("Cantidad de parametros erronea\n");
 				return -1;
 		}
@@ -122,7 +123,8 @@ int read_command(char* command) {
 				return (recon->pid == pid);
 			}
 			threadpid* hilo_a_matar = list_find(thread_list, (void *) _coincidePid);
-			pthread_kill(hilo_a_matar->thread, SIGKILL);
+			hilo_a_matar->terminate = 1;
+			//pthread_kill(hilo_a_matar->thread, SIGKILL);
 			//pthread_join(hilo_a_matar->thread, NULL);
 			connection_send(main_console_socket, OC_KILL_CONSOLA, hilo_a_matar->pid);
 
@@ -142,28 +144,10 @@ int read_command(char* command) {
 		exit(0);
 	}
 	else if(strcmp(palabras[0], "clean")==0) {
-		__fpurge(stdout);
+		printf("\e[1;1H\e[2J");
+		enter_command();
 	}
 	else return -2;
-}
-void mandarScriptAKernel(char * string) {
-
-	connection_send(main_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, string);
-
-	/*uint8_t size_opc = sizeof(uint8_t);
-	uint8_t size_char = sizeof(char);
-	uint8_t length_string = strlen(string) * size_char;
-	uint8_t length_message = length_string +1;
-
-	void * buffer = malloc(length_message);
-
-
-
-	memcpy(buffer, &length_string, 1);
-	memcpy(buffer + 1, string, length_string);
-	connection_send(console_socket, operation_code, buffer);
-	free(buffer);*/
-
 }
 void thread_subprograma(threadpid* thread_recon) {
 
@@ -178,14 +162,27 @@ void thread_subprograma(threadpid* thread_recon) {
 	if(result > 1 && operation_code == OC_NUEVA_CONSOLA_PID)
 		thread_recon->pid = *(uint8_t *) buffer;
 
+	//printf("%d", thread_recon->pid);
+	log_trace(logger, "%d", thread_recon->pid);
+	//fprintf(stdout, "%d", thread_recon->pid);
+
 	int active = 1;
 	while(active) {
+
+		//signal(SIGUSR1, _handler_morir);
+		if(thread_recon->terminate) pthread_exit(NULL);
+
 		result = connection_recv(sub_console_socket, &operation_code, &buffer);
 		if(operation_code == OC_INSTRUCCION_CONSOLA)
 			printf("[%d] %s\n", thread_recon->pid, (char *) buffer);
+
+		if(!result)
+			active = 0;
 	}
 
+
 }
+
 char * read_file(char * path) {
 	FILE * file;
 	char *buffer = malloc(255);

@@ -43,6 +43,10 @@ void liberar(t_puntero);
 void llamarSinRetorno(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 void finalizar(void);
+t_valor_variable obtenerValorCompartida(t_nombre_compartida);
+t_valor_variable asignarValorCompartida(t_nombre_compartida, t_valor_variable);
+void retornar(t_valor_variable);
+
 t_descriptor_archivo abrir(t_direccion_archivo, t_banderas);
 void borrar(t_descriptor_archivo);
 void cerrar(t_descriptor_archivo);

@@ -18,8 +18,10 @@
 #include "cpu.h"
 
 t_element_stack* nuevoContexto();
+void eliminarContexto(t_element_stack*);
+void args_vars_destroy(t_args_vars*);
 int agregarAStack(t_args_vars*, int );
-t_link_element* stack_pop(t_stack*);
+t_element_stack* stack_pop(t_stack*);
 void stack_push(t_stack*, t_element_stack* );
 t_args_vars* arg_var_pop(t_list*);
 void arg_var_push(t_list*, t_args_vars*);
