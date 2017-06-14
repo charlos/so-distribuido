@@ -12,7 +12,7 @@
 void solve_request(int socket, fd_set* set){
 	uint8_t operation_code;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
-	t_puntero bloque_heap;
+	t_puntero bloque_heap_ptr;
 	int status;
 	char* buffer;
 	t_pedido_reservar_memoria* pedido;
@@ -57,26 +57,34 @@ void solve_request(int socket, fd_set* set){
 		pagina = obtener_pagina_con_suficient_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
 			memory_assign_pages(memory_socket, pedido->pid, 1, logger);
-			// TODO: Agregar pagina nueva a tabla de heap
+
+			tabla_heap_agregar_pagina(pedido->pid);
 			pagina = obtener_pagina_con_suficient_espacio(pedido->pid, pedido->espacio_pedido);
+
+			t_heapMetadata* meta_pag_nueva =crear_metadata_libre(TAMANIO_PAGINAS);
+
+			// Escribimos la metadata de la nueva pagina en Memoria
+			memory_write(memory_socket, pedido->pid, pagina->nro_pagina, 0, sizeof(t_heapMetadata), sizeof(t_heapMetadata), meta_pag_nueva, logger);
 		}
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, pagina->nro_pagina, 0, TAMANIO_PAGINAS, logger);
-		bloque_heap = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pagina->nro_pagina, pedido->espacio_pedido);
+		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pagina->nro_pagina, pedido->espacio_pedido);
 
-
+		marcar_bloque_ocupado(bloque_heap_ptr, pagina, pedido->espacio_pedido);
 		// Mandamos la pagina de heap modificada
 		memory_write(memory_socket, pedido->pid, pagina->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 
+		modificar_pagina(pagina, pedido->espacio_pedido);
 		// Mandamos puntero al programa que lo pidio
-		connection_send(socket, OC_RESP_RESERVAR, bloque_heap);
+		bloque_heap_ptr += TAMANIO_PAGINAS * pagina->nro_pagina;
+		connection_send(socket, OC_RESP_RESERVAR, bloque_heap_ptr);
 
 		break;
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;
 		liberar->nro_pagina = liberar->posicion / TAMANIO_PAGINAS;
-//		sad = liberar->posicion % TAMANIO_PAGINAS;
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, logger);
 		marcar_bloque_libre(respuesta_pedido_pagina->buffer, liberar);
+		memory_write(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 	}
 }
 
@@ -143,6 +151,24 @@ t_pagina_heap* obtener_pagina_con_suficient_espacio(int pid, int espacio){
 	return list_find(tabla_paginas_heap, (void*)tiene_mismo_pid_y_espacio_disponible);
 }
 
+t_pagina_heap* crear_pagina_heap(int pid, int nro_pagina){
+	t_pagina_heap* new = malloc(sizeof(t_pagina_heap));
+	new->pid = pid;
+	new->nro_pagina = nro_pagina;
+	new->espacio_libre = TAMANIO_PAGINAS - sizeof(t_heapMetadata);
+	return new;
+}
+
+void tabla_heap_agregar_pagina(int pid){
+	bool _mismo_pid(t_pagina_heap* p){
+		return p->pid == pid;
+	}
+	t_list* filtrados = list_filter(tabla_paginas_heap, (void*) _mismo_pid);
+	int ultima_pagina = list_get(filtrados, list_size(filtrados) - 1);
+	t_pagina_heap* nueva_pag = crear_pagina_heap(pid, ultima_pagina + 1);
+	list_add(tabla_paginas_heap, nueva_pag);
+}
+
 t_heapMetadata* leer_metadata(void* pagina){
 	t_heapMetadata* new = malloc(sizeof(t_heapMetadata));
 	memcpy(&(new->size), pagina, sizeof(uint32_t));
@@ -150,7 +176,7 @@ t_heapMetadata* leer_metadata(void* pagina){
 	return new;
 }
 
-t_puntero buscar_bloque_disponible(void* pagina, int nro_pagina, int espacio_pedido){
+t_puntero buscar_bloque_disponible(void* pagina, int nro_pagina, int espacio_pedido){			// Devuelve el puntero a la metadata del bloque con espacio suficiente
 	t_heapMetadata* metadata;
 	t_puntero posicion_bloque;
 	int espacio_total_bloque;
@@ -158,14 +184,16 @@ t_puntero buscar_bloque_disponible(void* pagina, int nro_pagina, int espacio_ped
 	while(offset < TAMANIO_PAGINAS){
 		metadata = leer_metadata(pagina + offset);
 		if(!(metadata->isFree) && metadata->size >= (espacio_pedido + sizeof(t_heapMetadata))){		// hay un bloque con suficiente espacio libre
-			espacio_total_bloque = metadata->size;
-			cambiar_metadata(metadata, espacio_pedido);
-			memcpy((char*)pagina + offset, metadata, sizeof(t_heapMetadata));		//se guarda la nueva metadata en la pagina (para despues mandar a Memoria)
-			posicion_bloque = offset + (TAMANIO_PAGINAS*nro_pagina);
-			offset += sizeof(t_heapMetadata);		//avanza la cantidad de bytes de la metadata
-			offset += metadata->size;				//avanza la cantidad de bytes del bloque de datos
-			agregar_bloque_libre(pagina, offset);	//se marca lo que queda de la pagina como espacio libre
-			return posicion_bloque;
+
+//			cambiar_metadata(metadata, espacio_pedido);
+//			memcpy((char*)pagina + offset, metadata, sizeof(t_heapMetadata));		//se guarda la nueva metadata en la pagina (para despues mandar a Memoria)
+			return offset;// + (TAMANIO_PAGINAS*nro_pagina);
+/*
+ * 			offset += sizeof(t_heapMetadata);		//avanza la cantidad de bytes de la metadata
+ * 			offset += metadata->size;				//avanza la cantidad de bytes del bloque de datos
+ * 			agregar_bloque_libre(pagina, offset);	//se marca lo que queda de la pagina como espacio libre
+ * 			return posicion_bloque;
+ */
 		}
 		offset += sizeof(t_heapMetadata);			//avanza la cantidad de bytes de la metadata
 		offset += metadata->size;					//avanza la cantidad de bytes del bloque de datos
@@ -192,41 +220,15 @@ t_pagina_heap* buscar_pagina_heap(int pid, int nro_pagina){
 	}
 	return list_find(tabla_paginas_heap, (void*) _pagina_de_programa);
 }
-void marcar_bloque_libre(void* pagina, t_pedido_liberar_memoria* pedido_free){
+
+void marcar_bloque_libre(char* pagina, t_pedido_liberar_memoria* pedido_free){
 	int ultimo_size, offset = pedido_free->posicion % TAMANIO_PAGINAS;
-	t_heapMetadata* metadata = leer_metadata((char*) pagina + offset);
+	t_heapMetadata* metadata = leer_metadata(pagina + offset);
 	metadata->isFree = 1;
 	t_pagina_heap* pagina_de_tabla = buscar_pagina_heap(pedido_free->pid, pedido_free->nro_pagina);
 	pagina_de_tabla->espacio_libre += metadata->size;
-	//TODO correr todos los bloques
-	//TODO ver si se libera la pagina
-	int posicion_inicial = offset;
-	t_heapMetadata* metadata2;
-	offset += sizeof(t_heapMetadata);
-	offset += metadata->size;
-	while(offset < TAMANIO_PAGINAS){
-		metadata2 = leer_metadata(pagina + offset);
-		if(metadata2->isFree)break;
-//		memmove(pagina + posicion_inicial + )
-	}
-	offset += sizeof(t_heapMetadata);
-	offset += metadata->size;
-	ultimo_size = metadata->size;
-	correr_bloques_desde((char*)pagina + offset);
+	memcpy(pagina + offset, metadata, sizeof(t_heapMetadata));
 
-}
-
-void correr_bloques_desde(void* posicion_inicial, int espacio_restante){
-	t_heapMetadata* metadata = leer_metadata(posicion_inicial);
-	int offset_to = 0, offset_from = 0;
-	offset_from += sizeof(t_heapMetadata);
-	offset_from += metadata->size;
-	while(espacio_restante > 5){
-		metadata = leer_metadata(posicion_inicial + offset_from);
-		if(metadata->isFree)break;
-		memmove(posicion_inicial + offset_to, posicion_inicial + offset_from, sizeof(t_heapMetadata) + metadata->size);
-		espacio_restante -= sizeof(t_heapMetadata) + metadata->size;
-	}
 }
 
 t_heapMetadata* crear_metadata_libre(uint32_t espacio){
@@ -234,4 +236,20 @@ t_heapMetadata* crear_metadata_libre(uint32_t espacio){
 	new->isFree = 1;
 	new->size = espacio - sizeof(t_heapMetadata);
 	return new;
+}
+
+void marcar_bloque_ocupado(t_puntero bloque_heap_ptr, char* pagina, int espacio_pedido){
+	t_heapMetadata* metadata = leer_metadata(pagina + bloque_heap_ptr);
+	t_heapMetadata* metadata2;
+	int sobrante = metadata->size - espacio_pedido;
+	metadata->isFree = 0;
+	metadata->size = espacio_pedido;
+	memcpy(pagina + bloque_heap_ptr, metadata, sizeof(t_heapMetadata));
+	metadata2 = crear_metadata_libre(sobrante);
+	memcpy(pagina + bloque_heap_ptr + t_heapMetadata + metadata->size, metadata2, sizeof(t_heapMetadata));
+
+}
+
+void modificar_pagina(t_pagina_heap* pagina, int espacio_ocupado){
+	pagina->espacio_libre = pagina->espacio_libre - (espacio_ocupado + sizeof(t_heapMetadata));
 }
