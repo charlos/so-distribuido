@@ -246,7 +246,7 @@ void marcar_bloque_ocupado(t_puntero bloque_heap_ptr, char* pagina, int espacio_
 	metadata->size = espacio_pedido;
 	memcpy(pagina + bloque_heap_ptr, metadata, sizeof(t_heapMetadata));
 	metadata2 = crear_metadata_libre(sobrante);
-	memcpy(pagina + bloque_heap_ptr + t_heapMetadata + metadata->size, metadata2, sizeof(t_heapMetadata));
+	memcpy(pagina + bloque_heap_ptr + sizeof(t_heapMetadata) + metadata->size, metadata2, sizeof(t_heapMetadata));
 
 }
 
