@@ -166,7 +166,6 @@ void retornar(t_valor_variable retorno){
     }
 
     pcb->PC = contexto->retPos;
-    //pcb->PC--; //decremento 1 porque al finalizar CPU incrementará antes de devolver el PCB a kernel
 
     eliminarContexto(contexto);
 
@@ -200,7 +199,10 @@ t_puntero alocar(t_valor_variable espacio){
 void liberar(t_puntero puntero){
     log_trace(logger, "Reserva [%p] espacio", puntero);
 
-    connection_send(server_socket_kernel, OC_FUNCION_LIBERAR, puntero);
+    t_pedido_liberar_memoria* liberar = malloc(sizeof(t_pedido_liberar_memoria));
+    liberar->pid = pcb->pid;
+    liberar->posicion = puntero;
+    connection_send(server_socket_kernel, OC_FUNCION_LIBERAR, liberar);
 
 }
 
@@ -211,10 +213,14 @@ char* boolToChar(bool boolean) {
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     log_trace(logger, "Abrir [%s] Lectura: %s. Escritura: %s, Creacion: %s", direccion,
               boolToChar(banderas.lectura), boolToChar(banderas.escritura), boolToChar(banderas.creacion));
+//TODO revisar arreglo del calculo del tamaño de la direccion para tener en cuenta todos los caracteres de char* (t_nombre_variable)
 
-    void * buffer = malloc(sizeof(t_direccion_archivo)+sizeof(t_banderas));
-    memcpy(buffer, &direccion, sizeof(t_direccion_archivo));
-    memcpy(buffer + sizeof(t_direccion_archivo), &banderas, sizeof(t_banderas));
+    int length_direccion = string_length(direccion);
+    void * buffer = malloc(sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable)+sizeof(t_banderas));
+    memcpy(buffer, &(pcb->pid), sizeof(int));
+    memcpy(buffer + sizeof(int), &length_direccion,sizeof(int));
+    memcpy(buffer + sizeof(int) + sizeof(int), &direccion, length_direccion * sizeof(t_nombre_variable));
+    memcpy(buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), &banderas, sizeof(t_banderas));
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
     free(buffer);

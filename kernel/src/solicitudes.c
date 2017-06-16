@@ -13,7 +13,7 @@ void solve_request(int socket, fd_set* set){
 	uint8_t operation_code;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
 	t_puntero bloque_heap_ptr;
-	int status;
+	int status, resp;
 	char* buffer;
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
@@ -21,6 +21,11 @@ void solve_request(int socket, fd_set* set){
 	t_read_response* respuesta_pedido_pagina;
 	t_PCB* pcb;
 	t_metadata_program* metadata;
+
+    int length_direccion, pid;
+    char* direccion;
+    t_banderas* flags;
+
 	status = connection_recv(socket, &operation_code, &buffer);
 	if(status <= 0)	FD_CLR(socket, set);
 
@@ -82,12 +87,22 @@ void solve_request(int socket, fd_set* set){
 
 		break;
 	case OC_FUNCION_LIBERAR:
-		liberar = buffer;
+		liberar = buffer;		// liberar buffer
 		liberar->nro_pagina = liberar->posicion / TAMANIO_PAGINAS;
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, logger);
 		marcar_bloque_libre(respuesta_pedido_pagina->buffer, liberar);
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
 		memory_write(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+		break;
+	case OC_FUNCION_ABRIR:
+	    memcpy(pid, buffer, sizeof(int));
+	    memcpy(length_direccion, buffer + sizeof(int),sizeof(int));
+	    direccion = malloc(length_direccion);
+	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
+	    memcpy(flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
+	    resp = abrir_archivo(pid, direccion, flags);
+	    //TODO respuesta al pedido de abrir archivo
+	    //connection_send(socket, OC_RESP_ABRIR, xxxx);
 	}
 }
 
@@ -254,6 +269,11 @@ void modificar_pagina(t_pagina_heap* pagina, int espacio_ocupado){
 	pagina->espacio_libre = pagina->espacio_libre - (espacio_ocupado + sizeof(t_heapMetadata));
 }
 
+int abrir_archivo(int pid, char* direccion, t_banderas* flags){
+	//TODO busco direccion en la tabla global: si está tomo posición y incremento open, lo agrego a la tabla del proceso con los permisos indicados
+	//si no está en la global y hay permiso de creacion se agrega a la tabla global y a la del proceso
+	//si no está en la global y no hay permiso de creación, se devuelve mensaje de error
+}
 void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 	int offset = 0;
 	t_pagina_heap* pag_heap;

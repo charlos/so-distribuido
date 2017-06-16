@@ -63,6 +63,16 @@ typedef struct {
 } t_archivo;
 
 typedef struct{
+	char* flags;
+	int global_fd;
+} t_process_file;
+
+typedef struct{
+	char* file;
+	int open;
+} t_global_file;
+
+typedef struct{
 	int pid;
 	int espacio_pedido;
 }t_pedido_reservar_memoria;
