@@ -24,16 +24,7 @@ typedef struct{
 	bool isFree;
 }t_heapMetadata;
 
-typedef struct{
-	uint8_t pid;
-	uint16_t espacio_pedido;
-}t_pedido_reservar_memoria;
 
-typedef struct{
-	uint8_t pid;
-	uint8_t nro_pagina;
-	uint16_t posicion;
-}t_pedido_liberar_memoria;
 
 t_list* tabla_paginas_heap;
 void mandar_codigo_a_memoria(char* codigo, int pid);
