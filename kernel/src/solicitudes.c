@@ -54,12 +54,12 @@ void solve_request(int socket, fd_set* set){
 		break;
 	case OC_FUNCION_RESERVAR:
 		pedido = buffer;
-		pagina = obtener_pagina_con_suficient_espacio(pedido->pid, pedido->espacio_pedido);
+		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
 			memory_assign_pages(memory_socket, pedido->pid, 1, logger);
 
 			tabla_heap_agregar_pagina(pedido->pid);
-			pagina = obtener_pagina_con_suficient_espacio(pedido->pid, pedido->espacio_pedido);
+			pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 
 			t_heapMetadata* meta_pag_nueva =crear_metadata_libre(TAMANIO_PAGINAS);
 
@@ -147,7 +147,7 @@ t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata){
 	return indice_etiquetas;
 }
 
-t_pagina_heap* obtener_pagina_con_suficient_espacio(int pid, int espacio){
+t_pagina_heap* obtener_pagina_con_suficiente_espacio(int pid, int espacio){
 	bool tiene_mismo_pid_y_espacio_disponible(t_pagina_heap* pagina){
 		return (pagina->pid == pid && pagina->espacio_libre >= (espacio + sizeof(t_heapMetadata)));
 	}
@@ -202,11 +202,11 @@ void cambiar_metadata(t_heapMetadata* metadata, int espacio_pedido){
 
 }
 
-void agregar_bloque_libre(void* pagina, int offset){
+void agregar_bloque_libre(char* pagina, int offset){
 	int espacio_libre;
 	espacio_libre = TAMANIO_PAGINAS - offset;
 	t_heapMetadata* metadata_libre = crear_metadata_libre(espacio_libre);
-	memcpy((char*)pagina + offset, metadata_libre, sizeof(t_heapMetadata));
+	memcpy(pagina + offset, metadata_libre, sizeof(t_heapMetadata));
 	free(metadata_libre);
 }
 
