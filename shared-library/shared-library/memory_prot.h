@@ -24,6 +24,7 @@
 #define	DISCONNECTED_CLIENT				-201
 #define	DISCONNECTED_SERVER				-202
 #define	ENOSPC							-203
+#define	OUT_OF_FRAME				  	-204
 
 
 
