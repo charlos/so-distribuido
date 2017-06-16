@@ -211,7 +211,19 @@ t_PCB* crear_PCB_Prueba(){
 	pcb->pid = 1;
 
 	char* PROGRAMA =
+"#!/usr/bin/ansisop\n"
+"#Programa para probar manejo de  archivos\n"
+"begin\n"
+"variables a, b\n"
+"alocar a 50\n"
+"abrir LC /utn/so/archivo\n"
+"leer 3 a 5\n"
+"escribir 0 a 5\n"
+"liberar a\n"
+"end\n"
+"\n";
 
+/*
 			 "#!/usr/bin/ansisop\n"
 			"begin\n"
 			"variables a,g\n"
@@ -226,9 +238,7 @@ t_PCB* crear_PCB_Prueba(){
 			"return f\n"
 			"end\n"
 			"\n";
-
-
-
+*/
 /*			"#!/usr/bin/ansisop\n"
 						"begin\n"
 						"variables a, b\n"

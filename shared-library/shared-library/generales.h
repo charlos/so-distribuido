@@ -62,6 +62,17 @@ typedef struct {
 	t_valor_variable tamanio;
 } t_archivo;
 
+typedef struct{
+	char* flags;
+	int global_fd;
+} t_process_file;
+
+typedef struct{
+	char* file;
+	int open;
+} t_global_file;
+
+
 
 char* obtener_nombre_proceso(char*);
 

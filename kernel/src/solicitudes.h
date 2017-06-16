@@ -36,6 +36,7 @@ typedef struct{
 }t_pedido_liberar_memoria;
 
 t_list* tabla_paginas_heap;
+t_list* tabla_global_archivos;
 void mandar_codigo_a_memoria(char* codigo, int pid);
 t_pagina_heap* obtener_pagina_con_suficient_espacio(int pid, int espacio);
 t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata);
@@ -44,4 +45,5 @@ t_puntero buscar_bloque_disponible(void* pagina,int nro_pagina, int espacio_pedi
 t_heapMetadata* crear_metadata_libre(uint32_t espacio);
 void cambiar_metadata(t_heapMetadata* metadata, int espacio_pedido);
 void agregar_bloque_libre(void* pagina, int offset);
+int abrir_archivo(int, char*, t_banderas*);
 #endif /* SOLICITUDES_H_ */
