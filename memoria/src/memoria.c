@@ -48,7 +48,7 @@ pthread_rwlock_t * memory_locks;
 pthread_rwlock_t * cache_memory_locks;
 pthread_mutex_t mutex_lock;
 
-#define	SOCKET_BACKLOG 100
+#define	SOCKET_BACKLOG 			100
 #define	LOCK_READ 				0
 #define	LOCK_WRITE 				1
 #define	UNLOCK 					2
