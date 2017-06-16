@@ -21,7 +21,6 @@
 #include <thread_db.h>
 #include "memoria.h"
 
-#define	SOCKET_BACKLOG 100
 const char * DELAY_CMD = "delay";
 const char * DUMP_CACHE_CMD  = "cache";
 const char * DUMP_CMD  = "dump";
@@ -34,12 +33,12 @@ const char * SIZE_MEMORY_CMD = "memory";
 int listenning_socket;
 t_memory_conf * memory_conf;
 t_log * logger;
-t_log * console;
 
 void * memory_ptr;
 t_reg_invert_table * invert_table;
 t_list * available_frame_list;
 t_list * pages_per_process_list;
+t_list ** overflow;
 
 void * cache_memory;
 void * last_used_time;
@@ -49,13 +48,15 @@ pthread_rwlock_t * memory_locks;
 pthread_rwlock_t * cache_memory_locks;
 pthread_mutex_t mutex_lock;
 
+#define	SOCKET_BACKLOG 100
 #define	LOCK_READ 				0
 #define	LOCK_WRITE 				1
 #define	UNLOCK 					2
-
 #define CACHE_HIT 				1
 #define CACHE_MISS 			   -1
 
+bool frame_is_available(int);
+bool page_is_right(int, int, int);
 int assign_cache_entry(int);
 int assign_pages_to_process(int, int);
 int get_available_frame(void);
@@ -68,10 +69,12 @@ int read_cache_entry_and_send(int *, t_read_request *, int);
 int readind_memory(int *, t_read_request *);
 int reading_cache(int *,t_read_request *);
 int rw_lock_unlock(pthread_rwlock_t *, int, int);
+int searching_on_overflow(int, int, int, int);
 int update_cache(int, int, int, int, int, void *);
 int writing_cache(t_write_request *);
 int writing_memory(t_write_request *);
-
+unsigned int hashing(int, int);
+void add_to_overflow(int, int);
 void assign_page(int *);
 void create_logger(void);
 void finalize_process(int *);
@@ -83,9 +86,11 @@ void memory_console(void *);
 void print_memory_properties(void);
 void process_request(int *);
 void read_page(int *);
+void remove_from_overflow(int, int);
 void write_page(int *);
 
 int main(int argc, char * argv[]) {
+
 	load_memory_properties();
 	create_logger();
 	print_memory_properties();
@@ -123,7 +128,6 @@ int main(int argc, char * argv[]) {
 
 /**
  * @NAME load_memory_properties
- * @DESC
  */
 void load_memory_properties(void) {
 	t_config * conf = config_create("/home/utnso/memoria.cfg"); // TODO : Ver porque no lo toma del workspace
@@ -136,12 +140,17 @@ void load_memory_properties(void) {
 	memory_conf->memory_delay = config_get_int_value(conf, "RETARDO_MEMORIA");
 	memory_conf->cache_algorithm = config_get_string_value(conf, "REEMPLAZO_CACHE");
 	memory_conf->logfile = config_get_string_value(conf, "LOGFILE");
-	memory_conf->consolefile = config_get_string_value(conf, "CONSOLEFILE");
+}
+
+/**
+ * @NAME create_logger
+ */
+void create_logger(void) {
+	logger = log_create((memory_conf->logfile), "memory_process", true, LOG_LEVEL_TRACE);
 }
 
 /**
  * @NAME print_memory_properties
- * @DESC
  */
 void print_memory_properties(void) {
 	log_info(logger, "memory process" );
@@ -153,33 +162,19 @@ void print_memory_properties(void) {
 	log_info(logger, "memory delay -------> %u" , (memory_conf->memory_delay));
 	log_info(logger, "cache algorithm ----> %s" , (memory_conf->cache_algorithm));
 	log_info(logger, "log file -----------> %s" , (memory_conf->logfile));
-	log_info(logger, "console file -------> %s" , (memory_conf->consolefile));
-}
-
-/**
- * @NAME create_logger
- * @DESC
- */
-void create_logger(void) {
-	logger = log_create((memory_conf->logfile), "memory_process", true, LOG_LEVEL_TRACE);
-	console = log_create((memory_conf->consolefile), "memory_console", true, LOG_LEVEL_TRACE);
 }
 
 /**
  * @NAME load
- * @DESC
  */
 void load(void) {
-	//
-	// MEMORY
-	//
+
+	// memory
 	memory_ptr = malloc((memory_conf->frames) * (memory_conf->frame_size));
+	pages_per_process_list = list_create(); // pages per process list
+	available_frame_list = list_create(); // available frames list
 
-	// available frames list
-	available_frame_list = list_create();
-
-	// invert table
-	invert_table = (t_reg_invert_table *) memory_ptr;
+	invert_table = (t_reg_invert_table *) memory_ptr; // invert table
 	t_reg_invert_table * invert_table_ptr = invert_table;
 	t_reg_invert_table * reg;
 
@@ -203,20 +198,19 @@ void load(void) {
 		invert_table_ptr++;
 	}
 
-	// pages per process
-	pages_per_process_list = list_create();
+	overflow = malloc(sizeof(t_list *) * (memory_conf->frames)); // overflow (hash function)
+	int i = 0;
+	while (i < (memory_conf->frames)) {
+		overflow[i] = list_create();
+		i++;
+	}
 
-
-	//
-	// CACHE MEMORY
-	//
+	// cache memory
 	cache_memory = malloc((memory_conf->cache_entries) * (sizeof(t_cache_memory)));
 	last_used_time = malloc((memory_conf->cache_entries) * (sizeof(char **)));
-	cache_x_process_list = list_create();
+	cache_x_process_list = list_create(); // cache per process list
 
 	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
-	char ** last_used_time_ptr = (char **) last_used_time;
-
 	t_cache_memory * cache_memory;
 	int j;
 	for (j = 0; j < (memory_conf->cache_entries); j++) {
@@ -225,11 +219,8 @@ void load(void) {
 		cache_memory->page = -1;
 		cache_memory->content = malloc((memory_conf->frame_size));
 		memcpy(cache_memory_ptr, cache_memory, sizeof(t_cache_memory));
-		*last_used_time_ptr = "\0";
 		free(cache_memory);
-
 		cache_memory_ptr++;
-		last_used_time_ptr++;
 	}
 
 	init_locks();
@@ -238,8 +229,6 @@ void load(void) {
 
 /**
  * @NAME init_locks
- * @DESC
- * @RETURN
  */
 int init_locks(void) {
 	int i;
@@ -263,9 +252,6 @@ int init_locks(void) {
 
 /**
  * @NAME rw_lock_unlock
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int rw_lock_unlock(pthread_rwlock_t * locks, int action, int entry) {
 	switch (action) {
@@ -284,13 +270,11 @@ int rw_lock_unlock(pthread_rwlock_t * locks, int action, int entry) {
 
 /**
  * @NAME process_request
- * @DESC
- * @PARAMS
  */
 void process_request(int * client_socket) {
 	int ope_code = recv_operation_code(client_socket, logger);
 	while (ope_code != DISCONNECTED_CLIENT) {
-		log_info(logger, "------ client %d >> operation code : %d", * client_socket, ope_code);
+		log_info(logger, " client %d >> operation code : %d", * client_socket, ope_code);
 		switch (ope_code) {
 		case HANDSHAKE_OC:
 			mem_handshake(client_socket);
@@ -321,8 +305,6 @@ void process_request(int * client_socket) {
 
 /**
  * @NAME mem_handshake
- * @DESC
- * @PARAMS
  */
 void mem_handshake(int * client_socket) {
 	handshake_resp(client_socket, (memory_conf->frame_size));
@@ -330,8 +312,6 @@ void mem_handshake(int * client_socket) {
 
 /**
  * @NAME inicialize_process
- * @DESC
- * @PARAMS
  */
 void inicialize_process(int * client_socket) {
 	t_init_process_request * init_req = init_process_recv_req(client_socket, logger);
@@ -343,18 +323,14 @@ void inicialize_process(int * client_socket) {
 
 /**
  * @NAME assign_pages_to_process
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int assign_pages_to_process(int pid, int required_pages) {
 
 	pthread_mutex_lock(&mutex_lock);
-
-	if ((available_frame_list->elements_count) < required_pages) { // check available frames for request
+	if ((available_frame_list->elements_count) < required_pages) {
+		pthread_mutex_unlock(&mutex_lock);
 		return ENOSPC;
 	}
-
 	int located = -1;
 	t_reg_pages_process_table * pages_per_process;
 	if ((pages_per_process_list->elements_count) > 0) { // searching process on pages per process list
@@ -368,7 +344,6 @@ int assign_pages_to_process(int pid, int required_pages) {
 			index++;
 		}
 	}
-
 	if (located < 0) {
 		// process  doesn't exist on pages per process list
 		// creating node for list
@@ -377,14 +352,11 @@ int assign_pages_to_process(int pid, int required_pages) {
 		pages_per_process->pages_count= 0;
 		list_add(pages_per_process_list, pages_per_process);
 	}
-
-	// assigning frames for process pages
 	int i;
 	for (i = 0; i < required_pages; i++) {
 		(pages_per_process->pages_count)++;
-		inicialize_page(pid, ((pages_per_process->pages_count) - 1));
+		inicialize_page(pid, ((pages_per_process->pages_count) - 1)); // assigning frames
 	}
-
 	pthread_mutex_unlock(&mutex_lock);
 
 	return SUCCESS;
@@ -392,14 +364,18 @@ int assign_pages_to_process(int pid, int required_pages) {
 
 /**
  * @NAME inicialize_page
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int inicialize_page(int pid, int page) {
-	int free_frame = get_available_frame(); // getting available frame
+	int assigned_frame;
+	int h_frame = hashing(pid, page);
+	if (frame_is_available(h_frame)) {
+		assigned_frame = h_frame;
+	} else {
+		assigned_frame = get_available_frame(); // getting available frame
+		add_to_overflow(h_frame, assigned_frame);
+	}
 	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
-	invert_table_ptr += free_frame;
+	invert_table_ptr += assigned_frame;
 	invert_table_ptr->pid = pid;
 	invert_table_ptr->page = page;
 	return EXIT_SUCCESS;
@@ -407,33 +383,46 @@ int inicialize_page(int pid, int page) {
 
 /**
  * @NAME get_available_frame
- * @DESC
- * @RETURN
  */
 int get_available_frame(void) {
 	return list_remove(available_frame_list, 0);
 }
 
 /**
+ * @NAME frame_is_available
+ */
+bool frame_is_available(int frame) {
+	int index = 0;
+	while (index < (available_frame_list->elements_count)) {
+		if (frame == ((int) list_get(available_frame_list, index))) {
+			list_remove(available_frame_list, index);
+			return true;
+		}
+		index++;
+	}
+	return false;
+}
+
+/**
  * @NAME write_page
- * @DESC
- * @PARAMS
  */
 void write_page(int * client_socket) {
 	t_write_request * w_req = write_recv_req(client_socket, logger);
 	if ((w_req->exec_code) == DISCONNECTED_CLIENT) return;
-	writing_cache(w_req);
-	writing_memory(w_req);
+	if (((w_req->offset) >= (memory_conf->frame_size))
+			|| (((w_req->offset) + (w_req->size)) > (memory_conf->frame_size))) {
+		write_send_resp(client_socket, OUT_OF_FRAME);
+	} else {
+		writing_cache(w_req);
+		writing_memory(w_req);
+		write_send_resp(client_socket, SUCCESS);
+	}
 	free(w_req->buffer);
 	free(w_req);
-	write_send_resp(client_socket, SUCCESS);
 }
 
 /**
  * @NAME writing_cache
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int writing_cache(t_write_request * w_req) {
 	int cache_entry_to_write = get_cache_entry((w_req->pid), (w_req->page), LOCK_WRITE);
@@ -447,9 +436,6 @@ int writing_cache(t_write_request * w_req) {
 
 /**
  * @NAME get_cache_entry
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int get_cache_entry(int pid, int page, int read_write) {
 	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
@@ -466,34 +452,27 @@ int get_cache_entry(int pid, int page, int read_write) {
 
 /**
  * @NAME assign_cache_entry
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int assign_cache_entry(int pid) {
 
 	pthread_mutex_lock(&mutex_lock);
-
 	bool exist_on_list = false;
 	bool max_entries_exceeded = false;
 	t_cache_x_process * cache_x_process;
-	if ((cache_x_process_list->elements_count) > 0) { // searching cache entries per process
-		int pos = 0;
-		while (pos < (cache_x_process_list->elements_count)) {
-			cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, pos);
-			if ((cache_x_process->pid) == pid) {
-				exist_on_list = true;
-				if ((cache_x_process->entries) >= ((memory_conf->cache_x_process))) {
-					max_entries_exceeded = true;
-				} else {
-					(cache_x_process->entries)++;
-				}
-				break;
+	int pos = 0;
+	while (pos < (cache_x_process_list->elements_count)) { // searching process entries amount in cache
+		cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, pos);
+		if ((cache_x_process->pid) == pid) {
+			exist_on_list = true;
+			if ((cache_x_process->entries) >= ((memory_conf->cache_x_process))) {
+				max_entries_exceeded = true;
+			} else {
+				(cache_x_process->entries)++; // increasing process entries amount
 			}
-			pos++;
+			break;
 		}
+		pos++;
 	}
-
 	if (!exist_on_list) {
 		// process  doesn't exist on list
 		// creating node for list
@@ -502,7 +481,6 @@ int assign_cache_entry(int pid) {
 		cache_x_process->entries= 1;
 		list_add(cache_x_process_list, cache_x_process);
 	}
-
 	pthread_mutex_unlock(&mutex_lock);
 
 	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
@@ -529,14 +507,10 @@ int assign_cache_entry(int pid) {
 	}
 
 	return lru_cache_entry;
-
 }
 
 /**
  * @NAME least_recently_used
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int least_recently_used(int cache_entry, int * lru_cache_entry) {
 	if ((*lru_cache_entry) < 0) {
@@ -558,9 +532,6 @@ int least_recently_used(int cache_entry, int * lru_cache_entry) {
 
 /**
  * @NAME update_cache
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int update_cache(int cache_entry, int pid, int page, int offset, int size, void * buffer) {
 	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
@@ -568,11 +539,32 @@ int update_cache(int cache_entry, int pid, int page, int offset, int size, void 
 	char ** last_used_time_ptr = (char **) last_used_time;
 	last_used_time_ptr += cache_entry;
 
+	if ((cache_memory_ptr->pid) >= 0) {
+		free(*last_used_time_ptr);
+		if ((cache_memory_ptr->pid) != pid) {
+			t_cache_x_process * cache_x_process;
+			pthread_mutex_lock(&mutex_lock);
+			int pos = 0;
+			while (pos < (cache_x_process_list->elements_count)) { // searching amount of process entries in cache
+				cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, pos);
+				if ((cache_x_process->pid) == pid) {
+					(cache_x_process->entries)--;
+					if (cache_x_process->entries <= 0) {
+						cache_x_process = list_remove(cache_x_process_list, index);
+						free(cache_x_process);
+					}
+					break;
+				}
+				pos++;
+			}
+			pthread_mutex_unlock(&mutex_lock);
+		}
+	}
+
 	void * cache_write_pos = (cache_memory_ptr->content) + offset;
 	memcpy(cache_write_pos, buffer, size);
 	cache_memory_ptr->pid = pid;
 	cache_memory_ptr->page = page;
-
 	*last_used_time_ptr = temporal_get_string_time();
 
 	return EXIT_SUCCESS;
@@ -580,9 +572,6 @@ int update_cache(int cache_entry, int pid, int page, int offset, int size, void 
 
 /**
  * @NAME writing_memory
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int writing_memory(t_write_request * w_req) {
 
@@ -600,50 +589,98 @@ int writing_memory(t_write_request * w_req) {
 
 /**
  * @NAME get_frame
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int get_frame(int pid, int page, int read_write) {
-
-	// TODO : implementar función hash para realizar la búsqueda dentro de la tabla de páginas invertida
-
-	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
-	int frame = 0;
-	while (frame < (memory_conf->frames)) {
-		rw_lock_unlock(memory_locks, read_write, frame);
-		if (((invert_table_ptr->pid) == pid) && ((invert_table_ptr->page) == page)) {
-			break;
-		} else {
-			rw_lock_unlock(memory_locks, UNLOCK, frame);
-			frame++;
-			invert_table_ptr++;
-		}
+	int h_frame = hashing(pid, page);
+	rw_lock_unlock(memory_locks, read_write, h_frame);
+	if (page_is_right(h_frame, pid, page)) {
+		return h_frame;
 	}
-
+	rw_lock_unlock(memory_locks, UNLOCK, h_frame);
+	int frame = searching_on_overflow(h_frame, pid, page, read_write); // hash collision
 	return frame;
 }
 
 /**
+ * @NAME check_page_is_right
+ */
+bool page_is_right(int frame, int pid, int page) {
+	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
+	invert_table_ptr += frame;
+	return (((invert_table_ptr->pid) == pid) && ((invert_table_ptr->page) == page));
+}
+
+/**
+ * @NAME hashing
+ */
+unsigned int hashing(int pid, int page) {
+	char str_1[20];
+	char str_2[20];
+	sprintf(str_1, "%d", pid);
+	sprintf(str_2, "%d", page);
+	strcat(str_1, str_2);
+	unsigned int frame = atoi(str_1) % (memory_conf->frames);
+	return frame;
+}
+
+/**
+ * @NAME searching_on_overflow
+ */
+int searching_on_overflow(int o_frame, int pid, int page, int read_write) {
+	int frame;
+	int index = 0;
+	pthread_mutex_lock(&mutex_lock);
+	while (index < ((overflow[o_frame])->elements_count)) {
+		frame = list_get(overflow[o_frame], index);
+		rw_lock_unlock(memory_locks, read_write, frame);
+		if (page_is_right(frame, pid, page))
+			break;
+		rw_lock_unlock(memory_locks, UNLOCK, frame);
+		index++;
+	}
+	pthread_mutex_unlock(&mutex_lock);
+	return frame;
+}
+
+/**
+ * @NAME add_to_overflow
+ */
+void add_to_overflow(int o_frame, int frame) {
+	list_add(overflow[o_frame], frame);
+}
+
+/**
+ * @NAME remove_from_overflow
+ */
+void remove_from_overflow(int o_frame, int frame) {
+	int index = 0;
+	while (index < ((overflow[o_frame])->elements_count)) {
+		if (frame == ((int) list_get(overflow[o_frame], index))) {
+			list_remove(overflow[o_frame], index);
+			return;
+		}
+		index++;
+	}
+}
+
+/**
  * @NAME read_page
- * @DESC
- * @PARAMS
  */
 void read_page(int * client_socket) {
 	t_read_request * r_req = read_recv_req(client_socket, logger);
 	if ((r_req->exec_code) == DISCONNECTED_CLIENT) return;
-
-	if (reading_cache(client_socket, r_req) == CACHE_MISS)
-		readind_memory(client_socket,r_req);
-
+	if ((((r_req->offset) >= (memory_conf->frame_size)))
+			|| (((r_req->offset) + (r_req->size)) > (memory_conf->frame_size))) {
+		read_send_resp(client_socket, OUT_OF_FRAME, 0, NULL);
+	} else {
+		if (reading_cache(client_socket, r_req) == CACHE_MISS)
+			readind_memory(client_socket,r_req);
+	}
 	free(r_req);
 }
 
 /**
  * @NAME reading_cache
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int reading_cache(int * client_socket, t_read_request * r_req) {
 	int cache_entry = get_cache_entry((r_req->pid), (r_req->page), LOCK_READ);
@@ -657,21 +694,19 @@ int reading_cache(int * client_socket, t_read_request * r_req) {
 
 /**
  * @NAME read_cache_entry_and_send
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int read_cache_entry_and_send(int * client_socket, t_read_request * r_req, int cache_entry) {
 	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
 	cache_memory_ptr += cache_entry;
-	char ** last_used_time_ptr = (char **) last_used_time;
-	last_used_time_ptr += cache_entry;
 
 	void * buffer = malloc(sizeof(char) * (r_req->size));
 	memcpy(buffer, (cache_memory_ptr->content) + (r_req->offset), (r_req->size));
 	read_send_resp(client_socket, SUCCESS, (r_req->size), buffer);
 	free(buffer);
 
+	char ** last_used_time_ptr = (char **) last_used_time;
+	last_used_time_ptr += cache_entry;
+	free(*last_used_time_ptr);
 	*last_used_time_ptr = temporal_get_string_time();
 
 	return EXIT_SUCCESS;
@@ -679,9 +714,6 @@ int read_cache_entry_and_send(int * client_socket, t_read_request * r_req, int c
 
 /**
  * @NAME readind_memory
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int readind_memory(int * client_socket, t_read_request * r_req) {
 	int frame = get_frame((r_req->pid), (r_req->page), LOCK_READ);
@@ -704,8 +736,6 @@ int readind_memory(int * client_socket, t_read_request * r_req) {
 
 /**
  * @NAME assign_page
- * @DESC
- * @PARAMS
  */
 void assign_page(int * client_socket) {
 	t_assign_pages_request * assign_req = init_process_recv_req(client_socket, logger);
@@ -717,8 +747,6 @@ void assign_page(int * client_socket) {
 
 /**
  * @NAME finalize_process
- * @DESC
- * @PARAMS
  */
 void finalize_process(int * client_socket) {
 	t_finalize_process_request * finalize_req = finalize_process_recv_req(client_socket, logger);
@@ -729,21 +757,20 @@ void finalize_process(int * client_socket) {
 
 /**
  * @NAME cleaning_process_entries
- * @DESC
- * @PARAMS
- * @RETURN
  */
 int cleaning_process_entries(int pid) {
 
 	pthread_mutex_lock(&mutex_lock);
-
-	//
-	// MEMORY
-	//
+	// memory
 	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
+	int h_frame;
 	int frame = 0;
 	while (frame < (memory_conf->frames)) {
 		if (((invert_table_ptr->pid) == pid)) {
+			h_frame = hashing((invert_table_ptr->pid), (invert_table_ptr->page));
+			if (frame != h_frame) {
+				remove_from_overflow(h_frame, frame);
+			}
 			invert_table_ptr->pid = 0;
 			invert_table_ptr->page = 0;
 			list_add(available_frame_list, frame);
@@ -754,7 +781,7 @@ int cleaning_process_entries(int pid) {
 
 	t_reg_pages_process_table * pages_per_process;
 	int index = 0;
-	while (index < (pages_per_process_list->elements_count)) { // searching process on pages per process list
+	while (index < (pages_per_process_list->elements_count)) {
 		pages_per_process = (t_reg_pages_process_table *) list_get(pages_per_process_list, index);
 		if ((pages_per_process->pid) == pid) {
 			pages_per_process = list_remove(pages_per_process_list, index);
@@ -764,29 +791,10 @@ int cleaning_process_entries(int pid) {
 		index++;
 	}
 
-	//
-	// CACHE MEMORY
-	//
-	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
-	char ** last_used_time_ptr = (char **) last_used_time;
-	int cache_entry = 0;
-	while (cache_entry < (memory_conf->cache_entries)) {
-		rw_lock_unlock(cache_memory_locks, LOCK_WRITE, cache_entry);
-		if ((cache_memory_ptr->pid) == pid) {
-			cache_memory_ptr->pid = -1;
-			cache_memory_ptr->page = -1;
-			memcpy((cache_memory_ptr->content), "\0", 1);
-			*last_used_time_ptr = "\0";
-		}
-		rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
-		cache_entry++;
-		cache_memory_ptr++;
-		last_used_time_ptr++;
-	}
-
+	// cache memory
 	t_cache_x_process * cache_x_process;
 	index = 0;
-	while (index < (cache_x_process_list->elements_count)) { // searching process on cache per process list
+	while (index < (cache_x_process_list->elements_count)) {
 		cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, index);
 		if ((cache_x_process->pid) == pid) {
 			cache_x_process = list_remove(cache_x_process_list, index);
@@ -795,17 +803,34 @@ int cleaning_process_entries(int pid) {
 		}
 		index++;
 	}
-
 	pthread_mutex_unlock(&mutex_lock);
+
+
+	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
+	char ** last_used_time_ptr = (char **) last_used_time;
+	int cache_entry = 0;
+	while (cache_entry < (memory_conf->cache_entries)) {
+		rw_lock_unlock(cache_memory_locks, LOCK_WRITE, cache_entry);
+		if ((cache_memory_ptr->pid) == pid) {
+			cache_memory_ptr->pid = -1;
+			cache_memory_ptr->page = -1;
+			free(*last_used_time_ptr);
+		}
+		rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
+		cache_entry++;
+		cache_memory_ptr++;
+		last_used_time_ptr++;
+	}
+
 	return EXIT_SUCCESS;
 }
 
 
 /**
  * @NAME memory_console
- * @DESC
  */
 void memory_console(void * unused) {
+	// TODO : chequear sincronización
 	char * input = NULL;
 	char * command = NULL;
 	char * param = NULL;
@@ -819,79 +844,66 @@ void memory_console(void * unused) {
 			token = strtok(NULL, " ");
 			if (token != NULL) param = token;
 			if (strcmp(command, DELAY_CMD) == 0) {
-				log_info(console, "delay command");
+				printf(" >> setting delay value...");
 				uint32_t new_delay_value = atoi(param);
 				if (new_delay_value > 0) {
-					pthread_mutex_lock(&mutex_lock);
+					printf("\n    value %d", (memory_conf->memory_delay));
 					memory_conf->memory_delay = new_delay_value;
-					pthread_mutex_unlock(&mutex_lock);
-					log_info(console, "delay value %d", memory_conf->memory_delay);
+					printf("\n    new value %d", (memory_conf->memory_delay));
 				} else {
-					log_info(console, "invalid value");
+					printf("\n    invalid value : %d", new_delay_value);
 				}
+				printf("\n");
 			} else if (strcmp(command, DUMP_CMD) == 0) {
-				log_info(console, "dump command");
 				if (strcmp(param, DUMP_CACHE_CMD) == 0) {
-					log_info(console, "cache content");
+					printf(" >> cache content");
 					t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
 					char ** last_used_time_ptr = (char **) last_used_time;
-					log_info(console, "      #pid        #page   #last used time   #content");
-					log_info(console, "__________   __________   _______________   ");
+					printf("\n          #pid        #page   #last used time   #content");
+					printf("\n    __________   __________   _______________   ");
 					int cache_entry = 0;
 					char * chache_content;
 					while (cache_entry < (memory_conf->cache_entries)) {
 						rw_lock_unlock(cache_memory_locks, LOCK_READ, cache_entry);
-						chache_content = malloc((memory_conf->frame_size) + 1);
+						chache_content = malloc((memory_conf->frame_size));
 						memcpy(chache_content, (cache_memory_ptr->content), (memory_conf->frame_size));
-						chache_content[(memory_conf->frame_size)] = "\0";
-						log_info(console, "%10d | %10d | %15s | %s", (cache_memory_ptr->pid), (cache_memory_ptr->page), (*last_used_time_ptr), chache_content);
+						printf("\n    %10d | %10d | %15s | ", (cache_memory_ptr->pid), (cache_memory_ptr->page),
+								((cache_memory_ptr->pid) >= 0) ? (*last_used_time_ptr) : '\0');
+						print_frame_content(chache_content);
 						free(chache_content);
 						rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
 						cache_entry++;
 						cache_memory_ptr++;
 						last_used_time_ptr++;
 					}
+					printf("\n");
 				} else if (strcmp(param, DUMP_MEMORY_STRUCT_CMD) == 0) {
-					log_info(console, "invert table");
-					log_info(console, "    #frame         #pid        #page");
-					log_info(console, "__________   __________   __________");
+					printf("\n >> invert table");
+					printf("\n        #frame         #pid        #page");
+					printf("\n    __________   __________   __________");
 					t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 					int frame = 0;
 					pthread_mutex_lock(&mutex_lock);
 					while (frame < (memory_conf->frames)) {
-						log_info(console, "%10d | %10d | %10d", (invert_table_ptr->frame), (invert_table_ptr->pid), (invert_table_ptr->page));
+						printf("\n    %10d | %10d | %10d", (invert_table_ptr->frame), (invert_table_ptr->pid), (invert_table_ptr->page));
 						frame++;
 						invert_table_ptr++;
 					}
+					printf("\n");
 					pthread_mutex_unlock(&mutex_lock);
-
 				} else if (strcmp(param, DUMP_MEMORY_CONTENT_CMD) == 0) {
-					printf("\nmemory content");
-					t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
-					int frame = 0;
-					while (frame < (memory_conf->frames) && (invert_table_ptr->pid < 0)) {
-						frame++;
-						invert_table_ptr++;
-					}
-					void * read_pos = memory_ptr + (frame * (memory_conf->frame_size));
+					printf(" >> memory content");
+					printf("\n        #frame   #content");
+					printf("\n    __________   ");
+					void * read_pos = memory_ptr;
 					char * frame_content;
-					printf("\n    #frame   #content");
-					printf("\n__________   ");
-					int i;
+					int frame = 0;
 					while (frame < (memory_conf->frames)) {
 						rw_lock_unlock(memory_locks, LOCK_READ, frame);
 						frame_content = malloc((memory_conf->frame_size));
 						memcpy(frame_content, read_pos, (memory_conf->frame_size));
-						printf("\n%10d | ", frame);
-						for (i = 0; i < (memory_conf->frame_size); i++) {
-							if (frame_content[i] == '\0') {
-								printf("%s", "\\0");
-							} else if (frame_content[i] == '\n') {
-								printf("%s", "\\n");
-							} else {
-								printf("%c", frame_content[i]);
-							}
-						};
+						printf("\n    %10d | ", frame);
+						print_frame_content(frame_content);
 						free(frame_content);
 						rw_lock_unlock(memory_locks, UNLOCK, frame);
 						frame++;
@@ -900,7 +912,7 @@ void memory_console(void * unused) {
 					printf("\n");
 				}
 			} else if (strcmp(command, FLUSH_CMD) == 0) {
-				log_info(console, "flush command");
+				printf(" >> cleaning cache...");
 				t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
 				char ** last_used_time_ptr = (char **) last_used_time;
 				int cache_entry = 0;
@@ -908,6 +920,7 @@ void memory_console(void * unused) {
 				int index;
 				while (cache_entry < (memory_conf->cache_entries)) {
 					rw_lock_unlock(cache_memory_locks, LOCK_WRITE, cache_entry);
+					pthread_mutex_lock(&mutex_lock);
 					index = 0;
 					while (index < (cache_x_process_list->elements_count)) {
 						cache_x_process = list_get(cache_x_process_list, 0);
@@ -920,25 +933,27 @@ void memory_console(void * unused) {
 							break;
 						}
 					}
+					pthread_mutex_unlock(&mutex_lock);
+					if ((cache_memory_ptr->pid) >= 0) free(*last_used_time_ptr);
 					cache_memory_ptr->pid = -1;
 					cache_memory_ptr->page = -1;
-					memcpy((cache_memory_ptr->content), "\0", 1);
-					*last_used_time_ptr = "\0";
 					rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
 					cache_entry++;
 					cache_memory_ptr++;
 					last_used_time_ptr++;
 				}
-				log_info(console, "flush finished");
+				printf("\n >> cache cleaned\n");
 			} else if (strcmp(command, SIZE_CMD) == 0) {
-				log_info(console, "size command");
 				if (strcmp(param, SIZE_MEMORY_CMD) == 0) {
-					log_info(console, "memory size");
-					log_info(console, "frames ------------> %d", (memory_conf->frames));
-					log_info(console, "available frames --> %d", (available_frame_list->elements_count));
-					log_info(console, "busy frames -------> %d", ((memory_conf->frames) - (available_frame_list->elements_count)));
+					pthread_mutex_lock(&mutex_lock);
+					printf(" >> memory size");
+					printf("\n    frames ------------> %d", (memory_conf->frames));
+					printf("\n    available frames --> %d", (available_frame_list->elements_count));
+					printf("\n    busy frames -------> %d", ((memory_conf->frames) - (available_frame_list->elements_count)));
+					printf("\n");
+					pthread_mutex_unlock(&mutex_lock);
 				} else {
-					uint32_t pid = atoi(param);
+					int32_t pid = atoi(param);
 					if (pid >= 0) {
 						pthread_mutex_lock(&mutex_lock);
 						t_reg_pages_process_table * pages_per_process;
@@ -946,20 +961,55 @@ void memory_console(void * unused) {
 						while (index < (pages_per_process_list->elements_count)) { // searching process on pages per process list
 							pages_per_process = (t_reg_pages_process_table *) list_get(pages_per_process_list, index);
 							if ((pages_per_process->pid) == pid) {
-								log_info(console, "pid : %d", pid);
-								log_info(console, "frames ------------> %d", (pages_per_process->pages_count));
-								log_info(console, "size --------------> %d bytes", (pages_per_process->pages_count) * (memory_conf->frame_size));
+								printf(" >> memory size : pid %d", pid);
+								printf("\n    frames ------------> %d", (pages_per_process->pages_count));
+								printf("\n    size --------------> %d bytes", (pages_per_process->pages_count) * (memory_conf->frame_size));
 								break;
 							}
 							index++;
 						}
 						pthread_mutex_unlock(&mutex_lock);
+						printf("\n");
 					} else {
-						log_info(console, "invalid pid");
+						printf(" >> memory size : invalid pid\n");
 					}
 				}
 			}
 		}
 	}
 	free(command);
+}
+
+void print_frame_content(char * frame_content) {
+	int i = 0;
+	while (i < (memory_conf->frame_size)) {
+		if (frame_content[i] == '\0') {
+			printf("%s", "\\0");
+		} else if (frame_content[i] == '\a') {
+			printf("%s", "\\a");
+		} else if (frame_content[i] == '\b') {
+			printf("%s", "\\b");
+		} else if (frame_content[i] == '\f') {
+			printf("%s", "\\f");
+		} else if (frame_content[i] == '\n') {
+			printf("%s", "\\n");
+		} else if (frame_content[i] == '\r') {
+			printf("%s", "\\r");
+		} else if (frame_content[i] == '\t') {
+			printf("%s", "\\t");
+		} else if (frame_content[i] == '\v') {
+			printf("%s", "\\v");
+		} else if (frame_content[i] == '\\') {
+			printf("%s", "\\\\");
+		} else if (frame_content[i] == '\'') {
+			printf("%s", "\\'");
+		} else if (frame_content[i] == '\"') {
+			printf("%s", "\\\"");
+		} else if (frame_content[i] == '\?') {
+			printf("%s", "\\?");
+		} else {
+			printf("%c", frame_content[i]);
+		}
+		i++;
+	};
 }
