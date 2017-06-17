@@ -41,6 +41,8 @@ void solve_request(int socket, fd_set* set){
 		pcb->cantidad_paginas += cant_paginas;
 		pcb->PC = 0;
 
+		log_trace(logger, "Mandando PID");
+		printf("Mandando PID");
 
 		connection_send(socket, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
 
