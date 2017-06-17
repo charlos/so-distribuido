@@ -33,6 +33,7 @@ int main(int argc, char* argv[]) {
 	TAMANIO_PAGINAS = handshake(memory_socket, logger);
 
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
+	tabla_global_archivos = list_create();
 
 
 	pthread_t hilo_cpu;

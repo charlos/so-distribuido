@@ -15,15 +15,17 @@
 #define	HANDSHAKE_OC					1
 #define INIT_PROCESS_OC     			2
 #define	ASSIGN_PAGE_OC 					3
-#define	READ_OC			 				4
-#define	WRITE_OC						5
-#define	END_PROCESS_OC					6
+#define	DELETE_PAGE_OC					4
+#define	READ_OC			 				5
+#define	WRITE_OC						6
+#define	END_PROCESS_OC					7
 
 #define	SUCCESS							1
 #define	ERROR							-200
 #define	DISCONNECTED_CLIENT				-201
 #define	DISCONNECTED_SERVER				-202
 #define	ENOSPC							-203
+#define	OUT_OF_FRAME				  	-204
 
 
 
@@ -215,6 +217,42 @@ t_assign_pages_request * assign_pages_recv_req(int *, t_log *);
  * @PARAMS
  */
 void assign_pages_send_resp(int *, int);
+
+
+
+/**	╔══════════════════════╗
+	║ MEMORY - DELETE PAGE ║
+	╚══════════════════════╝ **/
+
+typedef struct {
+	int16_t exec_code;
+	uint32_t pid;
+	uint32_t page;
+} t_delete_page_request;
+
+/**
+ * @NAME memory_delete_page
+ * @DESC
+ *
+ * @PARAMS
+ */
+int memory_delete_page(int, int, int, t_log *);
+
+/**
+ * @NAME delete_page_recv_req
+ * @DESC
+ *
+ * @PARAMS
+ */
+t_delete_page_request * delete_page_recv_req(int *, t_log *);
+
+/**
+ * @NAME delete_page_send_resp
+ * @DESC
+ *
+ * @PARAMS
+ */
+void delete_page_send_resp(int *, int);
 
 
 

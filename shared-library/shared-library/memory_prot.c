@@ -143,7 +143,7 @@ void init_process_send_resp(int * client_socket, int resp_code) {
 int memory_write(int server_socket, int pid, int page, int offset, int size, int buffer_size, void * buffer, t_log * logger) {
 
 	/**	╔═════════════════════════╦═══════════════╦════════════════╦══════════════════╦════════════════╦════════════════════════╦════════╗
-		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║ buffer size (4 bytes)  ║ buffer ║
+		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║ offset (4 bytes) ║ size (4 bytes) ║ buffer_size (4 bytes)  ║ buffer ║
 		╚═════════════════════════╩═══════════════╩════════════════╩══════════════════╩════════════════╩════════════════════════╩════════╝ **/
 
 	uint8_t prot_ope_code = 1;
@@ -408,6 +408,73 @@ t_assign_pages_request * assign_pages_recv_req(int * client_socket, t_log * logg
 }
 
 void assign_pages_send_resp(int * client_socket, int resp_code) {
+	uint8_t resp_prot_code = 2;
+	int response_size = sizeof(char) * (resp_prot_code);
+	void * response = malloc(response_size);
+	memcpy(response, &resp_code, resp_prot_code);
+	socket_write(client_socket, response, response_size);
+	free(response);
+}
+
+
+
+/**	╔══════════════════════╗
+	║ MEMORY - DELETE PAGE ║
+	╚══════════════════════╝ **/
+
+int memory_delete_page(int server_socket, int pid, int page, t_log * logger) {
+
+	/**	╔═════════════════════════╦═══════════════╦════════════════╗
+		║ operation_code (1 byte) ║ pid (4 bytes) ║ page (4 bytes) ║
+		╚═════════════════════════╩═══════════════╩════════════════╝ **/
+
+	uint8_t prot_ope_code = 1;
+	uint8_t prot_pid = 4;
+	uint8_t prot_page = 4;
+
+	uint8_t  req_ope_code = DELETE_PAGE_OC;
+	uint32_t req_pid = pid;
+	uint32_t req_page = page;
+
+	int msg_size = sizeof(char) * (prot_ope_code + prot_pid + prot_page);
+	void * request = malloc(msg_size);
+	memcpy(request, &req_ope_code, prot_ope_code);
+	memcpy(request + prot_ope_code, &req_pid, prot_pid);
+	memcpy(request + prot_ope_code + prot_pid, &req_page, prot_page);
+	socket_send(&server_socket, request, msg_size, 0);
+	free(request);
+
+	uint8_t resp_prot_code = 2;
+	int16_t code;
+	int received_bytes = socket_recv(&server_socket, &code, resp_prot_code);
+	if (received_bytes <= 0) {
+		if (logger) log_error(logger, "------ SERVER %d >> disconnected", server_socket);
+		return DISCONNECTED_SERVER;
+	}
+	return code;
+};
+
+t_delete_page_request * delete_page_recv_req(int * client_socket, t_log * logger) {
+	t_delete_page_request * request = malloc(sizeof(t_delete_page_request));
+	uint8_t prot_req_pid = 4;
+	int received_bytes = socket_recv(client_socket, &(request->pid), prot_req_pid);
+	if (received_bytes <= 0) {
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		request->exec_code = DISCONNECTED_CLIENT;
+		return request;
+	}
+	uint8_t prot_req_page = 4;
+	received_bytes = socket_recv(client_socket, &(request->page), prot_req_page);
+	if (received_bytes <= 0) {
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		request->exec_code = DISCONNECTED_CLIENT;
+		return request;
+	}
+	request->exec_code = SUCCESS;
+	return request;
+}
+
+void delete_page_send_resp(int * client_socket, int resp_code) {
 	uint8_t resp_prot_code = 2;
 	int response_size = sizeof(char) * (resp_prot_code);
 	void * response = malloc(response_size);
