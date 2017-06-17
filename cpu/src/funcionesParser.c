@@ -223,7 +223,12 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     memcpy(buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), &banderas, sizeof(t_banderas));
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
-    free(buffer);
+    int fd_global, fd_proceso; //= malloc(sizeof(int));
+    connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &fd_global);
+
+    fd_proceso = cargarArchivoTablaProceso(fd_global, &banderas);
+
+    return fd_proceso;
 
 }
 

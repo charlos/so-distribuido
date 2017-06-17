@@ -206,11 +206,40 @@ u_int32_t getOffsetofPos(t_puntero pos){
 	return pos - (page * pagesize);
 }
 
+int cargarArchivoTablaProceso(int fd_global, t_banderas* flags){
+	t_process_file* file = malloc(sizeof(t_process_file));
+	file->global_fd = fd_global;
+	file->proceso_fd = nuevoFD_PID();
+	return file->proceso_fd;
+}
+
+int nuevoFD_PID(){
+	return list_size(pcb->tabla_archivos)+1;
+}
+
 t_PCB* crear_PCB_Prueba(){
 	pcb = malloc(sizeof(t_PCB));
 	pcb->pid = 1;
 
 	char* PROGRAMA =
+			"begin\n"
+			"variables a, b\n"
+			"alocar a 50\n"
+			"#a va a tener el valor de la posicion de moemoria en el heap\n"
+			"*a = 5\n"
+			"# pondría al principio de ese cachito de stack el numero 5 en los primeros 4 bytes\n"
+			"print n *a\n"
+			"#deberia imprimir 20\n"
+			"b = 3 + *a\n"
+			"*b = 10\n"
+			"#pondria el 10 en los sigueintes 3 bytes. Esto pisaria algunos bits del primer 5\n"
+			"print n *a\n"
+			"#deberia imprimir cosas horribles!\n"
+			"liberar a\n"
+			"end\n"
+			"\n";
+
+/*
 "#!/usr/bin/ansisop\n"
 "#Programa para probar manejo de  archivos\n"
 "begin\n"
@@ -223,6 +252,7 @@ t_PCB* crear_PCB_Prueba(){
 "end\n"
 "\n";
 
+ */
 /*
 			 "#!/usr/bin/ansisop\n"
 			"begin\n"
@@ -239,16 +269,6 @@ t_PCB* crear_PCB_Prueba(){
 			"end\n"
 			"\n";
 */
-/*			"#!/usr/bin/ansisop\n"
-						"begin\n"
-						"variables a, b\n"
-						"a = 64999\n"
-						"b = 64000\n"
-						"a = b + 12\n"
-						"end\n"
-						"\n";
-*/
-
 
 	char *programa = strdup(PROGRAMA);
 

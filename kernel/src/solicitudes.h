@@ -37,5 +37,7 @@ t_heapMetadata* crear_metadata_libre(uint32_t espacio);
 void cambiar_metadata(t_heapMetadata* metadata, int espacio_pedido);
 int abrir_archivo(int, char*, t_banderas*);
 void agregar_bloque_libre(char* pagina, int offset);
+int buscarArchivoTablaGlobal(char*);
+int crearArchivoTablaGlobal(char*);
 
 #endif /* SOLICITUDES_H_ */
