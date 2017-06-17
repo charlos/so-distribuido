@@ -148,26 +148,26 @@ int unmap_bitmap_f(void) {
  * @NAME process_request
  */
 void process_request(int * client_socket) {
-	/*int ope_code = recv_operation_code(client_socket, logger);
+	int ope_code = recv_operation_code(client_socket, logger);
 	while (ope_code != DISCONNECTED_CLIENT) {
 		printf(logger, " >> client %d >> operation code : %d", * client_socket, ope_code);
 		switch (ope_code) {
-		case HANDSHAKE_OC:
+		case FS_HANDSHAKE_OC:
 			fs_handshake(client_socket);
 			break;
-		case VALIDATE_FILE:
+		case FS_VALIDATE_FILE_OC:
 			validate_file(client_socket);
 			break;
-		case CREATE_FILE:
+		case FS_CREATE_FILE_OC:
 			create_file(client_socket);
 			break;
-		case DELETE_FILE:
+		case FS_DELETE_FILE_OC:
 			delete_file(client_socket);
 			break;
-		case READ:
+		case FS_READ_FILE_OC:
 			read(client_socket);
 			break;
-		case WRITE:
+		case FS_WRITE_FILE_OC:
 			write(client_socket);
 			break;
 		default:;
@@ -175,15 +175,56 @@ void process_request(int * client_socket) {
 		ope_code = recv_operation_code(client_socket, logger);
 	}
 	close_client(* client_socket);
-	free(client_socket);*/
+	free(client_socket);
 	return;
 }
 
+void fs_handshake(int * client_socket) {
+	fs_handshake_resp(client_socket, SUCCESS);
+}
 
+void validate_file(int * client_socket) {
+	t_v_file_req * v_req = v_file_recv_req(client_socket, logger);
+	// TODO : validate file
+	free(v_req->path);
+	free(v_req);
+	v_file_send_resp(client_socket, SUCCESS);
+}
 
+void create_file(int * client_socket) {
+	t_c_file_req * c_req = c_file_recv_req(client_socket, logger);
+	// TODO : create file
+	free(c_req->path);
+	free(c_req);
+	c_file_send_resp(client_socket, SUCCESS);
+}
 
+void delete_file(int * client_socket) {
+	t_d_file_req * d_req = d_file_recv_req(client_socket, logger);
+	// TODO : delete file
+	free(d_req->path);
+	free(d_req);
+	d_file_send_resp(client_socket, SUCCESS);
+}
 
+void read(int * client_socket) {
+	t_fs_read_req * r_req = fs_read_recv_req(client_socket, logger);
+	// TODO : read file
+	void * buffer = malloc(sizeof(char) * (r_req->size));
+	fs_read_send_resp(client_socket, SUCCESS, (r_req->size), buffer);
+	free(buffer);
+	free(r_req->path);
+	free(r_req);
+}
 
+void write(int * client_socket) {
+	t_fs_write_req * w_req = fs_write_recv_req(client_socket, logger);
+	// TODO : write file
+	free(r_req->path);
+	free(r_req->buffer);
+	free(r_req);
+	fs_write_send_resp(client_socket, SUCCESS);
+}
 
 // https://techoverflow.net/2013/04/05/how-to-use-mkdir-from-sysstat-h/
 // https://www.lemoda.net/c/mmap-example/

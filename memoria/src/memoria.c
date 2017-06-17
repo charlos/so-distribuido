@@ -61,15 +61,16 @@ int assign_cache_entry(int);
 int assign_pages_to_process(int, int);
 int get_available_frame(void);
 int get_cache_entry(int, int, int);
-int get_frame(int, int, int);
+int get_frame(int, int);
 int inicialize_page(int, int);
 int init_locks(void);
+void print_frame_content(char *);
 int least_recently_used(int, int *);
 int read_cache_entry_and_send(int *, t_read_request *, int);
 int readind_memory(int *, t_read_request *);
 int reading_cache(int *,t_read_request *);
 int rw_lock_unlock(pthread_rwlock_t *, int, int);
-int searching_on_overflow(int, int, int, int);
+int searching_on_overflow(int, int, int);
 int update_cache(int, int, int, int, int, void *);
 int writing_cache(t_write_request *);
 int writing_memory(t_write_request *);
@@ -86,6 +87,7 @@ void memory_console(void *);
 void print_memory_properties(void);
 void process_request(int *);
 void read_page(int *);
+int cleaning_process_entries(int);
 void remove_from_overflow(int, int);
 void write_page(int *);
 
@@ -228,23 +230,32 @@ void load(void) {
 }
 
 /**
+ * @NAME check
+ */
+static void check(int test, const char * message, ...) {
+	if (test) {
+		va_list args;
+		va_start(args, message);
+		vfprintf(stderr, message, args);
+		log_error(logger, message, args);
+		va_end(args);
+		fprintf(stderr, "\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+/**
  * @NAME init_locks
  */
 int init_locks(void) {
 	int i;
 	memory_locks = (pthread_rwlock_t *) malloc((memory_conf->frames) * sizeof(pthread_rwlock_t));
 	for (i = 0 ;i < (memory_conf->frames); i++) {
-		if (pthread_rwlock_init(memory_locks + i, NULL) != 0) {
-			log_error(logger, "Error starting memory rw lock %d", i);
-			exit(EXIT_FAILURE);
-		}
+		check((pthread_rwlock_init(memory_locks + i, NULL) != 0), "Error starting memory rw lock %d", i);
 	}
 	cache_memory_locks = (pthread_rwlock_t *) malloc((memory_conf->cache_entries) * sizeof(pthread_rwlock_t));
 	for (i = 0 ;i < (memory_conf->cache_entries); i++) {
-		if (pthread_rwlock_init(cache_memory_locks + i, NULL) != 0) {
-			log_error(logger, "Error starting cache memory rw lock %d", i);
-			exit(EXIT_FAILURE);
-		}
+		check((pthread_rwlock_init(cache_memory_locks + i, NULL) != 0), "Error starting cache memory rw lock %d", i);
 	}
 	pthread_mutex_init(&mutex_lock, NULL);
 	return EXIT_SUCCESS;
@@ -290,6 +301,9 @@ void process_request(int * client_socket) {
 			break;
 		case ASSIGN_PAGE_OC:
 			assign_page(client_socket);
+			break;
+		case DELETE_PAGE_OC:
+			delete_page(client_socket);
 			break;
 		case END_PROCESS_OC:
 			finalize_process(client_socket);
@@ -385,7 +399,7 @@ int inicialize_page(int pid, int page) {
  * @NAME get_available_frame
  */
 int get_available_frame(void) {
-	return list_remove(available_frame_list, 0);
+	return (int) list_remove(available_frame_list, 0);
 }
 
 /**
@@ -430,7 +444,6 @@ int writing_cache(t_write_request * w_req) {
 		cache_entry_to_write = assign_cache_entry((w_req->pid));
 	}
 	update_cache(cache_entry_to_write, (w_req->pid), (w_req->page), (w_req->offset), (w_req->size), (w_req->buffer));
-	rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry_to_write);
 	return EXIT_SUCCESS;
 }
 
@@ -456,30 +469,18 @@ int get_cache_entry(int pid, int page, int read_write) {
 int assign_cache_entry(int pid) {
 
 	pthread_mutex_lock(&mutex_lock);
-	bool exist_on_list = false;
 	bool max_entries_exceeded = false;
 	t_cache_x_process * cache_x_process;
 	int pos = 0;
-	while (pos < (cache_x_process_list->elements_count)) { // searching process entries amount in cache
+	while (pos < (cache_x_process_list->elements_count)) {
 		cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, pos);
 		if ((cache_x_process->pid) == pid) {
-			exist_on_list = true;
 			if ((cache_x_process->entries) >= ((memory_conf->cache_x_process))) {
 				max_entries_exceeded = true;
-			} else {
-				(cache_x_process->entries)++; // increasing process entries amount
 			}
 			break;
 		}
 		pos++;
-	}
-	if (!exist_on_list) {
-		// process  doesn't exist on list
-		// creating node for list
-		cache_x_process = (t_reg_pages_process_table *) malloc (sizeof(t_reg_pages_process_table));
-		cache_x_process->pid = pid;
-		cache_x_process->entries= 1;
-		list_add(cache_x_process_list, cache_x_process);
 	}
 	pthread_mutex_unlock(&mutex_lock);
 
@@ -539,33 +540,56 @@ int update_cache(int cache_entry, int pid, int page, int offset, int size, void 
 	char ** last_used_time_ptr = (char **) last_used_time;
 	last_used_time_ptr += cache_entry;
 
-	if ((cache_memory_ptr->pid) >= 0) {
+	if ((cache_memory_ptr->pid) >= 0)
 		free(*last_used_time_ptr);
-		if ((cache_memory_ptr->pid) != pid) {
-			t_cache_x_process * cache_x_process;
-			pthread_mutex_lock(&mutex_lock);
-			int pos = 0;
-			while (pos < (cache_x_process_list->elements_count)) { // searching amount of process entries in cache
-				cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, pos);
+
+	void * cache_write_pos = (cache_memory_ptr->content) + offset;
+	memcpy(cache_write_pos, buffer, size);
+	int previous_pid = (cache_memory_ptr->pid);
+	cache_memory_ptr->pid = pid;
+	cache_memory_ptr->page = page;
+	*last_used_time_ptr = temporal_get_string_time();
+	rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
+
+	if ((previous_pid < 0) || (pid != previous_pid)) {
+		t_cache_x_process * cache_x_process;
+		bool updated = false;
+		bool previous_updated = false;
+		pthread_mutex_lock(&mutex_lock);
+		int pos = 0;
+		while (pos < (cache_x_process_list->elements_count)) {
+			cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, pos);
+			if (previous_pid < 0) {
 				if ((cache_x_process->pid) == pid) {
+					(cache_x_process->entries)++;
+					updated = true;
+					break;
+				}
+			} else {
+				if ((cache_x_process->pid) == previous_pid) {
 					(cache_x_process->entries)--;
 					if (cache_x_process->entries <= 0) {
 						cache_x_process = list_remove(cache_x_process_list, index);
 						free(cache_x_process);
 					}
-					break;
+					previous_updated = true;
+					if (updated) break;
+				} else if ((cache_x_process->pid) == pid) {
+					(cache_x_process->entries)++;
+					updated = true;
+					if (previous_updated) break;
 				}
-				pos++;
 			}
-			pthread_mutex_unlock(&mutex_lock);
+			pos++;
 		}
+		if (!updated) {
+			cache_x_process = (t_reg_pages_process_table *) malloc (sizeof(t_reg_pages_process_table));
+			cache_x_process->pid = pid;
+			cache_x_process->entries= 1;
+			list_add(cache_x_process_list, cache_x_process);
+		}
+		pthread_mutex_unlock(&mutex_lock);
 	}
-
-	void * cache_write_pos = (cache_memory_ptr->content) + offset;
-	memcpy(cache_write_pos, buffer, size);
-	cache_memory_ptr->pid = pid;
-	cache_memory_ptr->page = page;
-	*last_used_time_ptr = temporal_get_string_time();
 
 	return EXIT_SUCCESS;
 }
@@ -578,11 +602,10 @@ int writing_memory(t_write_request * w_req) {
 	// TODO : retardo por acceso a memoria
 
 	// getting associated frame
-	int frame = get_frame((w_req->pid), (w_req->page), LOCK_WRITE);
-	// getting write position
-	void * write_pos = (memory_ptr + (frame * (memory_conf->frame_size)) + ((w_req->offset)));
-	// writing
-	memcpy(write_pos, (w_req->buffer), (w_req->size));
+	int frame = get_frame((w_req->pid), (w_req->page));
+	rw_lock_unlock(memory_locks, LOCK_WRITE, frame);
+	void * write_pos = (memory_ptr + (frame * (memory_conf->frame_size)) + ((w_req->offset))); // getting write position
+	memcpy(write_pos, (w_req->buffer), (w_req->size)); // writing
 	rw_lock_unlock(memory_locks, UNLOCK, frame);
 	return EXIT_SUCCESS;
 }
@@ -590,14 +613,16 @@ int writing_memory(t_write_request * w_req) {
 /**
  * @NAME get_frame
  */
-int get_frame(int pid, int page, int read_write) {
+int get_frame(int pid, int page) {
+	int frame;
 	int h_frame = hashing(pid, page);
-	rw_lock_unlock(memory_locks, read_write, h_frame);
+	pthread_mutex_lock(&mutex_lock);
 	if (page_is_right(h_frame, pid, page)) {
-		return h_frame;
+		frame = h_frame;
+	} else {
+		frame = searching_on_overflow(h_frame, pid, page); // hash collision
 	}
-	rw_lock_unlock(memory_locks, UNLOCK, h_frame);
-	int frame = searching_on_overflow(h_frame, pid, page, read_write); // hash collision
+	pthread_mutex_unlock(&mutex_lock);
 	return frame;
 }
 
@@ -626,19 +651,15 @@ unsigned int hashing(int pid, int page) {
 /**
  * @NAME searching_on_overflow
  */
-int searching_on_overflow(int o_frame, int pid, int page, int read_write) {
+int searching_on_overflow(int o_frame, int pid, int page) {
 	int frame;
 	int index = 0;
-	pthread_mutex_lock(&mutex_lock);
 	while (index < ((overflow[o_frame])->elements_count)) {
 		frame = list_get(overflow[o_frame], index);
-		rw_lock_unlock(memory_locks, read_write, frame);
 		if (page_is_right(frame, pid, page))
 			break;
-		rw_lock_unlock(memory_locks, UNLOCK, frame);
 		index++;
 	}
-	pthread_mutex_unlock(&mutex_lock);
 	return frame;
 }
 
@@ -688,7 +709,6 @@ int reading_cache(int * client_socket, t_read_request * r_req) {
 		return CACHE_MISS;
 	}
 	read_cache_entry_and_send(client_socket, r_req, cache_entry);
-	rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
 	return CACHE_HIT;
 }
 
@@ -709,6 +729,7 @@ int read_cache_entry_and_send(int * client_socket, t_read_request * r_req, int c
 	free(*last_used_time_ptr);
 	*last_used_time_ptr = temporal_get_string_time();
 
+	rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
 	return EXIT_SUCCESS;
 }
 
@@ -716,13 +737,12 @@ int read_cache_entry_and_send(int * client_socket, t_read_request * r_req, int c
  * @NAME readind_memory
  */
 int readind_memory(int * client_socket, t_read_request * r_req) {
-	int frame = get_frame((r_req->pid), (r_req->page), LOCK_READ);
+	int frame = get_frame((r_req->pid), (r_req->page));
+	rw_lock_unlock(memory_locks, LOCK_READ, frame);
 	void * memory_read_pos = memory_ptr +  (frame * (memory_conf->frame_size));
 
-	// updating cache
-	int lru_cache_entry = assign_cache_entry((r_req->pid));
+	int lru_cache_entry = assign_cache_entry((r_req->pid)); // updating cache
 	update_cache(lru_cache_entry, (r_req->pid), (r_req->page), 0, (memory_conf->frame_size), memory_read_pos);
-	rw_lock_unlock(cache_memory_locks, UNLOCK, lru_cache_entry);
 
 	memory_read_pos += (r_req->offset);
 	void * buffer = malloc(sizeof(char) * (r_req->size));
@@ -743,6 +763,84 @@ void assign_page(int * client_socket) {
 	int resp_code = assign_pages_to_process((assign_req->pid), (assign_req->pages));
 	free(assign_req);
 	init_process_send_resp(client_socket, resp_code);
+}
+
+/**
+ * @NAME delete_page
+ */
+void delete_page(int * client_socket) {
+	t_delete_page_request * delete_req = delete_page_recv_req(client_socket, logger);
+	if ((delete_req->exec_code) == DISCONNECTED_CLIENT) return;
+	int resp_code = delete_page_process((delete_req->pid), (delete_req->page));
+	free(delete_req);
+	delete_page_send_resp(client_socket, resp_code);
+}
+
+/**
+ * @NAME delete_page_process
+ */
+int delete_page_process(int pid, int page) {
+	pthread_mutex_lock(&mutex_lock);
+	int frame;
+	int h_frame = hashing(pid, page);
+	if (page_is_right(h_frame, pid, page)) {
+		frame = h_frame;
+	} else {
+		int index = 0;
+		while (index < ((overflow[h_frame])->elements_count)) {
+			frame = list_get(overflow[h_frame], index);
+			if (page_is_right(frame, pid, page)) {
+				list_remove(overflow[h_frame], index);
+				break;
+			}
+			index++;
+		}
+	}
+
+	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
+	invert_table_ptr += frame;
+	invert_table_ptr->pid = 0;
+	invert_table_ptr->page = 0;
+	list_add(available_frame_list, frame);
+	pthread_mutex_unlock(&mutex_lock);
+
+	// cache memory
+	t_cache_memory * cache_memory_ptr = (t_cache_memory *) cache_memory;
+	char ** last_used_time_ptr = (char **) last_used_time;
+	int cache_entry = 0;
+	while (cache_entry < (memory_conf->cache_entries)) {
+		rw_lock_unlock(cache_memory_locks, LOCK_WRITE, cache_entry);
+		if ((cache_memory_ptr->pid) == pid && (cache_memory_ptr->page) == page) {
+			cache_memory_ptr->pid = -1;
+			cache_memory_ptr->page = -1;
+			free(*last_used_time_ptr);
+			rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
+
+			pthread_mutex_lock(&mutex_lock);
+			t_cache_x_process * cache_x_process;
+			int index = 0;
+			while (index < (cache_x_process_list->elements_count)) {
+				cache_x_process = (t_cache_x_process *) list_get(cache_x_process_list, index);
+				if ((cache_x_process->pid) == pid) {
+					(cache_x_process->entries)--;
+					if ((cache_x_process->entries) <= 0) {
+						cache_x_process = list_remove(cache_x_process_list, index);
+						free(cache_x_process);
+					}
+					break;
+				}
+				index++;
+			}
+			pthread_mutex_unlock(&mutex_lock);
+			break;
+		}
+		rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
+		cache_entry++;
+		cache_memory_ptr++;
+		last_used_time_ptr++;
+	}
+
+	return EXIT_SUCCESS;
 }
 
 /**
@@ -920,24 +1018,27 @@ void memory_console(void * unused) {
 				int index;
 				while (cache_entry < (memory_conf->cache_entries)) {
 					rw_lock_unlock(cache_memory_locks, LOCK_WRITE, cache_entry);
-					pthread_mutex_lock(&mutex_lock);
-					index = 0;
-					while (index < (cache_x_process_list->elements_count)) {
-						cache_x_process = list_get(cache_x_process_list, 0);
-						if ((cache_x_process->pid) == (cache_memory_ptr->pid)) {
-							(cache_x_process->entries)--;
-							if (cache_x_process->entries <= 0) {
-								cache_x_process = list_remove(cache_x_process_list, 0);
-								free(cache_x_process);
-							}
-							break;
-						}
-					}
-					pthread_mutex_unlock(&mutex_lock);
+					int previous_pid = (cache_memory_ptr->pid);
 					if ((cache_memory_ptr->pid) >= 0) free(*last_used_time_ptr);
 					cache_memory_ptr->pid = -1;
 					cache_memory_ptr->page = -1;
 					rw_lock_unlock(cache_memory_locks, UNLOCK, cache_entry);
+					if (previous_pid >= 0) {
+						pthread_mutex_lock(&mutex_lock);
+						index = 0;
+						while (index < (cache_x_process_list->elements_count)) {
+							cache_x_process = list_get(cache_x_process_list, 0);
+							if ((cache_x_process->pid) == previous_pid) {
+								(cache_x_process->entries)--;
+								if (cache_x_process->entries <= 0) {
+									cache_x_process = list_remove(cache_x_process_list, 0);
+									free(cache_x_process);
+								}
+								break;
+							}
+						}
+						pthread_mutex_unlock(&mutex_lock);
+					}
 					cache_entry++;
 					cache_memory_ptr++;
 					last_used_time_ptr++;
