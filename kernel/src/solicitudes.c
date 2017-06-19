@@ -105,7 +105,8 @@ void solve_request(int socket, fd_set* set){
 	    memcpy(flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
 	    resp = abrir_archivo(pid, direccion, flags);
 	    //TODO respuesta al pedido de abrir archivo
-	    //connection_send(socket, OC_RESP_ABRIR, xxxx);
+	    connection_send(socket, OC_RESP_ABRIR, &resp);
+	    break;
 	}
 }
 
@@ -282,7 +283,60 @@ int abrir_archivo(int pid, char* direccion, t_banderas* flags){
 	//TODO busco direccion en la tabla global: si está tomo posición y incremento open, lo agrego a la tabla del proceso con los permisos indicados
 	//si no está en la global y hay permiso de creacion se agrega a la tabla global y a la del proceso
 	//si no está en la global y no hay permiso de creación, se devuelve mensaje de error
+
+	int fd_global; //guarda la posición del archivo en la tabla global
+	fd_global = buscarArchivoTablaGlobal(direccion);
+
+	if(fd_global>=0){
+
+	}else{
+		if(flags->creacion){
+			fd_global = crearArchivoTablaGlobal(direccion);
+		}else{
+			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo
+			fd_global = -1;
+		}
+	}
+	return fd_global;
 }
+
+int crearArchivoTablaGlobal(char* direccion){
+	int fd_global;
+	t_global_file * filereg = malloc(sizeof(t_global_file));
+	filereg->file = malloc(string_length(direccion));
+	memcpy(filereg->file, direccion,string_length(direccion));
+	filereg->open=1;
+	//TODO semaforos!
+	list_add(tabla_global_archivos,filereg);
+	fd_global = list_size(tabla_global_archivos)-1;
+
+	return fd_global;
+}
+
+
+int buscarArchivoTablaGlobal(char* direccion){
+	//TODO semaforos!
+	t_global_file * filereg;
+
+	int i, resp;
+	for (i=0;i<list_size(tabla_global_archivos);i++){
+		filereg = list_get(tabla_global_archivos,i);
+		if(strcmp(filereg->file, direccion)==0){
+			break;
+		}
+	}
+
+	if (i>=0){
+		resp = i;
+	}else{
+		resp = -1;
+	}
+	return resp;
+
+}
+
+
+
 void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 	int offset = 0;
 	t_pagina_heap* pag_heap;

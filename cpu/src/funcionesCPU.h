@@ -33,6 +33,8 @@ void getNextPosStack();
 void updatePageOffsetAvailable(u_int32_t);
 u_int32_t getPageofPos(t_puntero);
 u_int32_t getOffsetofPos(t_puntero);
+int cargarArchivoTablaProceso(int fd_global, t_banderas* flags);
+int nuevoFD_PID();
 
 t_indice_codigo* obtener_indice_codigo(t_metadata_program*);
 t_dictionary* obtener_indice_etiquetas(t_metadata_program*);

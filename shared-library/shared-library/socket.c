@@ -122,6 +122,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_HANDSHAKE_MEMORY:
 			message_size_value = sizeof(uint8_t);
 			break;
+		case OC_RESP_ABRIR:
 		case OC_FUNCION_RESERVAR:
 			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
@@ -194,6 +195,11 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 
 					printf("\nScript: %s\n", buffer);
 				}
+				break;
+			case OC_RESP_ABRIR:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = (int*)buffer;
 				break;
 			case OC_NUEVA_CONSOLA_PID:
 				buffer = malloc(message_size);

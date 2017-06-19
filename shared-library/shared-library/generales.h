@@ -32,7 +32,7 @@ typedef struct{
 	t_stack* indice_stack;
 	t_indice_codigo* indice_codigo;
 	t_dictionary* indice_etiquetas;
-	// tabla de archivos
+	t_list* tabla_archivos;
 	int exit_code;
 }t_PCB;
 
@@ -63,8 +63,9 @@ typedef struct {
 } t_archivo;
 
 typedef struct{
-	char* flags;
+	int proceso_fd;
 	int global_fd;
+	t_banderas* flags;
 } t_process_file;
 
 typedef struct{
