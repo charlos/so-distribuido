@@ -27,7 +27,10 @@ void solve_request(int socket, fd_set* set){
     t_banderas* flags;
 
 	status = connection_recv(socket, &operation_code, &buffer);
-	if(status <= 0)	FD_CLR(socket, set);
+	if(status <= 0){
+		FD_CLR(socket, set);
+		operation_code = 555;
+	}
 
 	switch(operation_code){
 	case OC_SOLICITUD_PROGRAMA_NUEVO:
@@ -107,6 +110,9 @@ void solve_request(int socket, fd_set* set){
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(socket, OC_RESP_ABRIR, &resp);
 	    break;
+	default:
+		printf("Desconexion");
+		//TODO Ver que hacer con cada desconexion
 	}
 }
 
