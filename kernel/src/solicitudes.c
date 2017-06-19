@@ -78,14 +78,15 @@ void solve_request(int socket, fd_set* set){
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, pagina->nro_pagina, 0, TAMANIO_PAGINAS, logger);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 
-		marcar_bloque_ocupado(bloque_heap_ptr, pagina, pedido->espacio_pedido);
+		marcar_bloque_ocupado(bloque_heap_ptr, respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		// Mandamos la pagina de heap modificada
 		memory_write(memory_socket, pedido->pid, pagina->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 
 		modificar_pagina(pagina, pedido->espacio_pedido);
 		// Mandamos puntero al programa que lo pidio
+		bloque_heap_ptr += sizeof(t_heapMetadata);
 		bloque_heap_ptr += TAMANIO_PAGINAS * pagina->nro_pagina;
-		connection_send(socket, OC_RESP_RESERVAR, bloque_heap_ptr);
+		connection_send(socket, OC_RESP_RESERVAR, &bloque_heap_ptr);
 
 		break;
 	case OC_FUNCION_LIBERAR:
@@ -183,9 +184,15 @@ void tabla_heap_agregar_pagina(int pid){
 	bool _mismo_pid(t_pagina_heap* p){
 		return p->pid == pid;
 	}
+	int ultimo_nro_pag;
 	t_list* filtrados = list_filter(tabla_paginas_heap, (void*) _mismo_pid);
-	int ultima_pagina = list_get(filtrados, list_size(filtrados) - 1);
-	t_pagina_heap* nueva_pag = crear_pagina_heap(pid, ultima_pagina + 1);
+	t_pagina_heap* ultima_pagina = list_get(filtrados, list_size(filtrados) - 1);
+	if(list_size(filtrados) == 0){
+		ultimo_nro_pag = -1;
+	} else {
+		ultimo_nro_pag = ultima_pagina->nro_pagina;
+	}
+	t_pagina_heap* nueva_pag = crear_pagina_heap(pid, ultimo_nro_pag + 1);
 	list_add(tabla_paginas_heap, nueva_pag);
 }
 
@@ -203,7 +210,7 @@ t_puntero buscar_bloque_disponible(void* pagina, int espacio_pedido){			// Devue
 	t_puntero offset = 0;
 	while(offset < TAMANIO_PAGINAS){
 		metadata = leer_metadata(pagina + offset);
-		if(!(metadata->isFree) && metadata->size >= (espacio_pedido + sizeof(t_heapMetadata))){		// hay un bloque con suficiente espacio libre
+		if((metadata->isFree) && metadata->size >= (espacio_pedido + sizeof(t_heapMetadata))){		// hay un bloque con suficiente espacio libre
 			free(metadata);
 			return offset;
 		}

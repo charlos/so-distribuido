@@ -123,7 +123,10 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(uint8_t);
 			break;
 		case OC_FUNCION_RESERVAR:
-			message_size_value = sizeof(int);
+			message_size_value = sizeof(t_pedido_reservar_memoria);
+			break;
+		case OC_RESP_RESERVAR:
+			message_size_value = sizeof(t_puntero);
 			break;
 		case OC_FUNCION_LIBERAR:
 			message_size_value = sizeof(t_pedido_liberar_memoria);
@@ -153,6 +156,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 
 	uint8_t prot_ope_code_size = sizeof(uint8_t);
 	uint8_t prot_message_size = sizeof(uint32_t);
+	t_puntero respuesta;
 	t_pedido_reservar_memoria* reservar;
 	t_pedido_liberar_memoria* liberar;
 	uint32_t message_size;
@@ -212,6 +216,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_FUNCION_LIBERAR:
 				buffer = malloc(sizeof(t_pedido_liberar_memoria));
 				status = recv(file_descriptor, buffer, message_size, 0);
+				*message = (t_pedido_liberar_memoria*) buffer;
 				break;
 			case OC_HANDSHAKE_MEMORY:
 				buffer = malloc(message_size);
@@ -219,10 +224,13 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = (uint8_t *)buffer;
 				break;
 			case OC_FUNCION_RESERVAR:
-				reservar = malloc(sizeof(t_pedido_reservar_memoria));
-				recv(file_descriptor, reservar->pid, sizeof(int), 0);
-				recv(file_descriptor, reservar->espacio_pedido, sizeof(int), 0);
+				buffer = malloc(sizeof(t_pedido_reservar_memoria));
+				recv(file_descriptor, buffer, message_size, 0);
 				*message = (t_pedido_reservar_memoria*) buffer;
+				break;
+			case OC_RESP_RESERVAR:
+				recv(file_descriptor, &respuesta, message_size, 0);
+				*message = &respuesta;
 				break;
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);

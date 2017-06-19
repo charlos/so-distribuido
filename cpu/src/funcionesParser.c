@@ -184,10 +184,11 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_va
 t_puntero alocar(t_valor_variable espacio){
     log_trace(logger, "Reserva [%d] espacio en Heap", espacio);
 
-    void * buff = malloc(sizeof(int) + sizeof(t_valor_variable));
-    memcpy(buff, &(pcb->pid), sizeof(int));
-    memcpy(buff + sizeof(int), &espacio, sizeof(t_valor_variable));
-    connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, buff);
+//    void * buff = malloc(sizeof(int) + sizeof(t_valor_variable));
+    t_pedido_reservar_memoria* reservar = malloc(sizeof(t_pedido_reservar_memoria));
+    reservar->espacio_pedido = espacio;
+    reservar->pid = pcb->pid;
+    connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, reservar);
 
     t_puntero * buffer = malloc(sizeof(t_direccion_archivo));
     connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &buffer);
