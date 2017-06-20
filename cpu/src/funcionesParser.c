@@ -190,8 +190,11 @@ t_puntero alocar(t_valor_variable espacio){
     reservar->pid = pcb->pid;
     connection_send(server_socket_kernel, OC_FUNCION_RESERVAR, reservar);
 
-    t_puntero * buffer = malloc(sizeof(t_direccion_archivo));
-    connection_recv(server_socket_kernel, OC_RESP_RESERVAR, &buffer);
+    free(reservar);
+
+    t_puntero * buffer = malloc(sizeof(t_puntero));
+    uint8_t operation_code;
+    connection_recv(server_socket_kernel, &operation_code, &buffer);
 
     return *buffer;
 

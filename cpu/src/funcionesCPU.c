@@ -228,7 +228,7 @@ t_PCB* crear_PCB_Prueba(){
 			"#a va a tener el valor de la posicion de moemoria en el heap\n"
 			"*a = 5\n"
 			"# pondría al principio de ese cachito de stack el numero 5 en los primeros 4 bytes\n"
-			"print n *a\n"
+			"print *a\n"
 			"#deberia imprimir 20\n"
 			"b = 3 + *a\n"
 			"*b = 10\n"
