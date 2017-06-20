@@ -50,7 +50,7 @@ void solve_request(int socket, fd_set* set){
 		pcb->PC = 0;
 
 		log_trace(logger, "Mandando PID");
-		printf("Mandando PID");
+		printf("Mandando PID\n");
 
 		connection_send(socket, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
 
@@ -90,6 +90,7 @@ void solve_request(int socket, fd_set* set){
 		bloque_heap_ptr += sizeof(t_heapMetadata);
 		bloque_heap_ptr += TAMANIO_PAGINAS * pagina->nro_pagina;
 		connection_send(socket, OC_RESP_RESERVAR, &bloque_heap_ptr);
+		printf("Mandando heap\n");
 
 		break;
 	case OC_FUNCION_LIBERAR:
@@ -110,6 +111,9 @@ void solve_request(int socket, fd_set* set){
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(socket, OC_RESP_ABRIR, &resp);
 	    break;
+	case OC_FUNCION_ESCRIBIR:
+		//TODO: Escribir
+		break;
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion
