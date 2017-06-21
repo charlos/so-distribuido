@@ -113,6 +113,11 @@ void solve_request(int socket, fd_set* set){
 		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
 		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
+		if(pagina_vacia(liberar->pid, liberar->nro_pagina)){
+			tabla_heap_sacar_pagina(liberar);
+			liberar_pagina(liberar);
+			break;
+		}
 		memory_write(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 		break;
 	case OC_FUNCION_ABRIR:
@@ -425,4 +430,20 @@ void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 
 void juntar_bloques(t_heapMetadata* metadata1, t_heapMetadata* metadata2){
 	metadata2->size += sizeof(t_heapMetadata) + metadata1->size;
+}
+
+void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free){		// TODO PREGUNTAR a gus si descubrio como sacar elemento de lista
+	bool _pagina_de_programa(t_pagina_heap* pagina){
+		return (pagina->pid == pedido_free->pid && pagina->nro_pagina == pedido_free->nro_pagina);
+	}
+	list_remove_by_condition(tabla_paginas_heap, (void*) _pagina_de_programa);
+}
+
+void liberar_pagina(t_pedido_liberar_memoria* pedido_free){
+	memory_delete_page(memory_socket, pedido_free->pid, pedido_free->nro_pagina, logger);
+}
+
+bool pagina_vacia(int pid, int nro_pagina){
+	t_pagina_heap* pag = buscar_pagina_heap(pid, nro_pagina);
+	return (pag->espacio_libre == (TAMANIO_PAGINAS - sizeof(t_heapMetadata)));
 }

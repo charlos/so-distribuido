@@ -45,5 +45,8 @@ int nuevoFD_PID(int);
 t_list* crearTablaArchProceso();
 t_table_file* getTablaArchivo(int pid);
 t_heapMetadata* leer_metadata(void* pagina);
+bool pagina_vacia(int pid, int nro_pagina);
+void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free);
+void liberar_pagina(t_pedido_liberar_memoria* pedido_free);
 
 #endif /* SOLICITUDES_H_ */
