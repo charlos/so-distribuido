@@ -232,10 +232,10 @@ t_PCB* crear_PCB_Prueba(){
 */
 	/*
 			"*a = 5\n"
-			"print n *a\n"
+			"prints n *a\n"
 			"b = 3 + *a\n"
 			"*b = 10\n"
-			"print n *a\n"
+			"prints n *a\n"
 			"liberar a\n"
 			"end\n"
 			"\n";
@@ -335,4 +335,3 @@ t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata){
 	}
 	return indice_etiquetas;
 }
-

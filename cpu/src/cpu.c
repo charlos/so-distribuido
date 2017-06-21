@@ -50,6 +50,8 @@ int main(void) {
 	inicializarFuncionesParser();
 	pagesize = handshake(server_socket_memoria, logger);
 
+	log_trace(logger, "Socket kernel: %i \n", server_socket_kernel);
+
 	if (pagesize>0){
 		log_trace(logger, "Handshake con Memoria. El tamaño de la página es %d",pagesize);
 	} else {
