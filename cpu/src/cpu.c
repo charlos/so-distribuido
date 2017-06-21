@@ -38,6 +38,12 @@ int main(void) {
 	crear_logger("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/cpu", &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
+	/*uint8_t a;
+	uint32_t b;
+	a=1;
+	b=999999;
+	*/
+
 	load_properties();
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
@@ -101,7 +107,8 @@ int main(void) {
 
 	pcb = crear_PCB_Prueba();
 
-	int pc, page;
+	int pc, page, offset, pageend, size_to_read;
+	char* instruccion;
 	nextPageOffsetInStack = malloc(sizeof(t_page_offset));
 	getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
 
@@ -117,26 +124,53 @@ int main(void) {
 					   //quede en 0 al ser el primer contexto de ejecución.
 		}
 		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
-
+		t_read_response * read_response;
+		t_read_response * read_response2;
 		memcpy(icodigo, ((t_indice_codigo*) pcb->indice_codigo)+pcb->PC, sizeof(t_indice_codigo));
 
+		instruccion = malloc(icodigo->size);
+
 		page = calcularPaginaProxInstruccion();
+		offset = icodigo->offset-(page*pagesize);
+		pageend = (icodigo->offset+icodigo->size)/pagesize;
+
+		//para el caso en que la instrucción enté partida en dos páginas
+		if(page<pageend){
+			size_to_read = (page+1)*pagesize-icodigo->offset;
+		}else{
+			size_to_read = icodigo->size;
+		}
 
 		//pido leer la instruccion a la memoria
-		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
-
+		read_response = memory_read(server_socket_memoria, pcb->pid, page,offset , size_to_read, logger);
 		if (read_response->exec_code!=1){
-			log_error(logger, "Error al leer de memoria (Page [%d] |Offset [%d])", page, icodigo->offset);
+			log_error(logger, "Error al leer de memoria (Page [%d] |Offset [%d] |Size [%d])", page, icodigo->offset, size_to_read);
 		}
-		((char *)(read_response->buffer))[(read_response->buffer_size) - 1] = '\0';
 
-		log_trace(logger, "Evaluando instruccion: %s",read_response->buffer);
+		memcpy(instruccion,read_response->buffer,read_response->buffer_size);
 
-		procesarMsg(read_response->buffer);
+		if (page<pageend){
+			read_response2 = memory_read(server_socket_memoria, pcb->pid, pageend,0 , icodigo->size-size_to_read, logger);
+			if (read_response2->exec_code!=1){
+				log_error(logger, "Error al leer de memoria (Page [%d] |Offset [%d] |Size [%d])", pageend, 0,icodigo->size-size_to_read);
+			}
+			memcpy(instruccion+read_response->buffer_size,read_response2->buffer,read_response2->buffer_size);
+		}
 
-		//free(instruccion);
+		instruccion[(icodigo->size) - 1] = '\0';
+
+
+		log_trace(logger, "Evaluando instruccion: %s",instruccion);
+
+		procesarMsg(instruccion);
+
+		free(instruccion);
 		free(read_response->buffer);
 		free(read_response);
+		if(page<pageend){
+			free(read_response2->buffer);
+			free(read_response2);
+		}
 		free(icodigo);
 
 		pcb->PC++;

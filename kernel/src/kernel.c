@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <shared-library/socket.h>
+#include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include <pthread.h>
 #include "kernel.h"
@@ -26,7 +27,7 @@ int main(int argc, char* argv[]) {
 	log_trace(logger, "Log Creado!!");
 
 	load_kernel_properties();
-
+	tabla_archivos = list_create();
 	tabla_paginas_heap = list_create();
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 

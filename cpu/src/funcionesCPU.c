@@ -17,7 +17,6 @@
 #include "funcionesCPU.h"
 
 extern t_PCB* pcb;
-//extern int stackPointer;
 extern t_page_offset* nextPageOffsetInStack;
 extern AnSISOP_funciones * funciones;
 extern AnSISOP_kernel * func_kernel;
@@ -134,7 +133,7 @@ int calcularPaginaProxInstruccion(){
 
 	bytes_codigo=0;
 	t_indice_codigo* icodigo;
-	for( pc = 0 ; pc <= pcb->PC ; pc++){
+	for( pc = 0 ; pc < pcb->PC ; pc++){
 		icodigo = ((t_indice_codigo*) pcb->indice_codigo)+ pc;
 		bytes_codigo += icodigo->size;
 	}
@@ -206,39 +205,41 @@ u_int32_t getOffsetofPos(t_puntero pos){
 	return pos - (page * pagesize);
 }
 
-int cargarArchivoTablaProceso(int fd_global, t_banderas* flags){
-	t_process_file* file = malloc(sizeof(t_process_file));
-	file->global_fd = fd_global;
-	file->proceso_fd = nuevoFD_PID();
-	return file->proceso_fd;
-}
-
-int nuevoFD_PID(){
-	return list_size(pcb->tabla_archivos)+1;
-}
 
 t_PCB* crear_PCB_Prueba(){
 	pcb = malloc(sizeof(t_PCB));
 	pcb->pid = 1;
 
 	char* PROGRAMA =
+			"#!/usr/bin/ansisop\n"
 			"begin\n"
-			"variables a, b\n"
-			"alocar a 50\n"
-			"#a va a tener el valor de la posicion de moemoria en el heap\n"
-			"*a = 5\n"
-			"# pondría al principio de ese cachito de stack el numero 5 en los primeros 4 bytes\n"
-			"print n *a\n"
-			"#deberia imprimir 20\n"
-			"b = 3 + *a\n"
-			"*b = 10\n"
-			"#pondria el 10 en los sigueintes 3 bytes. Esto pisaria algunos bits del primer 5\n"
-			"print n *a\n"
-			"#deberia imprimir cosas horribles!\n"
-			"liberar a\n"
+			"variables a, b, c\n"
+			"abrir a LC /archivo1.txt\n"
+			"abrir b LC /archivo2.txt\n"
+			"abrir c LC /archivo1.txt\n"
 			"end\n"
 			"\n";
 
+/*			"#!/usr/bin/ansisop\n"
+			"begin\n"
+			"variables a, b\n"
+			"alocar a 50\n"
+			"alocar b 30\n"
+			"liberar a\n"
+			"liberar b\n"
+			"end\n"
+			"\n";
+*/
+	/*
+			"*a = 5\n"
+			"print n *a\n"
+			"b = 3 + *a\n"
+			"*b = 10\n"
+			"print n *a\n"
+			"liberar a\n"
+			"end\n"
+			"\n";
+*/
 /*
 "#!/usr/bin/ansisop\n"
 "#Programa para probar manejo de  archivos\n"
@@ -256,6 +257,9 @@ t_PCB* crear_PCB_Prueba(){
 /*
 			 "#!/usr/bin/ansisop\n"
 			"begin\n"
+			"#comentario 1 12345678901234567890\n"
+			"#comentario 2 12345678901234567890\n"
+			"#comentario 3 12345678901234567890\n"
 			"variables a,g\n"
 			"a = 1\n"
 			"g <- doble a\n"
@@ -264,6 +268,8 @@ t_PCB* crear_PCB_Prueba(){
 			"\n"
 			"function doble\n"
 			"variables f\n"
+			"#comentario 4 12345678901234567890\n"
+			"#xxxxxxxxxx\n"
 			"f = $0 + $0\n"
 			"return f\n"
 			"end\n"

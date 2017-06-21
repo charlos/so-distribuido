@@ -49,6 +49,7 @@ t_queue* cola_listos;
 t_queue* cola_bloqueados;
 t_queue* cola_exit;
 t_queue* cola_cpu;
+t_list* tabla_archivos;
 int memory_socket, fs_socket;
 t_kernel_conf* kernel_conf;
 int TAMANIO_PAGINAS;

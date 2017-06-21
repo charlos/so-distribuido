@@ -97,15 +97,16 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 
 	uint8_t operation_code_value = operation_code;
 	uint32_t message_size_value;
+	//size_t message_size_value;
 	int i= 0;
 	t_PCB* pcb;
 
 	switch ((int)operation_code) {
-	case OC_PCB:
-		pcb = message;
-		while(pcb->indice_codigo[i].offset != NULL)i++;
-		message_size_value = i + 1;
-		break;
+		case OC_PCB:
+			pcb = message;
+			while(pcb->indice_codigo[i].offset != NULL)i++;
+			message_size_value = i + 1;
+			break;
 		case OC_CODIGO:
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
 			//message_size_value = *(uint8_t*) message;
@@ -132,6 +133,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_FUNCION_LIBERAR:
 			message_size_value = sizeof(t_pedido_liberar_memoria);
 			break;
+		case OC_FUNCION_ESCRIBIR:
+			message_size_value = sizeof(t_archivo);
+			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
@@ -140,6 +144,8 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 
 	uint8_t operation_code_length = sizeof(uint8_t);
 	uint8_t message_size_length = sizeof(uint32_t);
+	//size_t operation_code_length = sizeof(uint8_t);
+	//size_t message_size_length = sizeof(uint32_t);
 	void * buffer = malloc(operation_code_length + message_size_length + message_size_value);
 	memcpy(buffer, &operation_code_value, operation_code_length);
 	memcpy(buffer + operation_code_length, &message_size_value, message_size_length);
@@ -237,6 +243,11 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_RESP_RESERVAR:
 				recv(file_descriptor, &respuesta, message_size, 0);
 				*message = &respuesta;
+				break;
+			case OC_FUNCION_ESCRIBIR:
+				buffer = malloc(sizeof(t_archivo));
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = (t_archivo*) buffer;
 				break;
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);

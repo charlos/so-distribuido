@@ -35,9 +35,14 @@ t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata);
 t_puntero buscar_bloque_disponible(void* pagina, int espacio_pedido);
 t_heapMetadata* crear_metadata_libre(uint32_t espacio);
 void cambiar_metadata(t_heapMetadata* metadata, int espacio_pedido);
-int abrir_archivo(int, char*, t_banderas*);
+void juntar_bloques(t_heapMetadata* metadata1, t_heapMetadata* metadata2);
+int abrir_archivo(int, char*, t_banderas);
 void agregar_bloque_libre(char* pagina, int offset);
 int buscarArchivoTablaGlobal(char*);
 int crearArchivoTablaGlobal(char*);
+int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags);
+int nuevoFD_PID(int);
+t_list* crearTablaArchProceso();
+t_table_file* getTablaArchivo(int pid);
 
 #endif /* SOLICITUDES_H_ */

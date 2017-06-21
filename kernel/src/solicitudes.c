@@ -9,6 +9,8 @@
 #include <parser/metadata_program.h>
 #include <parser/parser.h>
 
+extern t_list* tabla_archivos;
+
 void solve_request(int socket, fd_set* set){
 	uint8_t operation_code;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
@@ -21,10 +23,11 @@ void solve_request(int socket, fd_set* set){
 	t_read_response* respuesta_pedido_pagina;
 	t_PCB* pcb;
 	t_metadata_program* metadata;
+	t_table_file* tabla_proceso;
 
     int length_direccion, pid;
     char* direccion;
-    t_banderas* flags;
+    t_banderas flags;
 
 	status = connection_recv(socket, &operation_code, &buffer);
 	if(status <= 0){
@@ -61,9 +64,16 @@ void solve_request(int socket, fd_set* set){
 		pcb->indice_codigo = obtener_indice_codigo(metadata);
 		pcb->indice_etiquetas = obtener_indice_etiquetas(metadata);
 		metadata_destruir(metadata);
+
+		//Creo tabla de archivos del proceso
+		tabla_proceso = malloc(sizeof(t_table_file));
+		tabla_proceso->pid = pcb->pid;
+		tabla_proceso->tabla_archivos = crearTablaArchProceso();
+
 		break;
 	case OC_FUNCION_RESERVAR:
-		pedido = buffer;
+		log_trace(logger, "OP OC_FUNCION_RESERVAR dentro de kernel-solicitudes.c");
+		pedido = (t_pedido_reservar_memoria*)buffer;
 		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
 			memory_assign_pages(memory_socket, pedido->pid, 1, logger);
@@ -105,11 +115,14 @@ void solve_request(int socket, fd_set* set){
 	    memcpy(length_direccion, buffer + sizeof(int),sizeof(int));
 	    direccion = malloc(length_direccion);
 	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
-	    memcpy(flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
+	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
 	    resp = abrir_archivo(pid, direccion, flags);
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(socket, OC_RESP_ABRIR, &resp);
 	    break;
+	case OC_FUNCION_ESCRIBIR:
+		//TODO si es FD 1 enviar a consola para imprimir
+		break;
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion
@@ -146,9 +159,11 @@ void mandar_codigo_a_memoria(char* codigo, int pid){
 
 t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata){
 	int i = 0;
+	log_trace(logger, "Dentro de obtener_indice_codigo");
 	t_indice_codigo* indice_codigo = malloc(sizeof(t_indice_codigo) * metadata->instrucciones_size);
 	for(i = 0; i < metadata->instrucciones_size; i++){
 		memcpy((indice_codigo + i), (metadata->instrucciones_serializado )+ i, sizeof(t_indice_codigo));
+		log_trace(logger, "Instrucción nro %d: offset %d, size %d", i,(indice_codigo + i)->offset, (indice_codigo + i)->size);
 	}
 	return indice_codigo;
 }
@@ -285,18 +300,18 @@ void modificar_pagina(t_pagina_heap* pagina, int espacio_ocupado){
 	pagina->espacio_libre = pagina->espacio_libre - (espacio_ocupado + sizeof(t_heapMetadata));
 }
 
-int abrir_archivo(int pid, char* direccion, t_banderas* flags){
+int abrir_archivo(int pid, char* direccion, t_banderas flags){
 	//TODO busco direccion en la tabla global: si está tomo posición y incremento open, lo agrego a la tabla del proceso con los permisos indicados
 	//si no está en la global y hay permiso de creacion se agrega a la tabla global y a la del proceso
 	//si no está en la global y no hay permiso de creación, se devuelve mensaje de error
-
+	int fd_proceso;
 	int fd_global; //guarda la posición del archivo en la tabla global
 	fd_global = buscarArchivoTablaGlobal(direccion);
 
 	if(fd_global>=0){
-
+		fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 	}else{
-		if(flags->creacion){
+		if(flags.creacion){
 			fd_global = crearArchivoTablaGlobal(direccion);
 		}else{
 			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo
@@ -341,7 +356,46 @@ int buscarArchivoTablaGlobal(char* direccion){
 
 }
 
+int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
+	t_process_file* file = malloc(sizeof(t_process_file));
+	file->global_fd = fd_global;
+	file->proceso_fd = nuevoFD_PID(pid);
+	file->flags = flags;
+	return file->proceso_fd;
+}
 
+int nuevoFD_PID(pid){
+	t_table_file* tabla;
+	tabla = getTablaArchivo(pid);
+	int i;
+	t_process_file* file;
+	for(i=3;i<=list_size(tabla->tabla_archivos)+2;i++){
+		file = list_get(tabla->tabla_archivos,i);
+	}
+	return i;
+}
+
+t_table_file* getTablaArchivo(int pid){
+
+	   bool _findbyPID(t_table_file* reg){
+		   return reg->pid==pid;
+	   }
+	   t_table_file* tabla;
+	   tabla = list_find(tabla_archivos, (void*) _findbyPID);
+	   return tabla;
+}
+
+t_list* crearTablaArchProceso(){
+	t_list* tabla_archivo_proceso = list_create();
+
+	t_process_file* file = malloc(sizeof(t_process_file));
+	file->global_fd = 0;
+	file->proceso_fd = 1;
+
+	list_add(tabla_archivo_proceso,file);
+
+	return tabla_archivo_proceso;
+}
 
 void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 	int offset = 0;
