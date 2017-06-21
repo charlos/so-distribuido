@@ -25,11 +25,14 @@ endif
 # All Target
 all: libshared-library.so
 
+dependents:
+	-cd /home/utnso/workspace/so-commons-library/src/Debug && $(MAKE) all
+
 # Tool invocations
-libshared-library.so: $(OBJS) $(USER_OBJS)
+libshared-library.so: $(OBJS) $(USER_OBJS) /home/utnso/workspace/so-commons-library/src/Debug/libcommons.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -shared -o "libshared-library.so" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/so-commons-library/src/Debug" -shared -o "libshared-library.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -40,5 +43,6 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
+/home/utnso/workspace/so-commons-library/src/Debug/libcommons.so:
 
 -include ../makefile.targets

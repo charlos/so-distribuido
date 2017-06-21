@@ -24,6 +24,7 @@ void solve_request(int socket, fd_set* set){
 	t_PCB* pcb;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
+	t_heapMetadata* metadata_bloque;
 
     int length_direccion, pid;
     char* direccion;
@@ -106,8 +107,11 @@ void solve_request(int socket, fd_set* set){
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;		// liberar buffer
 		liberar->nro_pagina = liberar->posicion / TAMANIO_PAGINAS;
+		liberar->posicion = liberar->posicion % TAMANIO_PAGINAS;
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, logger);
-		marcar_bloque_libre(respuesta_pedido_pagina->buffer, liberar);
+		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
+		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
+		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
 		memory_write(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 		break;
@@ -264,11 +268,11 @@ t_pagina_heap* buscar_pagina_heap(int pid, int nro_pagina){
 	return list_find(tabla_paginas_heap, (void*) _pagina_de_programa);
 }
 
-void marcar_bloque_libre(char* pagina, t_pedido_liberar_memoria* pedido_free){
-	int offset = pedido_free->posicion % TAMANIO_PAGINAS;
-	t_heapMetadata* metadata = leer_metadata(pagina + offset);
+void marcar_bloque_libre(t_heapMetadata* metadata, char* pagina){
+//	int offset = pedido_free->posicion % TAMANIO_PAGINAS;
+//	t_heapMetadata* metadata = leer_metadata(pagina + offset);
 	metadata->isFree = 1;
-	memcpy(pagina + offset, metadata, sizeof(t_heapMetadata));
+	memcpy(pagina, metadata, sizeof(t_heapMetadata));
 
 }
 
