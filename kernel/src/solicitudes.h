@@ -44,5 +44,6 @@ int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags);
 int nuevoFD_PID(int);
 t_list* crearTablaArchProceso();
 t_table_file* getTablaArchivo(int pid);
+t_heapMetadata* leer_metadata(void* pagina);
 
 #endif /* SOLICITUDES_H_ */
