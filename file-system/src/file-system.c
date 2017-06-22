@@ -20,6 +20,8 @@
 #include <commons/collections/node.h>
 #include <commons/bitarray.h>
 #include <commons/config.h>
+#include <shared-library/file_system_prot.h>
+#include <shared-library/socket.h>
 #include <commons/log.h>
 #include "file-system.h"
 #include <sys/types.h>
@@ -42,12 +44,12 @@ void load(void);
 int unmap_bitmap_f(void);
 int get_available_block(void);
 
-void fs_handshake(int *);
+void handshake(int *);
 void validate_file(int *);
 void create_file(int *);
 void delete_file(int *);
-void read(int *);
-void write(int *);
+void read_file(int *);
+void write_file(int *);
 
 int main(int argc, char * argv[]) {
 
@@ -178,7 +180,7 @@ void process_request(int * client_socket) {
 		printf(logger, " >> client %d >> operation code : %d", * client_socket, ope_code);
 		switch (ope_code) {
 		case FS_HANDSHAKE_OC:
-			fs_handshake(client_socket);
+			handshake(client_socket);
 			break;
 		case FS_VALIDATE_FILE_OC:
 			validate_file(client_socket);
@@ -190,10 +192,10 @@ void process_request(int * client_socket) {
 			delete_file(client_socket);
 			break;
 		case FS_READ_FILE_OC:
-			read(client_socket);
+			read_file(client_socket);
 			break;
 		case FS_WRITE_FILE_OC:
-			write(client_socket);
+			write_file(client_socket);
 			break;
 		default:;
 		}
@@ -204,7 +206,7 @@ void process_request(int * client_socket) {
 	return;
 }
 
-void fs_handshake(int * client_socket) {
+void handshake(int * client_socket) {
 	fs_handshake_resp(client_socket, SUCCESS);
 }
 
@@ -298,7 +300,7 @@ void delete_file(int * client_socket) {
 	d_file_send_resp(client_socket, SUCCESS);
 }
 
-void read(int * client_socket) {
+void read_file(int * client_socket) {
 	t_fs_read_req * r_req = fs_read_recv_req(client_socket, logger);
 
 	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), r_req->path);
@@ -375,7 +377,7 @@ void read(int * client_socket) {
 	free(r_req);
 }
 
-void write(int * client_socket) {
+void write_file(int * client_socket) {
 	t_fs_write_req * w_req = fs_write_recv_req(client_socket, logger);
 
 	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), w_req->path);
@@ -390,8 +392,9 @@ void write(int * client_socket) {
 	char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
 	t_list * blocks_list = list_create();
 	int pos = 0;
+	int block_used;
 	while (used_blocks[pos] != NULL) {
-		list_add(atoi(used_blocks[pos]));
+		list_add(blocks_list, atoi(used_blocks[pos]));
 		free(used_blocks[pos]);
 		pos++;
 	}
@@ -413,7 +416,7 @@ void write(int * client_socket) {
 			// adding block
 			int available_block = get_available_block();
 			if (available_block >= 0) {
-				list_add(available_block);
+				list_add(blocks_list, available_block);
 				bytes_to_expand -= BLOCK_SIZE;
 			} else {
 				pos = b_elements_count;
@@ -443,7 +446,7 @@ void write(int * client_socket) {
 		b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), list_get(blocks_list, block_n));
 		block = fopen(b_path, "r+");
 		fseek(block, offset, SEEK_SET);
-		fwrite((r_req->buffer) + buff_pos, bytes_reading, 1, block);
+		fwrite((w_req->buffer) + buff_pos, bytes_writing, 1, block);
 		fclose(block);
 		free(b_path);
 		// END writing block
@@ -451,7 +454,7 @@ void write(int * client_socket) {
 		block_n++;
 		bytes_to_write = bytes_to_write - bytes_writing;
 		buff_pos = buff_pos + bytes_writing;
-		bytes_availables_in_block = OSADA_BLOCK_SIZE;
+		bytes_availables_in_block = BLOCK_SIZE;
 		offset = 0;
 	}
 
