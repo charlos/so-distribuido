@@ -54,6 +54,9 @@
 #define OC_RESP_LIBERAR 48
 #define OC_RESP_MOVER_CURSOR 49
 
+//VALORES DE RETORNO DEL PROCESO
+#define FINALIZADO_OK 1
+
 	/**
 	 * @NAME   open_socket
 	 * @DESC   Permite crear un socket "servidor" o "de escucha" El mismo abre un puerto en la red y después espera a que un cliente se conecte a ese puerto
