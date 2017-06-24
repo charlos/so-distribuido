@@ -8,25 +8,24 @@
  ============================================================================
  */
 
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <errno.h>
-#include <string.h>
-#include <stdarg.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <commons/bitarray.h>
 #include <commons/collections/list.h>
 #include <commons/collections/node.h>
-#include <commons/bitarray.h>
 #include <commons/config.h>
+#include <commons/log.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <shared-library/file_system_prot.h>
 #include <shared-library/socket.h>
-#include <commons/log.h>
-#include "file-system.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include "file-system.h"
 
 #define	SOCKET_BACKLOG 			100
 int listenning_socket;
@@ -212,52 +211,65 @@ void handshake(int * client_socket) {
 
 void validate_file(int * client_socket) {
 	t_v_file_req * v_req = v_file_recv_req(client_socket, logger);
-	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), v_req->path);
-	int resp_code;
-	struct stat s; // information about the file
-	int status = stat(path, &s);
-	if (status < 0) {
-		resp_code = ENOENT;
-	} else {
-		switch (s.st_mode & S_IFMT) {
-		case S_IFREG:
-			resp_code = ISREG;
-			break;
-		default:
-			resp_code = ISNOTREG;
-			break;
-		}
-	}
-	free(path);
+	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), v_req->path);
+	struct stat sb;
+	v_file_send_resp(client_socket, ((stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) ? ISREG : ISNOTREG));
+	free(c_path);
 	free(v_req->path);
 	free(v_req);
-	v_file_send_resp(client_socket, resp_code);
 }
 
 void create_file(int * client_socket) {
 	t_c_file_req * c_req = c_file_recv_req(client_socket, logger);
 	int resp_code;
-	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), c_req->path);
-	FILE * file = fopen(path, "w");
+
+	char * f_token = strtok((c_req->path), "/");
+	char * s_token = strtok(NULL, "/");
+
+	struct stat sb;
+	while (f_token && s_token) {
+		char * dir = f_token;
+		if (stat(dir, &sb) == 0 && !(S_ISDIR(sb.st_mode))) {
+    	mkdir(dir, S_IRWXU | S_IRWXG | S_IRWXO);
+    }
+		f_token = s_token;
+		s_token = strtok(NULL, "/");
+	}
+
+	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), c_req->path);
+	if (stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) {
+		t_config * file_metadata = config_create(c_path);
+		char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
+		unsigned int block;
+		int pos = 0;
+		while (used_blocks[pos] != NULL) {
+			block = atoi(used_blocks[pos]);
+			bitarray_clean_bit(bitmap, block);
+			free(used_blocks[pos]);
+			pos++;
+		}
+		free(file_metadata);
+		free(used_blocks);
+	}
+
 	int available_block = get_available_block();
 	if (available_block < 0) {
-		fclose(file);
-		remove(path);
-		resp_code = ENOSPC;
+		c_file_send_resp(client_socket, ENOSPC);
 	} else {
+		FILE * file = fopen(c_path, "w");
 		fprintf(file,"TAMANIO=0\n", BLOCK_SIZE);
 		fprintf(file,"BLOQUES=[%d]\0", available_block);
+		fclose(file);
 		char * b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), available_block);
 		FILE * block = fopen(b_path, "w");
 		fclose(block);
-		fclose(file);
 		free(b_path);
-		resp_code = SUCCESS;
+		c_file_send_resp(client_socket, SUCCESS);
 	}
-	free(path);
+
+	free(c_path);
 	free(c_req->path);
 	free(c_req);
-	c_file_send_resp(client_socket, resp_code);
 }
 
 int get_available_block(void) {
@@ -276,103 +288,99 @@ int get_available_block(void) {
 
 void delete_file(int * client_socket) {
 	t_d_file_req * d_req = d_file_recv_req(client_socket, logger);
-
-	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), d_req->path);
-	FILE * file = fopen(path, "r");
-	t_config * file_metadata = config_create(path);
-	char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
-
-	unsigned int block;
-	int pos = 0;
-	while (used_blocks[pos] != NULL) {
-		block = atoi(used_blocks[pos]);
-		bitarray_clean_bit(bitmap, block);
-		free(used_blocks[pos]);
-		pos++;
+	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), d_req->path);
+	struct stat sb;
+	if (stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) {
+		t_config * file_metadata = config_create(c_path);
+		char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
+		unsigned int block;
+		int pos = 0;
+		while (used_blocks[pos] != NULL) {
+			block = atoi(used_blocks[pos]);
+			bitarray_clean_bit(bitmap, block);
+			free(used_blocks[pos]);
+			pos++;
+		}
+		remove(c_path); // deleting file
+		free(used_blocks);
+		free(file_metadata);
 	}
-
-	fclose(file);
-	remove(path);
-
-	free(path);
+	d_file_send_resp(client_socket, SUCCESS);
+	free(c_path);
 	free(d_req->path);
 	free(d_req);
-	d_file_send_resp(client_socket, SUCCESS);
 }
 
 void read_file(int * client_socket) {
 	t_fs_read_req * r_req = fs_read_recv_req(client_socket, logger);
 
-	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), r_req->path);
-	FILE * file = fopen(path, "r");
-
-	if (file == NULL) {
-		//En caso de que se soliciten datos o se intenten guardar datos en un archivo inexistente el File System
-		//deberá retornar un error de Archivo no encontrado
-	}
-
-	t_config * file_metadata = config_create(path);
-	char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
-	int file_size = config_get_int_value(file_metadata, "TAMANIO");
-	int offset = (r_req->offset);
-	int size = (r_req->size);
-
-	void * buff;
-	int resp_code;
+	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), r_req->path);
 	int bytes_transferred = 0;
+	void * buff;
 
-	if (offset < (file_size - 1)) {
-		if (offset + size > file_size)
-			size = file_size - offset;
+	struct stat sb;
+	if (stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) {
 
-		buff = malloc((sizeof(char)) * size);
-		int movs = offset / BLOCK_SIZE;
-		used_blocks += movs;
-		offset = offset - (BLOCK_SIZE * movs);
-		int bytes_reading = ((BLOCK_SIZE - offset) >= size) ? size : BLOCK_SIZE - offset;
 
-		// reading block
-		char * b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), used_blocks);
-		FILE * block = fopen(b_path, "r");
-		fseek(block, offset, SEEK_SET);
-		fread(buff, bytes_reading, 1, block);
-		fclose(block);
-		free(b_path);
-		// END reading block
+		t_config * file_metadata = config_create(c_path);
+		char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
+		int file_size = config_get_int_value(file_metadata, "TAMANIO");
+		int offset = (r_req->offset);
+		int size = (r_req->size);
 
-		int buff_pos = bytes_reading;
-		int bytes_to_read = size - bytes_reading;
+		if (offset < (file_size - 1)) {
+			if (offset + size > file_size)
+				size = file_size - offset;
 
-		while (bytes_to_read > 0) {
-			used_blocks++;
-			bytes_reading = (bytes_to_read >= BLOCK_SIZE) ? BLOCK_SIZE : bytes_to_read;
+			buff = malloc((sizeof(char)) * size);
+			int movs = offset / BLOCK_SIZE;
+			used_blocks += movs;
+			offset = offset - (BLOCK_SIZE * movs);
+			int bytes_reading = ((BLOCK_SIZE - offset) >= size) ? size : (BLOCK_SIZE - offset);
 
-			// reading block
-			b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), used_blocks);
-			block = fopen(b_path, "r");
-			fseek(block, 0, SEEK_SET);
-			fread(buff + buff_pos, bytes_reading, 1, block);
+			// reading first block
+			char * b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), (*used_blocks));
+			FILE * block = fopen(b_path, "r");
+			fseek(block, offset, SEEK_SET);
+			fread(buff, bytes_reading, 1, block);
 			fclose(block);
 			free(b_path);
-			// END reading block
+			// END reading first block
 
-			buff_pos = buff_pos + bytes_reading;
-			bytes_to_read = bytes_to_read - bytes_reading;
+			int buff_pos = bytes_reading;
+			int bytes_to_read = size - bytes_reading;
+
+			while (bytes_to_read > 0) {
+				used_blocks++;
+				bytes_reading = (bytes_to_read >= BLOCK_SIZE) ? BLOCK_SIZE : bytes_to_read;
+
+				// reading block
+				b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), (*used_blocks));
+				block = fopen(b_path, "r");
+				fseek(block, 0, SEEK_SET);
+				fread(buff + buff_pos, bytes_reading, 1, block);
+				fclose(block);
+				free(b_path);
+				// END reading block
+
+				buff_pos = buff_pos + bytes_reading;
+				bytes_to_read = bytes_to_read - bytes_reading;
+			}
+			bytes_transferred = size;
+			free(buff);
 		}
-		bytes_transferred = size;
-		resp_code = SUCCESS;
+		fs_read_send_resp(client_socket, SUCCESS, bytes_transferred, buff);
+		int pos = 0;
+		while (used_blocks[pos] != NULL) {
+			free(used_blocks[pos]);
+			pos++;
+		}
+		free(used_blocks);
+		free(file_metadata);
 	} else {
-		resp_code = ERROR; // TODO : error handler
+		fs_read_send_resp(client_socket, ISNOTREG, bytes_transferred, buff);
 	}
-
-	fs_read_send_resp(client_socket, resp_code, bytes_transferred, buff);
-
-	int pos = 0;
-	while (used_blocks[pos] != NULL) {
-		free(used_blocks[pos]);
-		pos++;
-	}
-	free(buff);
+	free(c_path);
 	free(r_req->path);
 	free(r_req);
 }
@@ -380,96 +388,113 @@ void read_file(int * client_socket) {
 void write_file(int * client_socket) {
 	t_fs_write_req * w_req = fs_write_recv_req(client_socket, logger);
 
-	char * path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), w_req->path);
-	FILE * file = fopen(path, "r+");
+	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), w_req->path);
 
-	if (file == NULL) {
-		//En caso de que se soliciten datos o se intenten guardar datos en un archivo inexistente el File System
-		//deberá retornar un error de Archivo no encontrado
-	}
+	struct stat sb;
+	if (stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) {
 
-	t_config * file_metadata = config_create(path);
-	char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
-	t_list * blocks_list = list_create();
-	int pos = 0;
-	int block_used;
-	while (used_blocks[pos] != NULL) {
-		list_add(blocks_list, atoi(used_blocks[pos]));
-		free(used_blocks[pos]);
-		pos++;
-	}
-	int b_elements_count = (blocks_list->elements_count);
+		t_config * file_metadata = config_create(c_path);
+		char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
+		t_list * blocks_list = list_create();
+		while (used_blocks != NULL) {
+			list_add(blocks_list, (int) (atoi(*used_blocks)));
+			free(*used_blocks);
+			used_blocks++;
+		}
+		free(used_blocks);
 
-	int file_size = config_get_int_value(file_metadata, "TAMANIO");
-	int offset = (w_req->offset);
-	int size = (w_req->size);
+		int b_elements_count = (blocks_list->elements_count);
+		int file_size = config_get_int_value(file_metadata, "TAMANIO");
+		int offset = (w_req->offset);
+		int size = (w_req->size);
+		int bytes_to_expand = 0;
 
-	int bytes_availables_in_block;
+		if ((offset + size) > file_size) {
+			// expanding file
+			bytes_to_expand = (offset + size) - file_size;
+			file_size = file_size + bytes_to_expand;
+			int bytes_availables_in_block = BLOCK_SIZE - (file_size - (((blocks_list->elements_count) - 1) * BLOCK_SIZE));
+			bytes_to_expand = bytes_to_expand - bytes_availables_in_block;
+			int available_block;
 
-	if ((offset + size) > file_size) {
-		// expanding file
-		int bytes_to_expand = (offset + size) - file_size;
-		bytes_availables_in_block = BLOCK_SIZE - (file_size - (((blocks_list->elements_count) - 1) * BLOCK_SIZE));
-		bytes_to_expand = bytes_to_expand - bytes_availables_in_block;
-
-		while (bytes_to_expand > 0) {
-			// adding block
-			int available_block = get_available_block();
-			if (available_block >= 0) {
-				list_add(blocks_list, available_block);
-				bytes_to_expand -= BLOCK_SIZE;
-			} else {
-				pos = b_elements_count;
-				while (pos < (blocks_list->elements_count)) {
-					bitarray_clean_bit(bitmap, (int) list_remove(blocks_list, pos));
-					pos++;
+			while (bytes_to_expand > 0) {
+				// adding block
+				available_block = get_available_block();
+				if (available_block >= 0) {
+					list_add(blocks_list, available_block);
+					bytes_to_expand -= BLOCK_SIZE;
+				} else {
+					int pos = b_elements_count;
+					while (pos < (blocks_list->elements_count)) {
+						bitarray_clean_bit(bitmap, (int) (list_remove(blocks_list, pos)));
+						pos++;
+					}
+					fs_write_send_resp(client_socket, ENOSPC);
 				}
-				fs_write_send_resp(client_socket, ENOSPC);
-				return;
 			}
 		}
+
+		if (bytes_to_expand <= 0) {
+
+			int block_n = (offset / BLOCK_SIZE);
+			offset = offset - (block_n * BLOCK_SIZE);
+			int bytes_availables_in_block = BLOCK_SIZE - offset;
+			int bytes_to_write = size;
+
+			int buff_pos = 0;
+			int bytes_writing;
+			char * b_path;
+			FILE * block;
+
+			while (bytes_to_write > 0) {
+				bytes_writing = (bytes_to_write >= bytes_availables_in_block) ? bytes_availables_in_block : bytes_to_write;
+
+				// writing block
+				b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), (int) (list_get(blocks_list, block_n)));
+				block = fopen(b_path, "r+");
+				fseek(block, offset, SEEK_SET);
+				fwrite((w_req->buffer) + buff_pos, bytes_writing, 1, block);
+				fclose(block);
+				free(b_path);
+				// END writing block
+
+				block_n++;
+				bytes_to_write = bytes_to_write - bytes_writing;
+				buff_pos = buff_pos + bytes_writing;
+				bytes_availables_in_block = BLOCK_SIZE;
+				offset = 0;
+			}
+
+			FILE * file = fopen(c_path, "w");
+			fprintf(file,"TAMANIO=0\n", file_size);
+			fprintf(file,"BLOQUES=[%d", (int) (list_get(blocks_list, 0)));
+			int pos = 1;
+			while (pos < (blocks_list->elements_count)) {
+				fprintf(file,",%d", (int) (list_get(blocks_list, pos)));
+			}
+			fprintf(file,"]\0");
+			fclose(file);
+
+			fs_write_send_resp(client_socket, SUCCESS);
+		}
+
+		list_destroy(blocks_list);
+		free(file_metadata);
+
+	} else {
+		fs_write_send_resp(client_socket, ISNOTREG);
 	}
 
-	int block_n = (offset / BLOCK_SIZE);
-	offset = offset - (block_n * BLOCK_SIZE);
-	bytes_availables_in_block = BLOCK_SIZE - offset;
-	int bytes_to_write = size;
-	int buff_pos = 0;
-	int bytes_writing;
-	char * b_path;
-	FILE * block;
-
-	while (bytes_to_write > 0) {
-		bytes_writing = (bytes_to_write >= bytes_availables_in_block) ? bytes_availables_in_block : bytes_to_write;
-
-		// writing block
-		b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), list_get(blocks_list, block_n));
-		block = fopen(b_path, "r+");
-		fseek(block, offset, SEEK_SET);
-		fwrite((w_req->buffer) + buff_pos, bytes_writing, 1, block);
-		fclose(block);
-		free(b_path);
-		// END writing block
-
-		block_n++;
-		bytes_to_write = bytes_to_write - bytes_writing;
-		buff_pos = buff_pos + bytes_writing;
-		bytes_availables_in_block = BLOCK_SIZE;
-		offset = 0;
-	}
-
+	free(c_path);
 	free(w_req->path);
 	free(w_req->buffer);
 	free(w_req);
-
-	fs_write_send_resp(client_socket, SUCCESS);
 
 }
 
 // https://techoverflow.net/2013/04/05/how-to-use-mkdir-from-sysstat-h/
 // https://www.lemoda.net/c/mmap-example/
 // https://www.codingunit.com/c-tutorial-file-io-using-text-files
-// https://github.com/dromero-7854/sisoputnfrba-tp-2016-2c-Stranger-Code/blob/master/entrenador/src/Entrenador/entrenador.c
 // https://www.tutorialspoint.com/c_standard_library/c_function_fread.htm
 // https://www.tutorialspoint.com/c_standard_library/c_function_fseek.htm
 // https://www.tutorialspoint.com/c_standard_library/c_function_fopen.htm
