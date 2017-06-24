@@ -169,18 +169,21 @@ void finalizar(void){
 	if(list_size(pcb->indice_stack)==0){
 		pcb->exit_code = FINALIZADO_OK;
 	}else{
-		posicion_memoria* retVar = contexto->retVar;
-		resp = memory_write(server_socket_memoria, pcb->pid, retVar->pagina, retVar->offset, retVar->size, retVar->size, &retorno, logger);
-		if (resp!=1){
-			log_error(logger, "PID:%d Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", pcb->pid, retVar->pagina, retVar->offset,retorno);
-		}
+		pcb->PC = contexto->retPos;
 	}
 	eliminarContexto(contexto);
 	
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
+	 log_trace(logger, "Leer valor variable compartida [%s]", variable);
+	 connection_send(server_socket_kernel, OC_FUNCION_LEER_VARIABLE, variable);
 
+	 t_valor_variable * buffer = malloc(sizeof(t_valor_variable));
+	 uint8_t operation_code;
+	 connection_recv(server_socket_kernel, &operation_code, &buffer);
+
+	 return *buffer;
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
@@ -208,7 +211,7 @@ t_puntero alocar(t_valor_variable espacio){
 }
 
 void liberar(t_puntero puntero){
-    log_trace(logger, "Reserva [%p] espacio", puntero);
+    log_trace(logger, "Libera el espacio alocado en [%p] ", puntero);
 
     t_pedido_liberar_memoria* liberar = malloc(sizeof(t_pedido_liberar_memoria));
     liberar->pid = pcb->pid;

@@ -447,3 +447,5 @@ bool pagina_vacia(int pid, int nro_pagina){
 	t_pagina_heap* pag = buscar_pagina_heap(pid, nro_pagina);
 	return (pag->espacio_libre == (TAMANIO_PAGINAS - sizeof(t_heapMetadata)));
 }
+
+
