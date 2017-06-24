@@ -37,7 +37,16 @@ int main(int argc, char* argv[]) {
 }
 
 void load_config(char * path) {
-	t_config* cfg = config_create(path);
+
+	t_config * cfg = malloc(sizeof(t_config));
+
+	if(strcmp(path, "1") == 0) {
+		cfg = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/consola/Debug/consola.cfg");
+	}
+	else {
+		cfg = config_create(path);
+	}
+
 	console_config = malloc(sizeof(console_cfg));
 
 	console_config->port = config_get_string_value(cfg, "PORT_KERNEL");
@@ -180,7 +189,10 @@ char * read_file(char * path) {
 	FILE * file;
 	char *buffer = malloc(255);
 
-	file = fopen(path, "r");
+	if(strcmp(path, "1") == 0) {
+		file = fopen("/home/utnso/eje.ansisop", "r");
+	}
+	else file = fopen(path, "r");
 
 	if(file) {
 		char* string = string_new();
