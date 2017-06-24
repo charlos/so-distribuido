@@ -20,12 +20,6 @@ extern t_page_offset* nextPageOffsetInStack;
 extern int server_socket_kernel, server_socket_memoria;
 extern t_PCB* pcb;
 
-void finalizar(void){
-	log_trace(logger, "Finalizar (en construcción)");
-	t_link_element* regIndicestack = stack_pop(pcb->indice_stack);
-	//todo terminar esto, para quitar del todo el elemento del stack y volver a cambiar PC
-}
-
 
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
@@ -158,9 +152,7 @@ void retornar(t_valor_variable retorno){
 	t_element_stack* contexto = stack_pop(pcb->indice_stack);
 
 	posicion_memoria* retVar =contexto->retVar;
-
     resp = memory_write(server_socket_memoria,  pcb->pid, retVar->pagina, retVar->offset, retVar->size, retVar->size, &retorno, logger);
-
     if (resp!=1){
     	log_error(logger, "PID:%d Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", pcb->pid, retVar->pagina, retVar->offset,retorno);
     }
@@ -171,6 +163,21 @@ void retornar(t_valor_variable retorno){
 
 }
 
+void finalizar(void){
+	log_trace(logger, "Finalizar");
+	t_element_stack* contexto = stack_pop(pcb->indice_stack);
+	if(list_size(pcb->indice_stack)==0){
+		pcb->exit_code = FINALIZADO_OK;
+	}else{
+		posicion_memoria* retVar = contexto->retVar;
+		resp = memory_write(server_socket_memoria, pcb->pid, retVar->pagina, retVar->offset, retVar->size, retVar->size, &retorno, logger);
+		if (resp!=1){
+			log_error(logger, "PID:%d Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", pcb->pid, retVar->pagina, retVar->offset,retorno);
+		}
+	}
+	eliminarContexto(contexto);
+	
+}
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
