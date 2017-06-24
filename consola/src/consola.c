@@ -23,10 +23,8 @@ int main(int argc, char* argv[]) {
 	load_config(argv[1]);
 	thread_list = list_create();
 
-	char* timeStart = temporal_get_string_time(); //usando commons
-	printf("Tiempo de Inicio del Proceso: %s\n", timeStart);
-	saludo();
-	connect_send("mi primer mensaje enviado :)"); //usando nuestra shared library
+	//char* timeStart = temporal_get_string_time(); //usando commons
+	//printf("Tiempo de Inicio del Proceso: %s\n", timeStart);
 
 	//Conexion a kernel
 	main_console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
@@ -36,11 +34,6 @@ int main(int argc, char* argv[]) {
 
 	return EXIT_SUCCESS;
 
-}
-
-int saludo() {
-	puts("¡Hola CONSOLA!");
-	return EXIT_SUCCESS;
 }
 
 void load_config(char * path) {
