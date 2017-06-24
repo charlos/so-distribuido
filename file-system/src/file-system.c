@@ -223,18 +223,26 @@ void create_file(int * client_socket) {
 	t_c_file_req * c_req = c_file_recv_req(client_socket, logger);
 	int resp_code;
 
-	char * f_token = strtok((c_req->path), "/");
+	char * d_path = string_duplicate(c_req->path);
+	char * f_token = strtok(d_path, "/");
 	char * s_token = strtok(NULL, "/");
+
+	char * dir = string_new();
+	string_append(&dir, (file_system_conf->mount_point));
+	string_append(&dir, "/Archivos");
 
 	struct stat sb;
 	while (f_token && s_token) {
-		char * dir = f_token;
-		if (stat(dir, &sb) == 0 && !(S_ISDIR(sb.st_mode))) {
-    	mkdir(dir, S_IRWXU | S_IRWXG | S_IRWXO);
-    }
+		string_append(&dir, "/");
+		string_append(&dir, f_token);
+		if ((stat(dir, &sb) < 0) || ((stat(dir, &sb) == 0) && !(S_ISDIR(sb.st_mode)) && !(S_ISREG(sb.st_mode)))) {
+			mkdir(dir, S_IRWXU | S_IRWXG | S_IRWXO);
+		}
 		f_token = s_token;
 		s_token = strtok(NULL, "/");
 	}
+	free(dir);
+	free(d_path);
 
 	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), c_req->path);
 	if (stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) {
@@ -252,19 +260,29 @@ void create_file(int * client_socket) {
 		free(used_blocks);
 	}
 
-	int available_block = get_available_block();
-	if (available_block < 0) {
-		c_file_send_resp(client_socket, ENOSPC);
+	if (stat(c_path, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+		c_file_send_resp(client_socket, ISDIR);
 	} else {
-		FILE * file = fopen(c_path, "w");
-		fprintf(file,"TAMANIO=0\n", BLOCK_SIZE);
-		fprintf(file,"BLOQUES=[%d]\0", available_block);
-		fclose(file);
-		char * b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), available_block);
-		FILE * block = fopen(b_path, "w");
-		fclose(block);
-		free(b_path);
-		c_file_send_resp(client_socket, SUCCESS);
+		int available_block = get_available_block();
+		if (available_block < 0) {
+			c_file_send_resp(client_socket, ENOSPC);
+		} else {
+			FILE * file = fopen(c_path, "w");
+			fprintf(file,"TAMANIO=%d\n", BLOCK_SIZE);
+			fprintf(file,"BLOQUES=[%d]\0", available_block);
+			fclose(file);
+			char * b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), available_block);
+			FILE * block = fopen(b_path, "wb");
+			char ch = '\0';
+			int i = 0;
+			while (i < BLOCK_SIZE) {
+				fwrite(&ch, sizeof(char), 1, block);
+				i++;
+			}
+			fclose(block);
+			free(b_path);
+			c_file_send_resp(client_socket, SUCCESS);
+		}
 	}
 
 	free(c_path);
@@ -334,12 +352,12 @@ void read_file(int * client_socket) {
 
 			buff = malloc((sizeof(char)) * size);
 			int movs = offset / BLOCK_SIZE;
-			used_blocks += movs;
+			int pos = movs;
 			offset = offset - (BLOCK_SIZE * movs);
 			int bytes_reading = ((BLOCK_SIZE - offset) >= size) ? size : (BLOCK_SIZE - offset);
 
 			// reading first block
-			char * b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), (*used_blocks));
+			char * b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), used_blocks[pos]);
 			FILE * block = fopen(b_path, "r");
 			fseek(block, offset, SEEK_SET);
 			fread(buff, bytes_reading, 1, block);
@@ -351,11 +369,11 @@ void read_file(int * client_socket) {
 			int bytes_to_read = size - bytes_reading;
 
 			while (bytes_to_read > 0) {
-				used_blocks++;
+				pos++;
 				bytes_reading = (bytes_to_read >= BLOCK_SIZE) ? BLOCK_SIZE : bytes_to_read;
 
 				// reading block
-				b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), (*used_blocks));
+				b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), used_blocks[pos]);
 				block = fopen(b_path, "r");
 				fseek(block, 0, SEEK_SET);
 				fread(buff + buff_pos, bytes_reading, 1, block);
@@ -396,10 +414,11 @@ void write_file(int * client_socket) {
 		t_config * file_metadata = config_create(c_path);
 		char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
 		t_list * blocks_list = list_create();
-		while (used_blocks != NULL) {
-			list_add(blocks_list, (int) (atoi(*used_blocks)));
-			free(*used_blocks);
-			used_blocks++;
+		int pos = 0;
+		while (used_blocks[pos] != NULL) {
+			list_add(blocks_list, (int) (atoi(used_blocks[pos])));
+			free(used_blocks[pos]);
+			pos++;
 		}
 		free(used_blocks);
 
@@ -414,7 +433,7 @@ void write_file(int * client_socket) {
 			bytes_to_expand = (offset + size) - file_size;
 			file_size = file_size + bytes_to_expand;
 			int bytes_availables_in_block = BLOCK_SIZE - (file_size - (((blocks_list->elements_count) - 1) * BLOCK_SIZE));
-			bytes_to_expand = bytes_to_expand - bytes_availables_in_block;
+			if (bytes_availables_in_block > 0) bytes_to_expand = bytes_to_expand - bytes_availables_in_block;
 			int available_block;
 
 			while (bytes_to_expand > 0) {
@@ -422,6 +441,16 @@ void write_file(int * client_socket) {
 				available_block = get_available_block();
 				if (available_block >= 0) {
 					list_add(blocks_list, available_block);
+					char * b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), available_block);
+					FILE * block = fopen(b_path, "wb");
+					char ch = '\0';
+					int i = 0;
+					while (i < BLOCK_SIZE) {
+						fwrite(&ch, sizeof(char), 1, block);
+						i++;
+					}
+					fclose(block);
+					free(b_path);
 					bytes_to_expand -= BLOCK_SIZE;
 				} else {
 					int pos = b_elements_count;
@@ -450,7 +479,7 @@ void write_file(int * client_socket) {
 				bytes_writing = (bytes_to_write >= bytes_availables_in_block) ? bytes_availables_in_block : bytes_to_write;
 
 				// writing block
-				b_path = string_from_format("%s/Bloques/%s.bin", (file_system_conf->mount_point), (int) (list_get(blocks_list, block_n)));
+				b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), (int) (list_get(blocks_list, block_n)));
 				block = fopen(b_path, "r+");
 				fseek(block, offset, SEEK_SET);
 				fwrite((w_req->buffer) + buff_pos, bytes_writing, 1, block);
@@ -466,11 +495,12 @@ void write_file(int * client_socket) {
 			}
 
 			FILE * file = fopen(c_path, "w");
-			fprintf(file,"TAMANIO=0\n", file_size);
+			fprintf(file,"TAMANIO=%d\n", file_size);
 			fprintf(file,"BLOQUES=[%d", (int) (list_get(blocks_list, 0)));
 			int pos = 1;
 			while (pos < (blocks_list->elements_count)) {
 				fprintf(file,",%d", (int) (list_get(blocks_list, pos)));
+				pos++;
 			}
 			fprintf(file,"]\0");
 			fclose(file);
