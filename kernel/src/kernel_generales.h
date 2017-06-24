@@ -42,6 +42,11 @@ typedef struct{
 //	fd_set lectura;
 }t_aux;
 
+typedef struct{
+	int pid;
+	int paginas_codigo;
+}t_codigo_proceso;
+
 fd_set master_cpu, master_prog;
 int registro_pid;
 t_log* logger;
@@ -52,6 +57,7 @@ t_queue* cola_cpu;
 t_list* tabla_archivos;
 int memory_socket, fs_socket;
 t_kernel_conf* kernel_conf;
+t_list* tabla_paginas_por_proceso;
 int TAMANIO_PAGINAS;
 
 t_list* tabla_variables_compartidas;

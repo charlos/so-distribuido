@@ -49,6 +49,7 @@ t_heapMetadata* leer_metadata(void* pagina);
 bool pagina_vacia(int pid, int nro_pagina);
 void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free);
 void liberar_pagina(t_pedido_liberar_memoria* pedido_free);
+t_codigo_proceso* buscar_codigo_de_proceso(int pid);
 
 
 #endif /* SOLICITUDES_H_ */

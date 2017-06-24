@@ -25,6 +25,7 @@ void solve_request(int socket, fd_set* set){
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
 	t_heapMetadata* metadata_bloque;
+	t_codigo_proceso* info_proceso;
 
     int length_direccion, pid;
     char* direccion;
@@ -53,6 +54,11 @@ void solve_request(int socket, fd_set* set){
 		pcb->cantidad_paginas += cant_paginas;
 		pcb->PC = 0;
 
+		t_codigo_proceso* paginas_de_codigo = malloc(sizeof(t_codigo_proceso));
+		paginas_de_codigo->pid = pcb->pid;
+		paginas_de_codigo->paginas_codigo = cant_paginas;
+		list_add(tabla_paginas_por_proceso, paginas_de_codigo);
+
 		log_trace(logger, "Mandando PID");
 		printf("Mandando PID\n");
 
@@ -75,6 +81,7 @@ void solve_request(int socket, fd_set* set){
 	case OC_FUNCION_RESERVAR:
 		log_trace(logger, "OP OC_FUNCION_RESERVAR dentro de kernel-solicitudes.c");
 		pedido = (t_pedido_reservar_memoria*)buffer;
+		info_proceso = buscar_codigo_de_proceso(pedido->pid);
 		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
 			memory_assign_pages(memory_socket, pedido->pid, 1, logger);
@@ -85,30 +92,35 @@ void solve_request(int socket, fd_set* set){
 			t_heapMetadata* meta_pag_nueva =crear_metadata_libre(TAMANIO_PAGINAS);
 
 			// Escribimos la metadata de la nueva pagina en Memoria
-			memory_write(memory_socket, pedido->pid, pagina->nro_pagina, 0, sizeof(t_heapMetadata), sizeof(t_heapMetadata), meta_pag_nueva, logger);
+			memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, sizeof(t_heapMetadata), sizeof(t_heapMetadata), meta_pag_nueva, logger);
 
 			free(meta_pag_nueva);
 		}
-		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, pagina->nro_pagina, 0, TAMANIO_PAGINAS, logger);
+		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
-
+		log_trace(logger, "primer puntero: %d", bloque_heap_ptr);
 		marcar_bloque_ocupado(bloque_heap_ptr, respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		// Mandamos la pagina de heap modificada
-		memory_write(memory_socket, pedido->pid, pagina->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
-
+		memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+		log_trace(logger, "Escribe heap en memoria, en pagina: %d", (pagina->nro_pagina + info_proceso->paginas_codigo));
 		modificar_pagina(pagina, pedido->espacio_pedido);
 		// Mandamos puntero al programa que lo pidio
 		bloque_heap_ptr += sizeof(t_heapMetadata);
 		bloque_heap_ptr += TAMANIO_PAGINAS * pagina->nro_pagina;
 		connection_send(socket, OC_RESP_RESERVAR, &bloque_heap_ptr);
+		log_trace(logger, "Mando a cpu puntero de malloc pedido. Posicion: %d", bloque_heap_ptr);
 		printf("Mandando heap\n");
 
 		break;
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;		// liberar buffer
-		liberar->nro_pagina = liberar->posicion / TAMANIO_PAGINAS;
+		log_trace(logger, "pedido de liberar punter. Posicion: %d", liberar->posicion);
+		info_proceso = buscar_codigo_de_proceso(liberar->pid);
+
+		liberar->nro_pagina =(liberar->posicion / TAMANIO_PAGINAS);
 		liberar->posicion = liberar->posicion % TAMANIO_PAGINAS;
-		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, logger);
+		log_trace(logger, "Yendo a leer pagina de memoria: %d", (liberar->nro_pagina + info_proceso->paginas_codigo));
+		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
 		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
 		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
@@ -118,7 +130,7 @@ void solve_request(int socket, fd_set* set){
 			liberar_pagina(liberar);
 			break;
 		}
-		memory_write(memory_socket, liberar->pid, liberar->nro_pagina, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 		break;
 	case OC_FUNCION_ABRIR:
 	    memcpy(pid, buffer, sizeof(int));
@@ -143,7 +155,7 @@ int calcular_paginas_de_codigo(char* codigo){
 	int tamanio_codigo, paginas;
 	tamanio_codigo = strlen(codigo);
 	paginas = tamanio_codigo / TAMANIO_PAGINAS;
-	if((paginas * TAMANIO_PAGINAS) < tamanio_codigo) return paginas++;
+	if((paginas * TAMANIO_PAGINAS) < tamanio_codigo) return ++paginas;
 	return paginas;
 }
 
@@ -448,4 +460,9 @@ bool pagina_vacia(int pid, int nro_pagina){
 	return (pag->espacio_libre == (TAMANIO_PAGINAS - sizeof(t_heapMetadata)));
 }
 
-
+t_codigo_proceso* buscar_codigo_de_proceso(int pid){
+	bool _mismo_pid(t_codigo_proceso* c){
+		return c->pid == pid;
+	}
+	return list_find(tabla_paginas_por_proceso, (void*) _mismo_pid);
+}
