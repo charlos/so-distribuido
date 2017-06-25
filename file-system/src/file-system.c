@@ -76,6 +76,7 @@ void load_file_system_properties(void) {
 	file_system_conf = malloc(sizeof(t_file_system_conf));
 	file_system_conf->port = config_get_int_value(conf, "PUERTO");
 	file_system_conf->mount_point = config_get_string_value(conf, "PUNTO_MONTAJE");
+	file_system_conf->logfile = config_get_string_value(conf, "LOGFILE");
 }
 
 /**
@@ -158,7 +159,7 @@ void load(void) {
 	free(blocks_dir_path);
 	free(files_dir_path);
 
-	logger = log_create("/home/utnso/fs.log", "memory_process", true, LOG_LEVEL_TRACE); // TODO : ver donde va el log
+	logger = log_create((file_system_conf->logfile), "file_system_process", true, LOG_LEVEL_TRACE);
 }
 
 /**
