@@ -37,17 +37,16 @@ t_bitarray * bitmap;
 
 t_log * logger;
 
-void load_file_system_properties(void);
-void print_file_system_properties(void);
-void load(void);
-int unmap_bitmap_f(void);
 int get_available_block(void);
-
-void handshake(int *);
-void validate_file(int *);
+int unmap_bitmap_f(void);
 void create_file(int *);
 void delete_file(int *);
+void handshake(int *);
+void load_file_system_properties(void);
+void load(void);
+void print_file_system_properties(void);
 void read_file(int *);
+void validate_file(int *);
 void write_file(int *);
 
 int main(int argc, char * argv[]) {
@@ -273,7 +272,7 @@ void create_file(int * client_socket) {
 			fclose(file);
 			char * b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), available_block);
 			FILE * block = fopen(b_path, "wb");
-			char ch = '\0';
+			char ch = ' ';
 			int i = 0;
 			while (i < BLOCK_SIZE) {
 				fwrite(&ch, sizeof(char), 1, block);
@@ -333,12 +332,9 @@ void read_file(int * client_socket) {
 	t_fs_read_req * r_req = fs_read_recv_req(client_socket, logger);
 
 	char * c_path = string_from_format("%s/Archivos%s", (file_system_conf->mount_point), r_req->path);
-	int bytes_transferred = 0;
-	void * buff;
 
 	struct stat sb;
 	if (stat(c_path, &sb) == 0 && S_ISREG(sb.st_mode)) {
-
 
 		t_config * file_metadata = config_create(c_path);
 		char ** used_blocks = config_get_array_value(file_metadata, "BLOQUES");
@@ -350,7 +346,7 @@ void read_file(int * client_socket) {
 			if (offset + size > file_size)
 				size = file_size - offset;
 
-			buff = malloc((sizeof(char)) * size);
+			void * buff = malloc((sizeof(char)) * size);
 			int movs = offset / BLOCK_SIZE;
 			int pos = movs;
 			offset = offset - (BLOCK_SIZE * movs);
@@ -384,10 +380,9 @@ void read_file(int * client_socket) {
 				buff_pos = buff_pos + bytes_reading;
 				bytes_to_read = bytes_to_read - bytes_reading;
 			}
-			bytes_transferred = size;
+			fs_read_send_resp(client_socket, SUCCESS, size, buff);
 			free(buff);
 		}
-		fs_read_send_resp(client_socket, SUCCESS, bytes_transferred, buff);
 		int pos = 0;
 		while (used_blocks[pos] != NULL) {
 			free(used_blocks[pos]);
@@ -396,7 +391,7 @@ void read_file(int * client_socket) {
 		free(used_blocks);
 		free(file_metadata);
 	} else {
-		fs_read_send_resp(client_socket, ISNOTREG, bytes_transferred, buff);
+		fs_read_send_resp(client_socket, ISNOTREG, 0, NULL);
 	}
 	free(c_path);
 	free(r_req->path);
@@ -431,8 +426,9 @@ void write_file(int * client_socket) {
 		if ((offset + size) > file_size) {
 			// expanding file
 			bytes_to_expand = (offset + size) - file_size;
+			int old_file_size = file_size;
 			file_size = file_size + bytes_to_expand;
-			int bytes_availables_in_block = BLOCK_SIZE - (file_size - (((blocks_list->elements_count) - 1) * BLOCK_SIZE));
+			int bytes_availables_in_block = BLOCK_SIZE - (old_file_size - (((blocks_list->elements_count) - 1) * BLOCK_SIZE));
 			if (bytes_availables_in_block > 0) bytes_to_expand = bytes_to_expand - bytes_availables_in_block;
 			int available_block;
 
@@ -443,7 +439,7 @@ void write_file(int * client_socket) {
 					list_add(blocks_list, available_block);
 					char * b_path = string_from_format("%s/Bloques/%d.bin", (file_system_conf->mount_point), available_block);
 					FILE * block = fopen(b_path, "wb");
-					char ch = '\0';
+					char ch = ' ';
 					int i = 0;
 					while (i < BLOCK_SIZE) {
 						fwrite(&ch, sizeof(char), 1, block);
