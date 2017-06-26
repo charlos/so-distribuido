@@ -12,6 +12,7 @@
 #include <shared-library/socket.h>
 #include <semaphore.h>
 #include "kernel_generales.h"
+#include <commons/collections/dictionary.h>
 
 
 #define PUERTO_DE_ESCUCHA 53000

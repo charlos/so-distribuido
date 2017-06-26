@@ -26,6 +26,9 @@ void solve_request(int socket, fd_set* set){
 	t_table_file* tabla_proceso;
 	t_heapMetadata* metadata_bloque;
 	t_codigo_proceso* info_proceso;
+	t_archivo * escritura;
+	int socket_consola;
+	char * informacion;
 
     int length_direccion, pid;
     char* direccion;
@@ -38,13 +41,17 @@ void solve_request(int socket, fd_set* set){
 	}
 
 	switch(operation_code){
-	case OC_SOLICITUD_PROGRAMA_NUEVO:
+	case OC_SOLICITUD_PROGRAMA_NUEVO: {
 
 		cant_paginas = calcular_paginas_necesarias(buffer);
 		pcb = crear_PCB();
+
+		int saved_socket = socket;
+		dictionary_put(tabla_sockets_procesos, string_itoa(pcb->pid), &saved_socket);
 		status = 0;
 		status = memory_init_process(memory_socket, pcb->pid, cant_paginas, logger);
 
+		log_trace(logger, "SOCKET DEL PID %d: %d", pcb->pid, saved_socket);
 		if(status == -1){
 			log_error(logger, "Se desconecto Memoria");
 			exit(1);
@@ -78,6 +85,7 @@ void solve_request(int socket, fd_set* set){
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
 
 		break;
+	}
 	case OC_FUNCION_RESERVAR:
 		log_trace(logger, "OP OC_FUNCION_RESERVAR dentro de kernel-solicitudes.c");
 		pedido = (t_pedido_reservar_memoria*)buffer;
@@ -142,9 +150,19 @@ void solve_request(int socket, fd_set* set){
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(socket, OC_RESP_ABRIR, &resp);
 	    break;
-	case OC_FUNCION_ESCRIBIR:
+	case OC_FUNCION_ESCRIBIR: {
+
+		escritura = malloc(sizeof(t_archivo));
 		//TODO si es FD 1 enviar a consola para imprimir
+		escritura = (t_archivo *) buffer;
+		if(escritura->descriptor_archivo == 0)
+		{
+			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
+			int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
+			//connection_send(socket_proceso, OC_RESP_ESCRIBIR, escritura->informacion);
+		}
 		break;
+	}
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion
@@ -465,4 +483,14 @@ t_codigo_proceso* buscar_codigo_de_proceso(int pid){
 		return c->pid == pid;
 	}
 	return list_find(tabla_paginas_por_proceso, (void*) _mismo_pid);
+}
+
+void * obtener_informacion_a_imprimir(t_puntero puntero, int pid) {
+
+	int pagina = puntero/TAMANIO_PAGINAS;
+	int offset = puntero % TAMANIO_PAGINAS;
+
+	t_read_response * respuesta_memoria = memory_read(memory_socket, pid, pagina, offset, sizeof(t_puntero), logger);
+
+	return respuesta_memoria->buffer;
 }

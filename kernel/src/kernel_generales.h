@@ -59,6 +59,7 @@ int memory_socket, fs_socket;
 t_kernel_conf* kernel_conf;
 t_list* tabla_paginas_por_proceso;
 int TAMANIO_PAGINAS;
+t_dictionary * tabla_sockets_procesos;
 
 /**
  * @NAME: crear_PCB
