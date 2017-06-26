@@ -21,6 +21,7 @@
 
 #define	SUCCESS							 1
 #define ISREG 							 2 // it's a regular file
+#define ISDIR 							 3 // it's a directory
 #define	ERROR						   	-200
 #define	DISCONNECTED_CLIENT			  	-201
 #define	DISCONNECTED_SERVER			   	-202

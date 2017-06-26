@@ -222,21 +222,21 @@ t_PCB* crear_PCB_Prueba(){
 
 /*			"#!/usr/bin/ansisop\n"
 			"begin\n"
-			"variables a, b, c\n"
-			"abrir a LC /archivo1.txt\n"
-			"abrir b LC /archivo2.txt\n"
-			"abrir c LC /archivo1.txt\n"
+			"variables a, b, c, d\n"
+			"alocar a 50\n"
+			"alocar b 30\n"
+			"liberar a\n"
+			"liberar b\n"
 			"end\n"
 			"\n";
 */
 /*
 			"#!/usr/bin/ansisop\n"
 			"begin\n"
-			"variables a, b\n"
-			"alocar a 50\n"
-			"alocar b 30\n"
-			"liberar a\n"
-			"liberar b\n"
+			"variables a, b, c\n"
+			"abrir a LC /archivo1.txt\n"
+			"abrir b LC /archivo2.txt\n"
+			"abrir c LC /archivo1.txt\n"
 			"end\n"
 			"\n";
 */

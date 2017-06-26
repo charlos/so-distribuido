@@ -19,6 +19,11 @@
 typedef t_list t_stack;
 
 typedef struct{
+	char* nombre;
+	int valor;
+}t_shared_var;
+
+typedef struct{
 	int offset;
 	int size;
 }t_indice_codigo;

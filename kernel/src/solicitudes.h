@@ -28,6 +28,7 @@ typedef struct{
 
 t_list* tabla_paginas_heap;
 t_list* tabla_global_archivos;
+t_list* tabla_variables_compartidas;
 void mandar_codigo_a_memoria(char* codigo, int pid);
 t_pagina_heap* obtener_pagina_con_suficiente_espacio(int pid, int espacio);
 t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata);
@@ -50,5 +51,6 @@ void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free);
 void liberar_pagina(t_pedido_liberar_memoria* pedido_free);
 t_codigo_proceso* buscar_codigo_de_proceso(int pid);
 void * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
+
 
 #endif /* SOLICITUDES_H_ */

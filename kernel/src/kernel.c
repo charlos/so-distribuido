@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
 	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
+	tabla_variables_compartidas = list_create();
 	load_kernel_properties();
 	tabla_archivos = list_create();
 	tabla_paginas_heap = list_create();

@@ -26,7 +26,7 @@ typedef struct{
 	int grado_multiprog;
 	char** sem_ids;
 	t_list* sem_init;
-	char** shared_vars;
+	char* shared_vars;
 	int stack_size;
 }t_kernel_conf;
 
@@ -61,6 +61,8 @@ t_list* tabla_paginas_por_proceso;
 int TAMANIO_PAGINAS;
 t_dictionary * tabla_sockets_procesos;
 
+t_list* tabla_variables_compartidas;
+
 /**
  * @NAME: crear_PCB
  * @DESC: Crea instancia de pcb y le asigna pid unico.
@@ -68,5 +70,6 @@ t_dictionary * tabla_sockets_procesos;
 t_PCB* crear_PCB();
 
 void load_kernel_properties(void);
+void crearVariablesCompartidas(void);
 
 #endif /* KERNEL_GENERALES_H_ */
