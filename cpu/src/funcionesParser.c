@@ -169,11 +169,7 @@ void finalizar(void){
 	if(list_size(pcb->indice_stack)==0){
 		pcb->exit_code = FINALIZADO_OK;
 	}else{
-		posicion_memoria* retVar = contexto->retVar;
-		resp = memory_write(server_socket_memoria, pcb->pid, retVar->pagina, retVar->offset, retVar->size, retVar->size, &retorno, logger);
-		if (resp!=1){
-			log_error(logger, "PID:%d Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", pcb->pid, retVar->pagina, retVar->offset,retorno);
-		}
+		pcb->PC = contexto->retPos;
 	}
 	eliminarContexto(contexto);
 	
@@ -269,16 +265,25 @@ void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
     log_trace(logger, "Escribir [%.*s]:%d a [%d]", tamanio, informacion, tamanio, desc);
 
+    log_trace(logger, "VALOR DE INFORMACION: %s", (char *)informacion);
+
     t_archivo * arch = malloc(sizeof(t_archivo));
+
+    //char * info = string_new();
+    //string_append(&info, (char*)informacion);
 
     arch->descriptor_archivo = desc;
     arch->informacion = informacion;
     arch->tamanio = tamanio;
+    arch->pid = pcb->pid;
+
+    log_trace(logger, "VALOR DEL ARCH INFORMACION: %s", arch->informacion);
+    log_trace(logger, "STRLEN(ARCH->INFORMACION) : %d", strlen(arch->informacion));
 
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, arch);
 
-    void * buffer = malloc(tamanio);
-    connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
+    //void * buffer = malloc(tamanio);
+    //connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
