@@ -47,6 +47,11 @@ typedef struct{
 	int paginas_codigo;
 }t_codigo_proceso;
 
+typedef struct {
+	int pid;
+	int socket;
+} t_par_socket_pid;
+
 fd_set master_cpu, master_prog;
 int registro_pid;
 t_log* logger;
@@ -59,7 +64,7 @@ int memory_socket, fs_socket;
 t_kernel_conf* kernel_conf;
 t_list* tabla_paginas_por_proceso;
 int TAMANIO_PAGINAS;
-t_dictionary * tabla_sockets_procesos;
+t_list * tabla_sockets_procesos;
 
 t_list* tabla_variables_compartidas;
 

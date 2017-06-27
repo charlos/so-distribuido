@@ -47,7 +47,11 @@ void solve_request(int socket, fd_set* set){
 		pcb = crear_PCB();
 
 		int saved_socket = socket;
-		dictionary_put(tabla_sockets_procesos, string_itoa(pcb->pid), &saved_socket);
+		t_par_socket_pid * parnuevo = malloc(sizeof(t_par_socket_pid));
+		parnuevo->pid = pcb->pid;
+		parnuevo->socket = saved_socket;
+		list_add(tabla_sockets_procesos, parnuevo);
+
 		status = 0;
 		status = memory_init_process(memory_socket, pcb->pid, cant_paginas, logger);
 
@@ -158,8 +162,14 @@ void solve_request(int socket, fd_set* set){
 		if(escritura->descriptor_archivo == 0)
 		{
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
-			int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
-			//connection_send(socket_proceso, OC_RESP_ESCRIBIR, escritura->informacion);
+			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
+
+			int * _mismopid(t_par_socket_pid * target) {
+				return escritura->pid == target->pid;
+			}
+			t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+			int socket_proceso = parEncontrado->socket;
+			connection_send(socket_proceso, OC_RESP_ESCRIBIR, escritura->informacion);
 		}
 		break;
 	}
