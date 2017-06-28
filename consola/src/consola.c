@@ -156,6 +156,7 @@ void thread_subprograma(threadpid* thread_recon) {
 	uint8_t operation_code;
 	int sub_console_socket;
 	void * buffer;
+	thread_recon->terminate = 0;
 
 	sub_console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
 	connection_send(sub_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, thread_recon->file_content);
@@ -165,7 +166,7 @@ void thread_subprograma(threadpid* thread_recon) {
 		thread_recon->pid = *(uint8_t *) buffer;
 
 	//printf("%d", thread_recon->pid);
-	log_trace(logger, "%d", thread_recon->pid);
+	log_trace(logger, "PID DEL PROGRAMA: %d", thread_recon->pid);
 	//fprintf(stdout, "%d", thread_recon->pid);
 
 	int active = 1;
@@ -177,6 +178,10 @@ void thread_subprograma(threadpid* thread_recon) {
 		result = connection_recv(sub_console_socket, &operation_code, &buffer);
 		if(operation_code == OC_INSTRUCCION_CONSOLA)
 			printf("[%d] %s\n", thread_recon->pid, (char *) buffer);
+		else if(operation_code == OC_RESP_ESCRIBIR) {
+			printf("[Process: %d] %s \n", thread_recon->pid, (char *) buffer);
+			log_trace(logger, "PID %d: %s", thread_recon->pid, (char *)buffer);
+		}
 
 		if(!result)
 			active = 0;

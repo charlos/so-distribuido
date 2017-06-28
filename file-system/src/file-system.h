@@ -16,6 +16,7 @@
 typedef struct {
 	uint32_t port;
 	char *   mount_point;
+	char *   logfile;
 } t_file_system_conf;
 
 #endif /* FILE_SYSTEM_H_ */

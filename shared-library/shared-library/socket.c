@@ -138,7 +138,12 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(t_pedido_liberar_memoria);
 			break;
 		case OC_FUNCION_ESCRIBIR:
-			message_size_value = sizeof(t_archivo);
+			//message_size_value = sizeof(t_archivo);
+			message_size_value = *(size_t *)message;
+			//message++;
+			break;
+		case OC_RESP_ESCRIBIR:
+			message_size_value = strlen((char*)message);
 			break;
 		case OC_FUNCION_ESCRIBIR_VARIABLE:
 			message_size_value = sizeof(t_shared_var);
@@ -251,9 +256,44 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = &respuesta;
 				break;
 			case OC_FUNCION_ESCRIBIR:
-				buffer = malloc(sizeof(t_archivo));
+				/*buffer = malloc(sizeof(t_archivo));
 				recv(file_descriptor, buffer, message_size, 0);
-				*message = (t_archivo*) buffer;
+				*message = buffer;*/
+				buffer = malloc(sizeof(t_size));
+				recv(file_descriptor, buffer, sizeof(size_t), 0);
+				free(buffer);
+
+				buffer = malloc(sizeof(t_descriptor_archivo));
+				recv(file_descriptor, buffer, sizeof(t_descriptor_archivo), 0);
+				t_archivo * arch = malloc(sizeof(t_archivo));
+				arch->descriptor_archivo = *(t_descriptor_archivo*)buffer;
+
+				free(buffer);
+				buffer = malloc(sizeof(int));
+				recv(file_descriptor, buffer, sizeof(int), 0);
+				arch->pid = *(int*)buffer;
+
+				free(buffer);
+				buffer = malloc(sizeof(size_t));
+				recv(file_descriptor, buffer, sizeof(size_t), 0);
+				arch->tamanio = *(t_valor_variable*)buffer;
+
+				free(buffer);
+				buffer = malloc(arch->tamanio);
+				arch->informacion = malloc(arch->tamanio);
+				recv(file_descriptor, buffer, arch->tamanio, 0);
+				//arch->informacion = buffer;
+				memcpy(arch->informacion, buffer, arch->tamanio);
+				free(buffer);
+
+				*message = arch;
+
+				break;
+			case OC_RESP_ESCRIBIR:
+				buffer = (char*)*message;
+				status = recv(file_descriptor, buffer, message_size, 0);
+				buffer[message_size] = '\0';
+				*message = buffer;
 				break;
 			case OC_RESP_LEER_VARIABLE:
 				buffer = malloc(message_size);

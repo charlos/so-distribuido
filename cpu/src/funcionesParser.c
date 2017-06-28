@@ -279,16 +279,42 @@ void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
     log_trace(logger, "Escribir [%.*s]:%d a [%d]", tamanio, informacion, tamanio, desc);
 
-    t_archivo * arch = malloc(sizeof(t_archivo));
+    log_trace(logger, "VALOR DE INFORMACION: %s", (char *)informacion);
+
+    size_t size_desc = sizeof(t_descriptor_archivo);
+    size_t size_tam = sizeof(t_valor_variable);
+    size_t size_pid = sizeof(int);
+    size_t size_inf = tamanio;
+    size_t size_siz = sizeof(size_t);
+    int pid = pcb->pid;
+
+    size_t size_tot = size_desc + size_tam + size_pid + size_inf + size_siz;
+    void * buffer = malloc(size_tot);
+    memcpy(buffer, &size_tot, size_siz);
+    memcpy(buffer + size_siz, &desc, size_desc);
+    memcpy(buffer + size_siz + size_desc, &pid, size_pid);
+    memcpy(buffer + size_siz + size_desc + size_pid, &tamanio, size_tam);
+    memcpy(buffer + size_siz + size_desc + size_pid + size_tam, informacion, size_inf);
+
+    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
+
+    /*t_archivo * arch = malloc(sizeof(t_archivo));
+
+    //char * info = string_new();
+    //string_append(&info, (char*)informacion);
 
     arch->descriptor_archivo = desc;
     arch->informacion = informacion;
     arch->tamanio = tamanio;
+    arch->pid = pcb->pid;
 
-    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, arch);
+    log_trace(logger, "VALOR DEL ARCH INFORMACION: %s", arch->informacion);
+    log_trace(logger, "STRLEN(ARCH->INFORMACION) : %d", strlen(arch->informacion));
 
-    void * buffer = malloc(tamanio);
-    connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
+    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, arch);*/
+
+    //void * buffer = malloc(tamanio);
+    //connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){

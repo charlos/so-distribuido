@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
 	tabla_archivos = list_create();
 	tabla_paginas_heap = list_create();
 	tabla_paginas_por_proceso = list_create();
+	tabla_sockets_procesos = list_create();
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
 	TAMANIO_PAGINAS = handshake(memory_socket, logger);

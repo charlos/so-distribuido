@@ -62,8 +62,9 @@ typedef struct{
 
 typedef struct {
 	t_descriptor_archivo descriptor_archivo;
-	t_puntero informacion;
+	void * informacion;
 	t_valor_variable tamanio;
+	int pid;
 } t_archivo;
 
 typedef struct{

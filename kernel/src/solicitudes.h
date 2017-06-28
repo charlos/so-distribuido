@@ -52,5 +52,7 @@ void liberar_pagina(t_pedido_liberar_memoria* pedido_free);
 t_codigo_proceso* buscar_codigo_de_proceso(int pid);
 void asignarValorVariable(t_shared_var*);
 t_valor_variable leerValorVariable(char*);
+void * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
+
 
 #endif /* SOLICITUDES_H_ */
