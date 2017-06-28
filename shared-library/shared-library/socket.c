@@ -140,6 +140,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_FUNCION_ESCRIBIR:
 			message_size_value = sizeof(t_archivo);
 			break;
+		case OC_FUNCION_ESCRIBIR_VARIABLE:
+			message_size_value = sizeof(t_shared_var);
+			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
@@ -148,8 +151,6 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 
 	uint8_t operation_code_length = sizeof(uint8_t);
 	uint8_t message_size_length = sizeof(uint32_t);
-	//size_t operation_code_length = sizeof(uint8_t);
-	//size_t message_size_length = sizeof(uint32_t);
 	void * buffer = malloc(operation_code_length + message_size_length + message_size_value);
 	memcpy(buffer, &operation_code_value, operation_code_length);
 	memcpy(buffer + operation_code_length, &message_size_value, message_size_length);

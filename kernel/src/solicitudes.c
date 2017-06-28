@@ -26,10 +26,11 @@ void solve_request(int socket, fd_set* set){
 	t_table_file* tabla_proceso;
 	t_heapMetadata* metadata_bloque;
 	t_codigo_proceso* info_proceso;
-
+	t_shared_var* variable_recibida;
     int length_direccion, pid;
     char* direccion;
     t_banderas flags;
+    char* nombre_variable;
 
 	status = connection_recv(socket, &operation_code, &buffer);
 	if(status <= 0){
@@ -144,6 +145,16 @@ void solve_request(int socket, fd_set* set){
 	    break;
 	case OC_FUNCION_ESCRIBIR:
 		//TODO si es FD 1 enviar a consola para imprimir
+		break;
+	case OC_FUNCION_ESCRIBIR_VARIABLE:
+		variable_recibida	= (t_shared_var*)buffer;
+		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
+		asignarValorVariable(variable_recibida);
+		break;
+	case OC_FUNCION_LEER_VARIABLE:
+		nombre_variable	= (char*)buffer;
+		log_trace(logger, "pedido de leer la variable %s",nombre_variable);
+		t_valor_variable valor = leerValorVariable(nombre_variable);
 		break;
 	default:
 		printf("Desconexion");
@@ -465,4 +476,22 @@ t_codigo_proceso* buscar_codigo_de_proceso(int pid){
 		return c->pid == pid;
 	}
 	return list_find(tabla_paginas_por_proceso, (void*) _mismo_pid);
+}
+
+
+
+void asignarValorVariable(t_shared_var* variable_recibida){
+	bool _porNombreVarComp(t_shared_var* var){
+		return strcmp(var->nombre,variable_recibida->nombre)==0;
+	}
+	t_shared_var* variable = list_find(tabla_variables_compartidas,(void*) _porNombreVarComp);
+	variable->valor = variable_recibida->valor;
+}
+
+t_valor_variable leerValorVariable(char* nombre_variable){
+	bool _porNombreVarComp(char* var){
+		return strcmp(var,nombre_variable)==0;
+	}
+	t_shared_var* variable = list_find(tabla_variables_compartidas,(void*) _porNombreVarComp);
+	return variable->valor;
 }
