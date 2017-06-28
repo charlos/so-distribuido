@@ -169,7 +169,10 @@ void solve_request(int socket, fd_set* set){
 			}
 			t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 			int socket_proceso = parEncontrado->socket;
-			connection_send(socket_proceso, OC_RESP_ESCRIBIR, escritura->informacion);
+			char * inf = malloc(strlen((char*)escritura->informacion));
+			strcpy(inf, (char*)escritura->informacion);
+
+			connection_send(socket_proceso, OC_RESP_ESCRIBIR, inf);
 		}
 		break;
 	}
