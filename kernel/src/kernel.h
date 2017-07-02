@@ -19,6 +19,8 @@
 
 #define CPU 5
 
+sem_t semPlanificarLargoPlazo, semPlanificarCortoPlazo, semCantidadProgramsPlanificados, semColaListos, semCantidadProgramasPlanificados;
+int grado_multiprogramacion, cantidad_programas_planificados;
 
 
 /**

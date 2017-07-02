@@ -52,4 +52,5 @@ void crearVariablesCompartidas(){
 		list_add(tabla_variables_compartidas,variable);
 		i++;
 	}
+
 }

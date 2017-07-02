@@ -40,18 +40,18 @@ typedef struct{
 }posicion_memoria;
 
 typedef struct{
-	t_list* args;
-	t_list* vars;
 	int retPos;
 	posicion_memoria* retVar;
+	t_list* args;
+	t_list* vars;
 }t_element_stack;
 
 typedef struct{
-	int id;
+	char id;
 	int pagina;
 	int offset;
 	int size;
-}t_args_vars;
+}__attribute__ ((__packed__))t_args_vars;
 
 typedef struct{
 	int length;
@@ -76,8 +76,9 @@ typedef struct{
 
 t_stream *pcb_serializer(t_PCB* pcb);
 t_PCB* deserializer_pcb(char* buffer);
-t_stream* indiceCodigo_serializer(t_indice_codigo* indiceCodigo);
+t_stream* indiceCodigo_serializer(t_PCB* pcb);
 t_stream* indiceStack_serializer(t_stack* indiceStack);
+t_stream* indiceEtiquetas_serializer(t_dictionary* indice_etiquetas);
 t_stream* elementStack_serializer(t_element_stack* elementStack);
 t_stream* argsVars_serializer(t_list* argsVars);
 

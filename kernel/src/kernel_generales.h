@@ -55,11 +55,15 @@ typedef struct {
 fd_set master_cpu, master_prog;
 int registro_pid;
 t_log* logger;
+t_queue* cola_nuevos;
 t_queue* cola_listos;
 t_queue* cola_bloqueados;
 t_queue* cola_exit;
 t_queue* cola_cpu;
 t_list* tabla_archivos;
+t_queue* cola_finalizados;
+t_list* lista_cpu;
+t_queue* cola_ejecutando;
 int memory_socket, fs_socket;
 t_kernel_conf* kernel_conf;
 t_list* tabla_paginas_por_proceso;
@@ -76,5 +80,9 @@ t_PCB* crear_PCB();
 
 void load_kernel_properties(void);
 void crearVariablesCompartidas(void);
+
+//CPU
+t_cpu* cpu_obtener_libre(t_list* lista_cpu);
+void cpu_enviar_pcb(t_cpu* cpu, t_PCB* pcb);
 
 #endif /* KERNEL_GENERALES_H_ */

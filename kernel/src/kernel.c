@@ -130,3 +130,87 @@ void handshake_filsesystem(int socket){
 	char* buffer;
 	// TODO Definir handshake en filsesysyem
 }
+
+void kernel_planificacion() {
+
+	pthread_t hilo_corto_plazo;
+	pthread_t hilo_largo_plazo;
+
+	pthread_attr_t attr;
+
+	pthread_attr_init(&attr);
+
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+	// Se crea hilo planificador corto plazo
+	pthread_create(&hilo_corto_plazo, &attr, &planificador_largo_plazo, 0);
+
+	// Se crea hilo planificador largo plazo
+	pthread_create(&hilo_largo_plazo, &attr, &planificador_corto_plazo, 0);
+
+	pthread_attr_destroy(&attr);
+}
+
+void planificador_largo_plazo(){
+	while(true){
+		sem_wait(semPlanificarLargoPlazo);
+		pasarDeNewAReady();
+	}
+}
+
+void planificador_corto_plazo(){
+	while(true){
+		sem_wait(semPlanificarCortoPlazo);
+		pasarDeReadyAExecute();
+	}
+}
+
+void pasarDeNewAReady(){
+	sem_wait(semCantidadProgramsPlanificados);
+	sem_wait(semColaListos);
+	while(cantidad_programas_planificados < grado_multiprogramacion && queue_size(cola_nuevos) > 0){
+		queue_push(cola_listos, queue_pop(cola_nuevos));
+		cantidad_programas_planificados++;
+	}
+	sem_post(semColaListos);
+	sem_post(semCantidadProgramasPlanificados);
+}
+
+void pasarDeReadyAExecute(){
+	sem_wait(semColaListos);
+	t_PCB* pcb = queue_pop(cola_listos);
+	sem_post(semColaListos);
+
+	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
+	cpu_enviar_pcb(cpu, pcb);
+
+
+}
+
+void pasarDeExecuteAReady(t_cpu* cpu){
+	cpu->quantum = 0;
+	sem_wait(semColaListos);
+	queue_push(cola_listos, cpu->proceso_asignado);
+	sem_post(semColaListos);
+}
+
+void pasarDeExecuteAExit(t_cpu* cpu){
+	cpu->quantum = 0;
+	sem_wait(semColaFinalizados);
+	queue_push(cola_finalizados, cpu->proceso_asignado);
+	sem_post(semColaFinalizados);
+}
+
+void pasarDeExecuteABlocked(t_cpu* cpu){
+	cpu->quantum = 0;
+	sem_wait(semColaBloqueados);
+	queue_push(cola_bloqueados, cpu->proceso_asignado);
+	sem_post(semColaBloqueados);
+}
+
+void pasarDeBlockedAReady(t_cpu* cpu){
+	cpu->quantum = 0;
+	sem_wait(semColaBloqueados);
+	queue_push(cola_bloqueados, cpu->proceso_asignado);
+	sem_post(semColaBloqueados);
+}

@@ -187,7 +187,14 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 }
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
+	log_trace(logger, "Asignar el valor [%d] a la variable compartida [%s]", valor, variable);
+	t_shared_var* var_comp = malloc(sizeof(t_shared_var));
+	memcpy(var_comp->nombre,variable, string_length(variable));
+	var_comp->valor = valor;
 
+	connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR_VARIABLE, var_comp);
+
+	return valor;
 }
 
 
