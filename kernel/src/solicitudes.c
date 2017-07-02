@@ -176,6 +176,15 @@ void solve_request(int socket, fd_set* set){
 		}
 		break;
 	}
+	case OC_FUNCION_LEER:
+		t_pedido_archivo_leer * archivo_a_leer = buffer;
+
+		if(archivo_a_leer->descriptor_archivo == 1) {
+
+		} else {
+
+		}
+	break;
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion
