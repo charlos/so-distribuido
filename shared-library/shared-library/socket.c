@@ -108,7 +108,6 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = i + 1;
 			break;
 		case OC_CODIGO:
-		case OC_FUNCION_LEER_VARIABLE:
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
 			//message_size_value = *(uint8_t*) message;
 			//(uint8_t *)message++;
@@ -128,6 +127,8 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_FUNCION_RESERVAR:
 			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
+		case OC_FUNCION_LEER_VARIABLE:
+			break;
 		case OC_RESP_LEER_VARIABLE:
 			message_size_value = sizeof(t_valor_variable);
 			break;
@@ -144,6 +145,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			break;
 		case OC_RESP_ESCRIBIR:
 			message_size_value = strlen((char*)message);
+			break;
+		case OC_FUNCION_LEER:
+			message_size_value = sizeof(t_pedido_archivo_leer);
 			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
@@ -299,6 +303,9 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (t_valor_variable *)buffer;
 
+				break;
+			case OC_RESP_LEER:
+				recv(file_descriptor, *message, message_size, 0);
 				break;
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);

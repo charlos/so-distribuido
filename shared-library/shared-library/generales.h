@@ -67,6 +67,13 @@ typedef struct {
 	int pid;
 } t_archivo;
 
+typedef struct {
+	t_descriptor_archivo descriptor_archivo;
+	t_puntero informacion;
+	t_valor_variable tamanio;
+	int pid;
+} t_pedido_archivo_leer;
+
 typedef struct{
 	int proceso_fd;
 	int global_fd;
