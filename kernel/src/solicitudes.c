@@ -117,10 +117,10 @@ void solve_request(int socket, fd_set* set){
 		// Mandamos la pagina de heap modificada
 		memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 		log_trace(logger, "Escribe heap en memoria, en pagina: %d", (pagina->nro_pagina + info_proceso->paginas_codigo));
-		modificar_pagina(pagina, pedido->espacio_pedido);
+		modificar_pagina(pagina, pedido->espacio_pedido); // actualizamos los datos de la pagina en la tabla de heap
+
 		// Mandamos puntero al programa que lo pidio
-		bloque_heap_ptr += sizeof(t_heapMetadata);
-		bloque_heap_ptr += TAMANIO_PAGINAS * pagina->nro_pagina;
+		obtener_direccion_relativa(&bloque_heap_ptr, pagina->nro_pagina, info_proceso->paginas_codigo);	//sumo el offset de las paginas de codigo, stack y heap
 		connection_send(socket, OC_RESP_RESERVAR, &bloque_heap_ptr);
 		log_trace(logger, "Mando a cpu puntero de malloc pedido. Posicion: %d", bloque_heap_ptr);
 		printf("Mandando heap\n");
@@ -131,8 +131,8 @@ void solve_request(int socket, fd_set* set){
 		log_trace(logger, "pedido de liberar punter. Posicion: %d", liberar->posicion);
 		info_proceso = buscar_codigo_de_proceso(liberar->pid);
 
-		liberar->nro_pagina =(liberar->posicion / TAMANIO_PAGINAS);
-		liberar->posicion = liberar->posicion % TAMANIO_PAGINAS;
+		obtener_direccion_logica(liberar, info_proceso->paginas_codigo); //le saco las paginas de codigo y stack
+
 		log_trace(logger, "Yendo a leer pagina de memoria: %d", (liberar->nro_pagina + info_proceso->paginas_codigo));
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
@@ -534,5 +534,18 @@ void * obtener_informacion_a_imprimir(t_puntero puntero, int pid) {
 	t_read_response * respuesta_memoria = memory_read(memory_socket, pid, pagina, offset, sizeof(t_puntero), logger);
 
 	return respuesta_memoria->buffer;
+
+}
+
+void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int cantidad_paginas_codigo){
+	*puntero += sizeof(t_heapMetadata);
+	*puntero += TAMANIO_PAGINAS * nro_pagina_heap;
+	*puntero += TAMANIO_PAGINAS * cantidad_paginas_codigo;
+}
+
+void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo){
+
+	pedido_free->nro_pagina =(pedido_free->posicion / TAMANIO_PAGINAS) - cantidad_paginas_codigo;
+	pedido_free->posicion = pedido_free->posicion % TAMANIO_PAGINAS;
 
 }
