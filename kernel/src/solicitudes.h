@@ -53,6 +53,8 @@ t_codigo_proceso* buscar_codigo_de_proceso(int pid);
 void asignarValorVariable(t_shared_var*);
 t_valor_variable leerValorVariable(char*);
 void * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
+void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int cantidad_paginas_codigo);
+void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo);
 
 
 #endif /* SOLICITUDES_H_ */
