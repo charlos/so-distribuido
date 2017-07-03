@@ -148,15 +148,18 @@ t_PCB* deserializer_pcb(char* buffer){
  	int lengthStack; //cantidad de t_element_stack de las lista stack
  	memcpy(&lengthStack, buffer+offset, valor=sizeof(int)); offset+=valor;
  	pcb_result->indice_stack = list_create();
- 	for (i = 0; i < lengthStack; ++i) {
+ 	for (i = 0; i < lengthStack; i++) {
  		t_element_stack* elementStack = malloc(sizeof(t_element_stack));
+ 		posicion_memoria* posicionMemoria = malloc(sizeof(posicion_memoria));
 		memcpy(&elementStack->retPos, buffer+offset, valor=sizeof(int)); offset+=valor;
-		memcpy(elementStack->retVar, buffer+offset, valor=sizeof(posicion_memoria)); offset+=valor;
+		memcpy(posicionMemoria, buffer+offset, valor=sizeof(posicion_memoria)); offset+=valor;
+		elementStack->retVar = posicionMemoria;
 		//lista args de un elemento del stack
 		elementStack->args = list_create();
 		int lengthArgs; //cantidad de t_args_vars de la lista
 		memcpy(&lengthArgs, buffer+offset, valor=sizeof(int)); offset+=valor;
-	 	for (i = 0; i < lengthArgs; i++) {
+		int j;
+	 	for (j = 0; j < lengthArgs; j++) {
 	 		t_args_vars* elementArgs = malloc(sizeof(t_args_vars));
 			memcpy(elementArgs, buffer+offset, valor=sizeof(t_args_vars)); offset+=valor;
 			list_add(elementStack->args, elementArgs);
@@ -165,9 +168,14 @@ t_PCB* deserializer_pcb(char* buffer){
 		elementStack->vars = list_create();
 		int lengthVars; //cantidad de t_args_vars de la lista
 		memcpy(&lengthVars, buffer+offset, valor=sizeof(int)); offset+=valor;
-	 	for (i = 0; i < lengthVars; i++) {
+	 	int k;
+		for (k = 0; k < lengthVars; k++) {
 	 		t_args_vars* elementVars = malloc(sizeof(t_args_vars));
-			memcpy(elementVars, buffer+offset, valor=sizeof(t_args_vars)); offset+=valor;
+			memcpy(&elementVars->id, buffer+offset, valor=sizeof(char)); offset+=valor;
+			memcpy(&elementVars->pagina, buffer+offset, valor=sizeof(int)); offset+=valor;
+			memcpy(&elementVars->offset, buffer+offset, valor=sizeof(int)); offset+=valor;
+			memcpy(&elementVars->size, buffer+offset, valor=sizeof(int)); offset+=valor;
+
 			list_add(elementStack->vars, elementVars);
 		}
 
