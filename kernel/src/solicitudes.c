@@ -161,7 +161,7 @@ void solve_request(int socket, fd_set* set){
 		escritura = malloc(sizeof(t_archivo));
 		//TODO si es FD 1 enviar a consola para imprimir
 		escritura = (t_archivo *) buffer;
-		if(escritura->descriptor_archivo == 0)
+		if(escritura->descriptor_archivo == 1)
 		{
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
@@ -184,7 +184,7 @@ void solve_request(int socket, fd_set* set){
 		variable_recibida->nombre = malloc( size_nombre*sizeof(char)+1);
 		memcpy(variable_recibida->nombre, (void*)buffer+sizeof(int), size_nombre*sizeof(char));
 		variable_recibida->nombre[size_nombre]='\0';
-		memcpy(variable_recibida->valor, (void*)buffer+sizeof(int)+size_nombre*sizeof(char),sizeof(int));
+		memcpy(&(variable_recibida->valor), (void*)buffer+sizeof(int)+size_nombre*sizeof(char),sizeof(int));
 
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
 		asignarValorVariable(variable_recibida);
@@ -193,6 +193,7 @@ void solve_request(int socket, fd_set* set){
 		nombre_variable	= (char*)buffer;
 		log_trace(logger, "pedido de leer la variable %s",nombre_variable);
 		t_valor_variable valor = leerValorVariable(nombre_variable);
+		connection_send(socket, OC_RESP_LEER_VARIABLE, &valor);
 		break;
 	default:
 		printf("Desconexion");
@@ -525,8 +526,8 @@ void asignarValorVariable(t_shared_var* variable_recibida){
 }
 
 t_valor_variable leerValorVariable(char* nombre_variable){
-	bool _porNombreVarComp(char* var){
-		return strcmp(var,nombre_variable)==0;
+	bool _porNombreVarComp(t_shared_var* var){
+		return strcmp(var->nombre,nombre_variable)==0;
 	}
 	t_shared_var* variable = list_find(tabla_variables_compartidas,(void*) _porNombreVarComp);
 	return variable->valor;
