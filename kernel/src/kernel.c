@@ -184,7 +184,6 @@ void pasarDeReadyAExecute(){
 //	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
 //	cpu_enviar_pcb(cpu, pcb);
 
-
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){

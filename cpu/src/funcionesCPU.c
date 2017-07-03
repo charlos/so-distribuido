@@ -214,18 +214,6 @@ t_PCB* crear_PCB_Prueba(){
 			"#!/usr/bin/ansisop\n"
 			"begin\n"
 			"variables a, b\n"
-			"b=1\n"
-			"a=2\n"
-			"!UnaVar=b+10\n"
-			"!Global=a+10\n"
-			"prints n !UnaVar+!Global\n"
-			"end\n"
-			"\n";
-
-/*
-			"#!/usr/bin/ansisop\n"
-			"begin\n"
-			"variables a, b\n"
 			"alocar a 50\n"
 			"*a = 5\n"
 			"prints n *a\n"
@@ -233,6 +221,17 @@ t_PCB* crear_PCB_Prueba(){
 			"*b = 10\n"
 			"prints n *a\n"
 			"liberar a\n"
+			"end\n"
+			"\n";
+
+/*			"#!/usr/bin/ansisop\n"
+			"begin\n"
+			"variables a, b\n"
+			"b=1\n"
+			"a=2\n"
+			"!UnaVar=b+10\n"
+			"!Global=a+10\n"
+			"prints n !UnaVar+!Global\n"
 			"end\n"
 			"\n";
 */
