@@ -8,7 +8,7 @@ int handshake(int * server_socket, t_log * logger)
 ```
 
 Pedido de tamaño de frame en memoria: 
-- server_socket : file descriptor socket
+- server_socket : socket file descriptor 
 - logger: opcional
 
 Respuesta: 
@@ -22,7 +22,7 @@ int memory_init_process(int server_socket, int pid, int pages, t_log * logger)
 ```
 
 Pedido de inicio de proceso: 
-- server_socket : file descriptor socket
+- server_socket : socket file descriptor 
 - pid: id del proceso
 - pages: cantidad de páginas a solicitar para el proceso
 - logger: opcional
@@ -38,7 +38,7 @@ int memory_write(int server_socket, int pid, int page, int offset, int size, int
 ```
 
 Pedido de escritura: 
-- server_socket : file descriptor socket
+- server_socket : socket file descriptor 
 - pid: id del proceso
 - page: página a realizar la escritura
 - offset: posición de inicio de escritura
@@ -58,7 +58,7 @@ t_read_response * memory_read(int server_socket, int pid, int page, int offset, 
 ```
 
 Pedido de lectura: 
-- server_socket : file descriptor socket
+- server_socket : socket file descriptor 
 - pid: id del proceso
 - page: página a realizar la lectura
 - offset: posición de inicio de lectura
@@ -85,7 +85,7 @@ int memory_assign_pages(int server_socket, int pid, int pages, t_log * logger)
 ```
 
 Pedido de asignación de páginas a un proceso: 
-- server_socket : file descriptor socket
+- server_socket : socket file descriptor 
 - pid: id del proceso
 - pages: cantidad de páginas a asignar
 - logger: opcional
@@ -101,7 +101,7 @@ int memory_finalize_process(int server_socket, int pid, t_log * logger)
 ```
 
 Pedido de finalización del proceso: 
-- server_socket : file descriptor socket
+- server_socket : socket file descriptor 
 - pid: id del proceso
 - logger: opcional
 
@@ -171,3 +171,103 @@ int main(void) {
 	return EXIT_SUCCESS;
 }
 ```
+
+
+# File-System: Funciones principales
+
+## handshake
+```
+int fs_handshake(int * server_socket, t_log * logger)
+```
+(Sin definir)
+
+
+
+## validate file
+```
+int fs_validate_file(int server_socket, char * path, t_log * logger)
+```
+
+Pedido de validación de un archivo: 
+- server_socket : socket file descriptor 
+- path: path del archivo
+- logger: opcional
+
+Respuesta: 
+- int = código respuesta (ISREG=2, ISNOTREG=-205, DISCONNECTED_SERVER=-202)
+
+
+
+## create file
+```
+int fs_create_file(int server_socket, char * path, t_log * logger)
+```
+
+Creación del archivo dentro del path solicitado.: 
+- server_socket : socket file descriptor 
+- path: path del archivo a crear
+- logger: opcional
+
+Respuesta: 
+- int = código respuesta (ISDIR=3, ENOSPC=-203, SUCCESS=1, DISCONNECTED_SERVER=-202)
+
+
+
+## delete file
+```
+int fs_delete_file(int server_socket, char * path, t_log * logger)
+```
+
+Eliminación de un archivo: 
+- server_socket : socket file descriptor 
+- path: path del archivo a eliminar
+- logger: opcional
+
+Respuesta: 
+- int = código respuesta (SUCCESS=1, DISCONNECTED_SERVER=-202)
+
+
+
+## read
+```
+t_fs_read_resp * fs_read(int server_socket, char * path, int offset, int size, t_log * logger)
+```
+
+Leer de un archivo: 
+- server_socket : socket file descriptor 
+- path: path del archivo a leer
+- offset
+- size
+- logger: opcional
+
+Respuesta:
+- t_fs_read_resp->exec_code = código respuesta (ISNOTREG=-205, SUCCESS=1, DISCONNECTED_SERVER=-202)
+- t_fs_read_resp->buffer_size = tamaño del buffer
+- t_fs_read_resp->buffer = buffer con los bytes leídos
+
+**No olvidar liberar memoria** 
+```
+t_fs_read_resp * read_resp = fs_read(server_socket, path, offset, size, logger);
+free(read_resp->buffer);
+free(read_resp);
+```  
+
+
+
+## write
+```
+int fs_write(int server_socket, char * path, int offset, int size, int buffer_size, void * buffer, t_log * logger)
+```
+
+Leer de un archivo: 
+- server_socket : socket file descriptor 
+- path: path del archivo a escribir
+- offset
+- size
+- buffer_size : tamaño del buffer
+- buffer : buffer con los bytes a escribir
+- logger: opcional
+
+Respuesta:
+int = código respuesta (ISNOTREG=-205, SUCCESS=1, ENOSPC=-203, DISCONNECTED_SERVER=-202)
+
