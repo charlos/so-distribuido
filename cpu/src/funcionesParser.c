@@ -188,11 +188,13 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
 
 t_valor_variable asignarValorCompartida(t_nombre_compartida variable, t_valor_variable valor){
 	log_trace(logger, "Asignar el valor [%d] a la variable compartida [%s]", valor, variable);
-	t_shared_var* var_comp = malloc(sizeof(t_shared_var));
-	memcpy(var_comp->nombre,variable, string_length(variable));
-	var_comp->valor = valor;
+	int size_nombre =  string_length(variable);
+	void * buffer = malloc(sizeof(int)+size_nombre*sizeof(t_nombre_variable)+sizeof(t_valor_variable));
+	memcpy(buffer,&size_nombre, sizeof(int));
+	memcpy(buffer+sizeof(int),variable, size_nombre*sizeof(t_nombre_variable));
+	memcpy(buffer+sizeof(int)+size_nombre*sizeof(t_nombre_variable),&valor,sizeof(t_valor_variable));
 
-	connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR_VARIABLE, var_comp);
+	connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR_VARIABLE, buffer);
 
 	return valor;
 }

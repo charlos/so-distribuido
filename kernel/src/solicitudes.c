@@ -31,7 +31,7 @@ void solve_request(int socket, fd_set* set){
 	int socket_consola;
 	char * informacion;
 
-    int length_direccion, pid;
+    int length_direccion, pid, size_nombre;
     char* direccion;
     t_banderas flags;
     char* nombre_variable;
@@ -179,7 +179,13 @@ void solve_request(int socket, fd_set* set){
 		break;
 	}
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
-		variable_recibida	= (t_shared_var*)buffer;
+		size_nombre = (int)*buffer;
+
+		variable_recibida->nombre = malloc( size_nombre*sizeof(char)+1);
+		memcpy(variable_recibida->nombre, (void*)buffer+sizeof(int), size_nombre*sizeof(char));
+		variable_recibida->nombre[size_nombre]='\0';
+		memcpy(variable_recibida->valor, (void*)buffer+sizeof(int)+size_nombre*sizeof(char),sizeof(int));
+
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
 		asignarValorVariable(variable_recibida);
 		break;
