@@ -12,6 +12,7 @@
 #include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include <commons/collections/list.h>
+#include <shared-library/serializar.h>
 #include "funcionesCPU.h"
 
 #define VAR_STACK		0
