@@ -161,7 +161,7 @@ void solve_request(int socket, fd_set* set){
 		escritura = malloc(sizeof(t_archivo));
 		//TODO si es FD 1 enviar a consola para imprimir
 		escritura = (t_archivo *) buffer;
-		if(escritura->descriptor_archivo == 0)
+		if(escritura->descriptor_archivo == 1)
 		{
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
@@ -178,15 +178,14 @@ void solve_request(int socket, fd_set* set){
 		}
 		break;
 	}
-	case OC_FUNCION_LEER:
+	case OC_FUNCION_LEER: {
+
 		t_pedido_archivo_leer * archivo_a_leer = buffer;
 
-		if(archivo_a_leer->descriptor_archivo == 1) {
-
-		} else {
-
-		}
-	break;
+		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
+		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
+		break;
+	}
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
 		variable_recibida	= (t_shared_var*)buffer;
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
