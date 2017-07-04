@@ -181,9 +181,8 @@ void pasarDeReadyAExecute(){
 	t_PCB* pcb = queue_pop(cola_listos);
 	sem_post(semColaListos);
 
-	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
-	cpu_enviar_pcb(cpu, pcb);
-
+//	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
+//	cpu_enviar_pcb(cpu, pcb);
 
 }
 

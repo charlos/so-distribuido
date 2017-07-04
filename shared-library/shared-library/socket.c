@@ -123,17 +123,21 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_HANDSHAKE_MEMORY:
 			message_size_value = sizeof(uint8_t);
 			break;
+		case OC_FUNCION_ABRIR:
+			message_size_value = sizeof(int) + sizeof(int) + *(int*)(message+sizeof(int)) * sizeof(t_nombre_variable)+sizeof(t_banderas);
+			break;
 		case OC_RESP_ABRIR:
+			break;
 		case OC_FUNCION_RESERVAR:
+		case OC_RESP_RESERVAR:
+			message_size_value = sizeof(t_puntero);
+			break;
 			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
 		case OC_FUNCION_LEER_VARIABLE:
 			break;
 		case OC_RESP_LEER_VARIABLE:
 			message_size_value = sizeof(t_valor_variable);
-			break;
-		case OC_RESP_RESERVAR:
-			message_size_value = sizeof(t_puntero);
 			break;
 		case OC_FUNCION_LIBERAR:
 			message_size_value = sizeof(t_pedido_liberar_memoria);
@@ -149,8 +153,13 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_FUNCION_LEER:
 			message_size_value = sizeof(t_pedido_archivo_leer);
 			break;
+		case OC_RESP_LEER:
+
+			break;
 		case OC_FUNCION_ESCRIBIR_VARIABLE:
-			message_size_value = sizeof(t_shared_var);
+			message_size_value = *(int*) message;
+
+			message_size_value = sizeof(int)+message_size_value*sizeof(t_nombre_variable)+sizeof(int);
 			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
@@ -220,6 +229,11 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (int*)buffer;
+				break;
+			case OC_FUNCION_ABRIR:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = buffer;
 				break;
 			case OC_NUEVA_CONSOLA_PID:
 				buffer = malloc(message_size);
@@ -305,8 +319,16 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = (t_valor_variable *)buffer;
 
 				break;
+			case OC_FUNCION_LEER:
+
+				break;
 			case OC_RESP_LEER:
 				recv(file_descriptor, *message, message_size, 0);
+				break;
+			case OC_FUNCION_ESCRIBIR_VARIABLE:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = buffer;
 				break;
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);

@@ -19,7 +19,13 @@
 
 #define CPU 5
 
-sem_t semPlanificarLargoPlazo, semPlanificarCortoPlazo, semCantidadProgramsPlanificados, semColaListos, semCantidadProgramasPlanificados;
+sem_t* semPlanificarLargoPlazo;
+sem_t* semPlanificarCortoPlazo;
+sem_t* semCantidadProgramsPlanificados;
+sem_t* semColaListos;
+sem_t* semCantidadProgramasPlanificados;
+sem_t* semColaBloqueados;
+sem_t* semColaFinalizados;
 int grado_multiprogramacion, cantidad_programas_planificados;
 
 
@@ -41,5 +47,6 @@ void manage_select(t_aux* estructura);
 void solicitar_progama_nuevo(int file_descriptor, char* codigo);
 uint8_t handshake_memory(int socket);
 void handshake_filsesystem(int socket);
-
+void planificador_largo_plazo();
+void planificador_corto_plazo();
 #endif /* KERNEL_H_ */
