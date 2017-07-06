@@ -15,6 +15,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "memory_prot.h"
+#include "syscall.h"
 
 
 #define OC_SOLICITUD_PROGRAMA_NUEVO 1
