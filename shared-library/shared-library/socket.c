@@ -99,13 +99,11 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	uint32_t message_size_value;
 	//size_t message_size_value;
 	int i= 0;
-	t_PCB* pcb;
 
 	switch ((int)operation_code) {
 		case OC_PCB:
-			pcb = message;
-			while(pcb->indice_codigo[i].offset != NULL)i++;
-			message_size_value = i + 1;
+			message_size_value = *(int*) message;
+			message_size_value += sizeof(int);
 			break;
 		case OC_CODIGO:
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
@@ -194,8 +192,9 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 	uint32_t message_size;
 	int status = 1;
 	int ret = 0;
+	int stream_length;
 	char* buffer;
-	t_PCB* pcb = malloc(sizeof(t_PCB));
+	t_stream* pcb_serializado;
 
 	status = recv(file_descriptor, operation_code_value, prot_ope_code_size, 0);
 	if (status <= 0) {
@@ -210,14 +209,13 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			//message = (void*) malloc(message_size);
 			switch ((int)*operation_code_value) {
 			case OC_PCB:
-				*message = malloc(sizeof(t_PCB));
-				recv(file_descriptor, &(pcb->pid), sizeof(uint32_t), 0);
-				recv(file_descriptor, &(pcb->PC), sizeof(uint32_t), 0);
-				recv(file_descriptor, &(pcb->cantidad_paginas), sizeof(uint32_t), 0);
-				recv(file_descriptor, pcb->indice_codigo, sizeof(t_indice_codigo)*message_size, 0);
+				pcb_serializado = malloc(sizeof(t_stream));
+				recv(file_descriptor, &(pcb_serializado->length), sizeof(int), 0);
+				pcb_serializado->data = malloc(pcb_serializado->length);
+				recv(file_descriptor, pcb_serializado->data, pcb_serializado->length, 0);
+				*message = pcb_serializado;
 				break;
 			case OC_SOLICITUD_PROGRAMA_NUEVO:
-
 				*message = malloc(message_size +1);
 				buffer = (char*)*message;
 				status = recv(file_descriptor, buffer, message_size, 0);

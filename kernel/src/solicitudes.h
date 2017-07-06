@@ -24,7 +24,10 @@ typedef struct{
 	bool isFree;
 }t_heapMetadata;
 
-
+typedef struct {
+	int pid;
+	int socket;
+} t_par_socket_pid;
 
 t_list* tabla_paginas_heap;
 t_list* tabla_global_archivos;

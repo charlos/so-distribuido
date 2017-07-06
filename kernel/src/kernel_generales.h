@@ -47,10 +47,6 @@ typedef struct{
 	int paginas_codigo;
 }t_codigo_proceso;
 
-typedef struct {
-	int pid;
-	int socket;
-} t_par_socket_pid;
 
 fd_set master_cpu, master_prog;
 int registro_pid;
