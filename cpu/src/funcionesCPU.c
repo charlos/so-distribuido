@@ -205,15 +205,39 @@ u_int32_t getOffsetofPos(t_puntero pos){
 	return pos - (page * pagesize);
 }
 
+//
+char * read_file(char * path) {
+	FILE * file;
+	char *buffer = malloc(255);
+
+	if(strcmp(path, "1") == 0) {
+		file = fopen("/home/utnso/eje.ansisop", "r");
+	}
+	else file = fopen(path, "r");
+
+	if(file) {
+		char* string = string_new();
+
+		while(fgets(buffer, 255, (FILE*)file)) {
+			string_append(&string, buffer);
+		}
+		if(feof(file)) {
+			fclose(file);
+			printf("\nMensaje compilado: %s \n", string);
+			free(buffer);
+			return string;
+		}
+		return NULL;
+	}
+	return NULL;
+}
 
 t_PCB* crear_PCB_Prueba(){
 	pcb = malloc(sizeof(t_PCB));
 	pcb->pid = 1;
 
-	char* PROGRAMA =
-			"!/usr/bin/ansisop\n"
-			"begin\n"
-			""
+	char* PROGRAMA = read_file("1");
+
 /*
 			"#!/usr/bin/ansisop\n"
 			"begin\n"
@@ -262,8 +286,8 @@ t_PCB* crear_PCB_Prueba(){
 			"\n";
 */
 
-	/*
 
+/*
 			"#!/usr/bin/ansisop\n"
 			"begin\n"
 			"variables a\n"
