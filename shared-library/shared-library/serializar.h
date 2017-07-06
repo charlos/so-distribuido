@@ -13,45 +13,20 @@
 #include <commons/collections/list.h>
 #include <commons/collections/queue.h>
 #include <commons/collections/dictionary.h>
+#include "generales.h"
 
 typedef t_list t_stack;
 
-typedef struct{
-	int offset;
-	int size;
-}t_indice_codigo;
+//typedef struct{
+//	int offset;
+//	int size;
+//}t_indice_codigo;
 
-typedef struct{
-	uint16_t pid;
-	uint16_t PC;
-	uint16_t cantidad_paginas;
-	int_least16_t exit_code;
-	uint16_t stack_pointer;
-	uint16_t cantidad_instrucciones;
-	t_stack* indice_stack; //lista con elementos t_element_stack
-	t_indice_codigo* indice_codigo; //lista con elementos t_indice_codigo
-	t_dictionary* indice_etiquetas;
-}t_PCB;
-
-typedef struct{
-	int pagina;
-	int offset;
-	int size;
-}posicion_memoria;
-
-typedef struct{
-	int retPos;
-	posicion_memoria* retVar;
-	t_list* args;
-	t_list* vars;
-}t_element_stack;
-
-typedef struct{
-	char id;
-	int pagina;
-	int offset;
-	int size;
-}__attribute__ ((__packed__))t_args_vars;
+//typedef struct{
+//	int pagina;
+//	int offset;
+//	int size;
+//}posicion_memoria;
 
 typedef struct{
 	int length;
@@ -69,10 +44,7 @@ typedef struct{
 
 } __attribute__ ((__packed__)) t_packagePCB;
 
-typedef struct{
-	int length;
-	char* data;
-}__attribute__ ((__packed__))t_stream;
+
 
 t_stream *pcb_serializer(t_PCB* pcb);
 t_PCB* deserializer_pcb(char* buffer);

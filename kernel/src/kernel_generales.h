@@ -47,10 +47,6 @@ typedef struct{
 	int paginas_codigo;
 }t_codigo_proceso;
 
-typedef struct {
-	int pid;
-	int socket;
-} t_par_socket_pid;
 
 typedef struct{
 	int file_descriptor;

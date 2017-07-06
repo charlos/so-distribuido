@@ -322,11 +322,12 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
     log_trace(logger, "Leer desde [%d] a [%p] con tamaño [%d]", descriptor, informacion, tamanio);
 
-    t_archivo * arch = malloc(sizeof(t_archivo));
+    t_pedido_archivo_leer * arch = malloc(sizeof(t_archivo));
 
     arch->descriptor_archivo = descriptor;
     arch->informacion = informacion;
     arch->tamanio = tamanio;
+    arch->pid = pcb->pid;
 
     connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 

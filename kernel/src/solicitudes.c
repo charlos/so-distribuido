@@ -179,6 +179,19 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		break;
 	}
+	case OC_FUNCION_LEER: {
+
+		t_pedido_archivo_leer * archivo_a_leer = buffer;
+
+		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
+		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
+
+		t_read_response * respuesta_memoria = memory_read(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, sizeof(t_puntero), logger);
+
+		log_trace(logger, "%s", (char *)respuesta_memoria->buffer);
+		connection_send(socket, OC_RESP_LEER, respuesta_memoria);
+		break;
+	}
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
 		size_nombre = (int)*buffer;
 
