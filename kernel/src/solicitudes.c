@@ -188,7 +188,7 @@ void solve_request(int socket, fd_set* set){
 		t_read_response * respuesta_memoria = memory_read(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, sizeof(t_puntero), logger);
 
 		log_trace(logger, "%s", (char *)respuesta_memoria->buffer);
-		connection_send(socket, OC_RESP_LEER, respuesta_memoria->buffer);
+		connection_send(socket, OC_RESP_LEER, respuesta_memoria);
 		break;
 	}
 	case OC_FUNCION_ESCRIBIR_VARIABLE:

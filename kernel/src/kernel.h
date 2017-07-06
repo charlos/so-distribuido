@@ -10,6 +10,7 @@
 
 #include <shared-library/generales.h>
 #include <shared-library/socket.h>
+#include <shared-library/file_system_prot.h>
 #include <semaphore.h>
 #include "kernel_generales.h"
 #include <commons/collections/dictionary.h>
