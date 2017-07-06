@@ -339,12 +339,12 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 void signal(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);
 
-	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, identificador_semaforo);
+	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, &identificador_semaforo);
 
 }
 
 void wait(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
 
-	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
+	connection_send(server_socket_kernel, OC_FUNCION_WAIT, &identificador_semaforo);
 }
