@@ -13,12 +13,20 @@
 #include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include <pthread.h>
+#include <sys/inotify.h>
 #include "kernel.h"
 #include "solicitudes.h"
+
+#define EVENT_SIZE ( sizeof (struct inotify_event) + 256 )
+#define BUF_LEN ( 1 * EVENT_SIZE )
 
 
 
 int main(int argc, char* argv[]) {
+
+	char buffer[BUF_LEN];
+	int notificador =  inotify_init();
+
 
 	cola_listos = queue_create();
 	registro_pid = 1;
@@ -43,15 +51,15 @@ int main(int argc, char* argv[]) {
 	pthread_t hilo_cpu;
 	pthread_t hilo_consola;
 
-	pthread_attr_t attr;
+
 	t_aux *estruc_cpu, *estruc_prog;
 	estruc_cpu = malloc(sizeof(t_aux));
 	estruc_prog = malloc(sizeof(t_aux));
 	estruc_cpu->port = kernel_conf->cpu_port;
-	estruc_cpu->master = master_cpu;
+	estruc_cpu->master = &master_cpu;
 	estruc_prog->port = kernel_conf->program_port;
-	estruc_prog->master = master_prog;
-	pthread_attr_init(&attr);
+	estruc_prog->master = &master_prog;
+
 
 //	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
@@ -62,6 +70,8 @@ int main(int argc, char* argv[]) {
 	pthread_create(&hilo_consola, NULL, &manage_select, estruc_prog);
 
 //	pthread_attr_destroy(&attr);
+
+
 
 	pthread_join(hilo_consola, NULL);
 	pthread_join(hilo_cpu, NULL);
@@ -90,26 +100,42 @@ void manage_select(t_aux* estructura){
 	uint8_t* operation_code;
 	char buf[512];
 	fd_set lectura;
+	pthread_attr_t attr;
+	t_info_socket_solicitud* info_solicitud = malloc(sizeof(t_info_socket_solicitud));
 	set_fd_max = listening_socket;
 	FD_ZERO(&lectura);
-	FD_ZERO(&(estructura->master));
-	FD_SET(listening_socket, &(estructura->master));
+	FD_ZERO((estructura->master));
+	FD_SET(listening_socket, (estructura->master));
 	while(1){
-		lectura = (estructura->master);
+		lectura = *(estructura->master);
 		select(set_fd_max +1, &lectura, NULL, NULL, NULL);
+//		if(FD_ISSET(2, &escritura))continue;
 		for(fd_seleccionado = 0 ; fd_seleccionado <= set_fd_max ; fd_seleccionado++){
+			if(fd_seleccionado == 1)continue;
 			if(FD_ISSET(fd_seleccionado, &lectura)){
 				if(fd_seleccionado == listening_socket){
 					if((nuevaConexion = accept_connection(listening_socket)) == -1){
 						log_error(logger, "Error al aceptar conexion");
 					} else {
 						log_trace(logger, "Nueva conexion: socket %d", nuevaConexion);
-						FD_SET(nuevaConexion, &(estructura->master));
+						FD_SET(nuevaConexion, (estructura->master));
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 					}
 				} else {
+					pthread_t hilo_solicitud;
 
-					solve_request(fd_seleccionado, &(estructura->master));
+					info_solicitud->file_descriptor = fd_seleccionado;
+					info_solicitud->set = estructura->master;
+
+					FD_CLR(fd_seleccionado, estructura->master);
+					pthread_attr_init(&attr);
+
+					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+					pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
+//					solve_request(fd_seleccionado, &(estructura->master));
+
+					pthread_attr_destroy(&attr);
 				}
 			}
 		}
