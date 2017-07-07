@@ -25,7 +25,7 @@ typedef struct{
 	char* algoritmo;
 	int grado_multiprog;
 	char** sem_ids;
-	t_list* sem_init;
+	char** sem_init;
 	char* shared_vars;
 	int stack_size;
 }t_kernel_conf;
@@ -38,7 +38,7 @@ typedef struct{
 
 typedef struct{
 	int port;
-	fd_set master;
+	fd_set* master;
 //	fd_set lectura;
 }t_aux;
 
@@ -47,6 +47,11 @@ typedef struct{
 	int paginas_codigo;
 }t_codigo_proceso;
 
+
+typedef struct{
+	int file_descriptor;
+	fd_set* set;
+}t_info_socket_solicitud;
 
 fd_set master_cpu, master_prog;
 int registro_pid;
@@ -65,7 +70,7 @@ t_kernel_conf* kernel_conf;
 t_list* tabla_paginas_por_proceso;
 int TAMANIO_PAGINAS;
 t_list * tabla_sockets_procesos;
-
+t_dictionary* semaforos;
 t_list* tabla_variables_compartidas;
 
 /**
