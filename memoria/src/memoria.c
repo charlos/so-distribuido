@@ -427,9 +427,10 @@ void write_page(int * client_socket) {
 			|| (((w_req->offset) + (w_req->size)) > (memory_conf->frame_size))) {
 		write_send_resp(client_socket, OUT_OF_FRAME);
 	} else {
-		writing_cache(w_req);
-		writing_memory(w_req);
-		write_send_resp(client_socket, SUCCESS);
+		int res = writing_memory(w_req);
+		if (res == SUCCESS)
+			writing_cache(w_req);
+		write_send_resp(client_socket, res);
 	}
 	free(w_req->buffer);
 	free(w_req);
@@ -604,11 +605,14 @@ int writing_memory(t_write_request * w_req) {
 
 	// getting associated frame
 	int frame = get_frame((w_req->pid), (w_req->page));
+	if (frame < 0)
+		return PAGE_FAULT;
+
 	rw_lock_unlock(memory_locks, LOCK_WRITE, frame);
 	void * write_pos = (memory_ptr + (frame * (memory_conf->frame_size)) + ((w_req->offset))); // getting write position
 	memcpy(write_pos, (w_req->buffer), (w_req->size)); // writing
 	rw_lock_unlock(memory_locks, UNLOCK, frame);
-	return EXIT_SUCCESS;
+	return SUCCESS;
 }
 
 /**
@@ -658,10 +662,10 @@ int searching_on_overflow(int o_frame, int pid, int page) {
 	while (index < ((overflow[o_frame])->elements_count)) {
 		frame = list_get(overflow[o_frame], index);
 		if (page_is_right(frame, pid, page))
-			break;
+			return frame;
 		index++;
 	}
-	return frame;
+	return -1;
 }
 
 /**
@@ -743,18 +747,22 @@ int readind_memory(int * client_socket, t_read_request * r_req) {
 	usleep(1000 * (memory_conf->memory_delay));
 
 	int frame = get_frame((r_req->pid), (r_req->page));
-	rw_lock_unlock(memory_locks, LOCK_READ, frame);
-	void * memory_read_pos = memory_ptr +  (frame * (memory_conf->frame_size));
+	if (frame < 0) {
+		read_send_resp(client_socket, PAGE_FAULT, 0, NULL);
+	} else {
+		rw_lock_unlock(memory_locks, LOCK_READ, frame);
+		void * memory_read_pos = memory_ptr +  (frame * (memory_conf->frame_size));
 
-	int lru_cache_entry = assign_cache_entry((r_req->pid)); // updating cache
-	update_cache(lru_cache_entry, (r_req->pid), (r_req->page), 0, (memory_conf->frame_size), memory_read_pos);
+		int lru_cache_entry = assign_cache_entry((r_req->pid)); // updating cache
+		update_cache(lru_cache_entry, (r_req->pid), (r_req->page), 0, (memory_conf->frame_size), memory_read_pos);
 
-	memory_read_pos += (r_req->offset);
-	void * buffer = malloc(sizeof(char) * (r_req->size));
-	memcpy(buffer, memory_read_pos, (r_req->size));
-	read_send_resp(client_socket, SUCCESS, (r_req->size), buffer);
-	free(buffer);
-	rw_lock_unlock(memory_locks, UNLOCK, frame);
+		memory_read_pos += (r_req->offset);
+		void * buffer = malloc(sizeof(char) * (r_req->size));
+		memcpy(buffer, memory_read_pos, (r_req->size));
+		read_send_resp(client_socket, SUCCESS, (r_req->size), buffer);
+		free(buffer);
+		rw_lock_unlock(memory_locks, UNLOCK, frame);
+	}
 
 	return EXIT_SUCCESS;
 }

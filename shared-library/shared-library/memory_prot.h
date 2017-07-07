@@ -26,7 +26,8 @@
 #define	DISCONNECTED_SERVER				-202
 #define	ENOSPC							-203
 #define	OUT_OF_FRAME				  	-204
-
+#define	PAGE_FAULT						-205
+#define	SEGMENTATION_FAULT				-206
 
 
 /**	╔═════════════════════════════════╗
