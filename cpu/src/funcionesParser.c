@@ -257,13 +257,13 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
 
-    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, descriptor);
+    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, &descriptor);
 }
 
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
 
-    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, descriptor);
+    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, &descriptor);
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
@@ -298,39 +298,23 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     memcpy(buffer + size_siz + size_desc + size_pid + size_tam, informacion, size_inf);
 
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
-
-    /*t_archivo * arch = malloc(sizeof(t_archivo));
-
-    //char * info = string_new();
-    //string_append(&info, (char*)informacion);
-
-    arch->descriptor_archivo = desc;
-    arch->informacion = informacion;
-    arch->tamanio = tamanio;
-    arch->pid = pcb->pid;
-
-    log_trace(logger, "VALOR DEL ARCH INFORMACION: %s", arch->informacion);
-    log_trace(logger, "STRLEN(ARCH->INFORMACION) : %d", strlen(arch->informacion));
-
-    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, arch);*/
-
-    //void * buffer = malloc(tamanio);
-    //connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
     log_trace(logger, "Leer desde [%d] a [%p] con tamaño [%d]", descriptor, informacion, tamanio);
 
-    t_archivo * arch = malloc(sizeof(t_archivo));
+    t_pedido_archivo_leer * arch = malloc(sizeof(t_archivo));
 
     arch->descriptor_archivo = descriptor;
     arch->informacion = informacion;
     arch->tamanio = tamanio;
+    arch->pid = pcb->pid;
 
     connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 
     void * buffer = malloc(tamanio);
-    connection_recv(server_socket_kernel, OC_RESP_LEER, buffer);
+    uint8_t * operation_code = malloc(sizeof(uint8_t));
+    connection_recv(server_socket_kernel, operation_code, &buffer);
 
     //TODO: ver como retornar la informacion devuelta por kernel
 }
@@ -338,12 +322,22 @@ void signalParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);
 
 	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, identificador_semaforo);
-	//TODO agregar recv para que quede bloquedado OC_RESP_WAIT
-	// idem para el wait
+	// agregar recv para que quede bloquedado OC_RESP_WAIT
+	uint8_t * buffer = malloc(sizeof(int));
+    uint8_t * operation_code = malloc(sizeof(uint8_t));
+    connection_recv(server_socket_kernel, operation_code, &buffer);
+    free(buffer);
+    free(operation_code);
+
 }
 
 void waitParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
-
-	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
+	connection_send(server_socket_kernel, OC_FUNCION_WAIT, &identificador_semaforo);
+	// agregar recv para que quede bloquedado OC_RESP_WAIT
+	uint8_t * buffer = malloc(sizeof(int));
+    uint8_t * operation_code = malloc(sizeof(uint8_t));
+    connection_recv(server_socket_kernel, operation_code, &buffer);
+    free(buffer);
+    free(operation_code);
 }
