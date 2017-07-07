@@ -258,13 +258,13 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
 
-    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, descriptor);
+    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, &descriptor);
 }
 
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
 
-    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, descriptor);
+    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, &descriptor);
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
@@ -299,24 +299,6 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     memcpy(buffer + size_siz + size_desc + size_pid + size_tam, informacion, size_inf);
 
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
-
-    /*t_archivo * arch = malloc(sizeof(t_archivo));
-
-    //char * info = string_new();
-    //string_append(&info, (char*)informacion);
-
-    arch->descriptor_archivo = desc;
-    arch->informacion = informacion;
-    arch->tamanio = tamanio;
-    arch->pid = pcb->pid;
-
-    log_trace(logger, "VALOR DEL ARCH INFORMACION: %s", arch->informacion);
-    log_trace(logger, "STRLEN(ARCH->INFORMACION) : %d", strlen(arch->informacion));
-
-    connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, arch);*/
-
-    //void * buffer = malloc(tamanio);
-    //connection_recv(server_socket_kernel, OC_RESP_ESCRIBIR, buffer);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
