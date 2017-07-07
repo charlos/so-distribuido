@@ -128,10 +128,10 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(int);
 			break;
 		case OC_FUNCION_RESERVAR:
+			message_size_value = sizeof(t_pedido_reservar_memoria);
+			break;
 		case OC_RESP_RESERVAR:
 			message_size_value = sizeof(t_puntero);
-			break;
-			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
 		case OC_FUNCION_LEER_VARIABLE:
 			break;
