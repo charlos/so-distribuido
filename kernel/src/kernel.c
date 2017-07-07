@@ -112,7 +112,6 @@ void manage_select(t_aux* estructura){
 	while(1){
 		lectura = *(estructura->master);
 		select(set_fd_max +1, &lectura, NULL, NULL, NULL);
-//		if(FD_ISSET(2, &escritura))continue;
 		for(fd_seleccionado = 0 ; fd_seleccionado <= set_fd_max ; fd_seleccionado++){
 			if(fd_seleccionado == 1)continue;
 			if(FD_ISSET(fd_seleccionado, &lectura)){
@@ -130,15 +129,15 @@ void manage_select(t_aux* estructura){
 					info_solicitud->file_descriptor = fd_seleccionado;
 					info_solicitud->set = estructura->master;
 
-					FD_CLR(fd_seleccionado, estructura->master);
-					pthread_attr_init(&attr);
+//					FD_CLR(fd_seleccionado, estructura->master);
+//					pthread_attr_init(&attr);
+					solve_request(info_solicitud);
+//					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-					pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
+//					pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
 //					solve_request(fd_seleccionado, &(estructura->master));
 
-					pthread_attr_destroy(&attr);
+//					pthread_attr_destroy(&attr);
 				}
 			}
 		}
