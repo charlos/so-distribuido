@@ -24,11 +24,15 @@ typedef struct{
 	bool isFree;
 }t_heapMetadata;
 
-
+typedef struct {
+	int pid;
+	int socket;
+} t_par_socket_pid;
 
 t_list* tabla_paginas_heap;
 t_list* tabla_global_archivos;
 t_list* tabla_variables_compartidas;
+void solve_request(t_info_socket_solicitud* info_solicitud);
 void mandar_codigo_a_memoria(char* codigo, int pid);
 t_pagina_heap* obtener_pagina_con_suficiente_espacio(int pid, int espacio);
 t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata);
@@ -55,6 +59,6 @@ t_valor_variable leerValorVariable(char*);
 void * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
 void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int cantidad_paginas_codigo);
 void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo);
-
+int calcular_paginas_necesarias(char* codigo);
 
 #endif /* SOLICITUDES_H_ */

@@ -22,8 +22,7 @@ AnSISOP_kernel * func_kernel;
 t_cpu_conf* cpu_conf;
 t_log* logger;
 int pagesize;
-
-//int stackPointer;
+int flagDesconeccion = 0;
 t_page_offset* nextPageOffsetInStack;
 t_PCB* pcb;
 
@@ -33,16 +32,13 @@ void procesarMsg(char * msg);
 
 int main(void) {
 
-	//int byte_ejecutados
+	int continuar = 0;
+	int quantum_sleep = 0;
+
+	signal(SIGUSR1, &handlerDesconexion);
 
 	crear_logger("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/cpu", &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
-
-	/*uint8_t a;
-	uint32_t b;
-	a=1;
-	b=999999;
-	*/
 
 	load_properties();
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
@@ -58,67 +54,20 @@ int main(void) {
 		log_trace(logger, "Problema con Handshake con Memoria.");
 	}
 
-	/*while(1) {
-		pcb = malloc(sizeof(t_PCB));
-		uint8_t operation_code;
-
-		connection_recv(server_socket_kernel, &operation_code, pcb);
-
-		int pc, page, cantInstrucciones;
-
-		cantInstrucciones = pcb->cantidad_paginas;
-		lastPageOffset = malloc(sizeof(lastPageOffset));
-
-		loadlastPosStack();
-
-		if(list_size(pcb->indice_stack) == 0) {
-
-			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
-			nuevoContexto();
-		}
-
-		t_indice_codigo * icodigo = malloc(sizeof(t_indice_codigo));
-		icodigo = ((t_indice_codigo*) pcb->indice_codigo)+pc;
-
-		//TODO ver de cambiar la esctructura indice de codigo
-		page = calcularPagina();
-
-		//pido leer la instruccion a la memoria
-		t_read_response * read_response = memory_read(server_socket_memoria, pcb->pid, page, icodigo->offset, icodigo->size, logger);
-
-		char * instruccion;
-		strcpy(instruccion, read_response->buffer);
-
-		procesarMsg(instruccion);
-
-		free(instruccion);
-		free(read_response->buffer);
-		free(read_response);
-		free(icodigo);
-
-		pcb->PC++;
-
-		connection_send(server_socket_kernel, OC_PCB, pcb);
-	}*/
-
-	//TODO: loop de esto y dentro del loop el reciv para quedar a la espera de que kernel nos envíe un pcb
-	// una vez que recibimos procesamos una línea, devolvemos el pbc y quedamos a la espera de recibir el proximo
-//	pcb = malloc(sizeof(t_PCB));
-	uint8_t operation_code;
-	//connection_recv(server_socket_kernel, &operation_code, pcb);
-
-	pcb = crear_PCB_Prueba();
-
-	int pc, page, offset, pageend, size_to_read;
+	int pc, page, offset, pageend, size_to_read, operation_code;
 	char* instruccion;
-	nextPageOffsetInStack = malloc(sizeof(t_page_offset));
-	getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
+	char* pcb_serializado;
 
-	//Se incrementa Program Counter para comenzar la ejecución
-	//pcb->PC++;
+	while(continuar){
 
-	//for( pc = pcb->PC ; pc <= pcb->cantidad_instrucciones ; pc++){
-	while (pcb->PC < pcb->cantidad_instrucciones){
+		connection_recv(server_socket_kernel, &operation_code, &pcb_serializado);
+
+		pcb = deserializer_pcb(pcb_serializado);
+
+		nextPageOffsetInStack = malloc(sizeof(t_page_offset));
+		getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
+
+
 		if(list_size(pcb->indice_stack)==0){
 			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
 			nuevoContexto();
@@ -161,7 +110,6 @@ int main(void) {
 
 		instruccion[(icodigo->size) - 1] = '\0';
 
-
 		log_trace(logger, "Evaluando instruccion: %s",instruccion);
 
 		procesarMsg(instruccion);
@@ -174,8 +122,22 @@ int main(void) {
 			free(read_response2);
 		}
 		free(icodigo);
+		free(nextPageOffsetInStack);
 
 		pcb->PC++;
+
+		//TODO avisarle a kernel el fin de ejecución de la línea, según respuesta se sigue procesando o se devuelve el pcb
+
+		if(pcb->exit_code == OC_TERMINA_PROGRAMA){
+			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINA_PROGRAMA);
+		} else if(flagDesconeccion){
+			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_DESCONEX_CPU);
+		} else {
+			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
+
+			connection_recv(server_socket_kernel, &operation_code, &continuar);
+		}
+
 	}
 
 	return EXIT_SUCCESS;

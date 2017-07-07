@@ -22,11 +22,12 @@ void load_kernel_properties(void) {
 	kernel_conf->quantum = config_get_int_value(conf, "QUANTUM");
 	kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
 	kernel_conf->stack_size = config_get_int_value(conf, "STACK_SIZE");
-	kernel_conf->sem_ids = config_get_array_value(conf, "SEM_IDS");
+	kernel_conf->sem_ids = config_get_string_value(conf, "SEM_IDS");
 	kernel_conf->sem_init = config_get_array_value(conf, "SEM_INIT");
 	kernel_conf->shared_vars = config_get_string_value(conf, "SHARED_VARS");
 
 	crearVariablesCompartidas();
+	crearSemaforos();
 }
 
 t_PCB* crear_PCB(){
@@ -64,4 +65,18 @@ t_cpu* find_by_fd(int fd) {
 	}
 
 	return list_find(lista_cpu, (void*) _is_fd);
+}
+
+void crearSemaforos(){
+	int i=0;
+	semaforos = dictionary_create();
+    int length_value = strlen(kernel_conf->sem_ids) - 2;
+    char* value_without_brackets = string_substring(kernel_conf->sem_ids, 1, length_value);
+
+	char** semaforos_cfg = string_split(value_without_brackets, ",");
+	while(semaforos_cfg[i]!=NULL){
+		string_trim(&(semaforos_cfg[i]));
+		dictionary_put(semaforos, semaforos_cfg[i], atoi(kernel_conf->sem_init[i]));
+		i++;
+	}
 }

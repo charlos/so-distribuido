@@ -10,6 +10,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <parser/parser.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
 #include <shared-library/socket.h>
@@ -33,7 +35,7 @@ void getNextPosStack();
 void updatePageOffsetAvailable(u_int32_t);
 u_int32_t getPageofPos(t_puntero);
 u_int32_t getOffsetofPos(t_puntero);
-
+void handlerDesconexion(int);
 
 t_indice_codigo* obtener_indice_codigo(t_metadata_program*);
 t_dictionary* obtener_indice_etiquetas(t_metadata_program*);

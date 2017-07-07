@@ -5,7 +5,8 @@
  *      Author: utnso
  */
 #include "generales.h"
-
+#include "socket.h"
+#include "serializar.h"
 
 char* obtener_nombre_proceso(char* pathProceso){
 	char* nombreProceso;
@@ -27,5 +28,18 @@ void crear_logger(char* pathProceso, t_log** logger, bool active_console, t_log_
 	string_to_upper(nombreProceso);
 	*logger = log_create(nombre_log, nombreProceso, active_console, level);
 }
+
+
+int serializar_y_enviar_PCB(t_PCB* pcb, int socket_destino, int OC){
+	t_stream *paquete = pcb_serializer(pcb);
+	int ret;
+	ret = connection_send(socket_destino, OC, paquete);
+
+	free(paquete->data);
+	free(paquete);
+
+	return ret;
+}
+
 
 

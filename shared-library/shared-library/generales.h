@@ -18,6 +18,7 @@
 
 typedef t_list t_stack;
 
+
 typedef struct{
 	char* nombre;
 	int valor;
@@ -29,16 +30,28 @@ typedef struct{
 }t_indice_codigo;
 
 typedef struct{
-	int pid;
-	int PC;
-	int cantidad_paginas;
+	uint16_t pid;
+	uint16_t PC;
+	uint16_t cantidad_paginas;
+	int_least16_t exit_code;
 	uint16_t SP;
 	uint16_t cantidad_instrucciones;
-	t_stack* indice_stack;
-	t_indice_codigo* indice_codigo;
+	t_stack* indice_stack; //lista con elementos t_element_stack
+	t_indice_codigo* indice_codigo; //lista con elementos t_indice_codigo
 	t_dictionary* indice_etiquetas;
-	int exit_code;
 }t_PCB;
+
+//typedef struct{
+//	int pid;
+//	int PC;
+//	int cantidad_paginas;
+//	uint16_t SP;
+//	uint16_t cantidad_instrucciones;
+//	t_stack* indice_stack;
+//	t_indice_codigo* indice_codigo;
+//	t_dictionary* indice_etiquetas;
+//	int exit_code;
+//}t_PCB;
 
 typedef struct{
 	int pagina;
@@ -51,14 +64,19 @@ typedef struct{
 	int pagina;
 	int offset;
 	int size;
-}t_args_vars;
+}__attribute__ ((__packed__))t_args_vars;
 
 typedef struct{
-	t_list* args;
-	t_list* vars;
 	int retPos;
 	posicion_memoria* retVar;
-}t_element_stack;
+	t_list* args;
+	t_list* vars;
+} t_element_stack;
+
+typedef struct{
+	int length;
+	char* data;
+}__attribute__ ((__packed__))t_stream;
 
 typedef struct {
 	t_descriptor_archivo descriptor_archivo;
@@ -66,6 +84,13 @@ typedef struct {
 	t_valor_variable tamanio;
 	int pid;
 } t_archivo;
+
+typedef struct {
+	t_descriptor_archivo descriptor_archivo;
+	t_puntero informacion;
+	t_valor_variable tamanio;
+	int pid;
+} t_pedido_archivo_leer;
 
 typedef struct{
 	int proceso_fd;
@@ -107,5 +132,5 @@ char* obtener_nombre_proceso(char*);
 	 * 			t_log_level: tipo de seguimiento que se quiere en el log
 	 */
 void crear_logger(char*, t_log**, bool, t_log_level);
-
+int serializar_y_enviar_PCB(t_PCB* , int , int );
 #endif /* GENERALES_H_ */

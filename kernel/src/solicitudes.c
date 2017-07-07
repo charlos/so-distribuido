@@ -11,7 +11,7 @@
 
 extern t_list* tabla_archivos;
 
-void solve_request(int socket, fd_set* set){
+void solve_request(t_info_socket_solicitud* info_solicitud){
 	uint8_t operation_code;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
 	t_puntero bloque_heap_ptr;
@@ -37,9 +37,9 @@ void solve_request(int socket, fd_set* set){
     t_banderas flags;
     char* nombre_variable;
 
-	status = connection_recv(socket, &operation_code, &buffer);
+	status = connection_recv(info_solicitud->file_descriptor, &operation_code, &buffer);
 	if(status <= 0){
-		FD_CLR(socket, set);
+		FD_CLR(info_solicitud->file_descriptor, (info_solicitud->set));
 		operation_code = 555;
 	}
 
@@ -49,7 +49,7 @@ void solve_request(int socket, fd_set* set){
 		cant_paginas = calcular_paginas_necesarias(buffer);
 		pcb = crear_PCB();
 
-		int saved_socket = socket;
+		int saved_socket = info_solicitud->file_descriptor;
 		t_par_socket_pid * parnuevo = malloc(sizeof(t_par_socket_pid));
 		parnuevo->pid = pcb->pid;
 		parnuevo->socket = saved_socket;
@@ -76,7 +76,7 @@ void solve_request(int socket, fd_set* set){
 		log_trace(logger, "Mandando PID");
 		printf("Mandando PID\n");
 
-		connection_send(socket, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
+		connection_send(info_solicitud->file_descriptor, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
 
 		metadata = metadata_desde_literal(buffer);
 
@@ -122,7 +122,7 @@ void solve_request(int socket, fd_set* set){
 
 		// Mandamos puntero al programa que lo pidio
 		obtener_direccion_relativa(&bloque_heap_ptr, pagina->nro_pagina, info_proceso->paginas_codigo);	//sumo el offset de las paginas de codigo, stack y heap
-		connection_send(socket, OC_RESP_RESERVAR, &bloque_heap_ptr);
+		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
 		log_trace(logger, "Mando a cpu puntero de malloc pedido. Posicion: %d", bloque_heap_ptr);
 		printf("Mandando heap\n");
 
@@ -154,15 +154,20 @@ void solve_request(int socket, fd_set* set){
 	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
 	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
 	    resp = abrir_archivo(pid, direccion, flags);
+
+	    fs_create_file(fs_socket, direccion, logger);
+	    char * buffer = "Alo";
+	    fs_write(fs_socket, direccion, 0, 5, 4, buffer, logger);
 	    //TODO respuesta al pedido de abrir archivo
-	    connection_send(socket, OC_RESP_ABRIR, &resp);
+	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &resp);
 	    break;
 	case OC_FUNCION_ESCRIBIR: {
 
 		escritura = malloc(sizeof(t_archivo));
 		//TODO si es FD 1 enviar a consola para imprimir
 		escritura = (t_archivo *) buffer;
-		if(escritura->descriptor_archivo == 1)
+		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
+		if(escritura->descriptor_archivo == 0)
 		{
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
@@ -177,6 +182,19 @@ void solve_request(int socket, fd_set* set){
 
 			connection_send(socket_proceso, OC_RESP_ESCRIBIR, inf);
 		}
+		break;
+	}
+	case OC_FUNCION_LEER: {
+
+		t_pedido_archivo_leer * archivo_a_leer = buffer;
+
+		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
+		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
+
+		t_read_response * respuesta_memoria = memory_read(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, sizeof(t_puntero), logger);
+
+		log_trace(logger, "%s", (char *)respuesta_memoria->buffer);
+		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, respuesta_memoria);
 		break;
 	}
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
@@ -194,7 +212,39 @@ void solve_request(int socket, fd_set* set){
 		nombre_variable	= (char*)buffer;
 		log_trace(logger, "pedido de leer la variable %s",nombre_variable);
 		t_valor_variable valor = leerValorVariable(nombre_variable);
-		connection_send(socket, OC_RESP_LEER_VARIABLE, &valor);
+		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER_VARIABLE, &valor);
+		break;
+	case OC_FUNCION_SIGNAL:
+	    //TODO Hacer signal al semaforo y desbloquear programas si los hubiera
+		resp = 1;
+		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
+		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, &resp);
+//		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
+//		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
+//		semaforoSignal(semaforo);
+		break;
+	case OC_FUNCION_WAIT:
+		//TODO Hacer wait al semaforo y bloquear el programa si corresponde
+		resp = 1;
+		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
+		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, &resp);
+//		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
+//		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
+//		semaforoWait(semaforo);
+		break;
+	case OC_TERMINA_PROGRAMA:
+		pcb = deserializer_pcb(buffer);
+		//TODO cambiar PCB a cola exit y no se si alguna cosa más
+		break;
+	case OC_DESCONEX_CPU:
+		pcb = deserializer_pcb(buffer);
+		//TODO eliminar
+		break;
+	case OC_TERMINO_INSTRUCCION:
+		pcb = deserializer_pcb(buffer);
+		//TODO ver si queda quantum, si hay --> responder que siga procesando
+		//TODO ver si el programa no se bloqueó, si se bloqueó --> pasar PCB a cola de bloqueados
+		//
 		break;
 
 	case EJECUCION_OK:
@@ -212,9 +262,12 @@ void solve_request(int socket, fd_set* set){
 		pasarDeExecuteAExit(cpu);
 		break;
 	default:
-		printf("Desconexion");
+		fprintf(stderr, "Desconexion\n");
+		return;
+//		FD_CLR(info_solicitud->file_descriptor, (info_solicitud->set));
 		//TODO Ver que hacer con cada desconexion
 	}
+	FD_SET(info_solicitud->file_descriptor, info_solicitud->set);
 }
 
 int calcular_paginas_de_codigo(char* codigo){
@@ -572,3 +625,4 @@ void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantida
 	pedido_free->posicion = pedido_free->posicion % TAMANIO_PAGINAS;
 
 }
+

@@ -14,6 +14,8 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include "memory_prot.h"
+#include "syscall.h"
 
 
 #define OC_SOLICITUD_PROGRAMA_NUEVO 1
@@ -21,8 +23,6 @@
 #define OC_SOLICITUD_MEMORIA 3
 #define OC_LIBERAR_MEMORIA 4
 #define OC_ASIGNA_PCB 5
-#define OC_TERMINA_PROGRAMA 6
-#define OC_TERMINO_INSTRUCCION 7
 #define OC_HANDSHAKE_MEMORY 8
 #define OC_NUEVA_CONSOLA_PID 9
 #define OC_CODIGO 11
@@ -59,7 +59,10 @@
 #define OC_RESP_LEER_VARIABLE 53
 
 //VALORES DE RETORNO DEL PROCESO
-#define FINALIZADO_OK 1
+#define OC_TERMINA_PROGRAMA 6
+#define OC_TERMINO_INSTRUCCION 7
+#define OC_DESCONEX_CPU 60
+
 
 	/**
 	 * @NAME   open_socket
