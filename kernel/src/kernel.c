@@ -166,7 +166,7 @@ void planificador_corto_plazo(){
 }
 
 void pasarDeNewAReady(){
-	sem_wait(semCantidadProgramsPlanificados);
+	sem_wait(semCantidadProgramasPlanificados);
 	sem_wait(semColaListos);
 	while(cantidad_programas_planificados < grado_multiprogramacion && queue_size(cola_nuevos) > 0){
 		queue_push(cola_listos, queue_pop(cola_nuevos));
@@ -181,9 +181,9 @@ void pasarDeReadyAExecute(){
 	t_PCB* pcb = queue_pop(cola_listos);
 	sem_post(semColaListos);
 
-//	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
-//	cpu_enviar_pcb(cpu, pcb);
+	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
 
+	enviar_pcb_a_cpu(pcb, cpu);
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){
@@ -212,4 +212,22 @@ void pasarDeBlockedAReady(t_cpu* cpu){
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+}
+
+void enviar_a_ejecutar(t_cpu* cpu){
+
+}
+
+t_cpu* cpu_obtener_libre(t_list* lista_cpu){
+	t_cpu* cpu = NULL;
+	return cpu;
+}
+
+bool continuar_procesando(t_cpu* cpu){
+	if(algoritmo_planificacion == PLANIFICACION_ROUND_ROBIN){
+		cpu->quantum++;
+		return (cpu->quantum < quantum_planificacion);
+	} else {
+		return true;
+	}
 }

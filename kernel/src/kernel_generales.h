@@ -84,5 +84,6 @@ void crearVariablesCompartidas(void);
 //CPU
 t_cpu* cpu_obtener_libre(t_list* lista_cpu);
 void cpu_enviar_pcb(t_cpu* cpu, t_PCB* pcb);
-
+t_cpu* obtener_cpu(int socket);
+t_cpu* find_by_fd(int fd);
 #endif /* KERNEL_GENERALES_H_ */

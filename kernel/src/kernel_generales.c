@@ -52,5 +52,16 @@ void crearVariablesCompartidas(){
 		list_add(tabla_variables_compartidas,variable);
 		i++;
 	}
+}
 
+t_cpu* obtener_cpu(socket){
+	return find_by_fd(socket);
+}
+
+t_cpu* find_by_fd(int fd) {
+	int _is_fd(t_cpu *cpu) {
+		return (cpu->file_descriptor == fd);
+	}
+
+	return list_find(lista_cpu, (void*) _is_fd);
 }

@@ -22,6 +22,7 @@ void solve_request(int socket, fd_set* set){
 	t_pagina_heap* pagina;
 	t_read_response* respuesta_pedido_pagina;
 	t_PCB* pcb;
+	t_cpu* cpu;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
 	t_heapMetadata* metadata_bloque;
@@ -194,6 +195,21 @@ void solve_request(int socket, fd_set* set){
 		log_trace(logger, "pedido de leer la variable %s",nombre_variable);
 		t_valor_variable valor = leerValorVariable(nombre_variable);
 		connection_send(socket, OC_RESP_LEER_VARIABLE, &valor);
+		break;
+
+	case EJECUCION_OK:
+		cpu = obtener_cpu(socket);
+		if(continuar_procesando(cpu)){
+			enviar_oc_continuar(cpu);
+		} else {
+			pcb = obtener_pcb_de_cpu(cpu);
+			pasarDeExecuteAReady(cpu);
+		}
+		break;
+	case FIN_PROGRAMA:
+		cpu = obtener_cpu(socket);
+		pcb = obtener_pcb_de_cpu(cpu);
+		pasarDeExecuteAExit(cpu);
 		break;
 	default:
 		printf("Desconexion");
