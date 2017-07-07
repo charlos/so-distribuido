@@ -193,7 +193,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_read_response * respuesta_memoria = memory_read(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, sizeof(t_puntero), logger);
 
 		log_trace(logger, "%s", (char *)respuesta_memoria->buffer);
-		connection_send(socket, OC_RESP_LEER, respuesta_memoria);
+		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, respuesta_memoria);
 		break;
 	}
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
