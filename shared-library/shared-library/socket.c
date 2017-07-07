@@ -128,10 +128,10 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(int);
 			break;
 		case OC_FUNCION_RESERVAR:
+			message_size_value = sizeof(t_pedido_reservar_memoria);
+			break;
 		case OC_RESP_RESERVAR:
 			message_size_value = sizeof(t_puntero);
-			break;
-			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
 		case OC_FUNCION_LEER_VARIABLE:
 			break;
@@ -160,6 +160,10 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = *(int*) message;
 
 			message_size_value = sizeof(int)+message_size_value*sizeof(t_nombre_variable)+sizeof(int);
+			break;
+		case OC_FUNCION_SIGNAL:
+		case OC_FUNCION_WAIT:
+			message_size_value = strlen((char *)message);
 			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
@@ -274,9 +278,6 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = &respuesta;
 				break;
 			case OC_FUNCION_ESCRIBIR:
-				/*buffer = malloc(sizeof(t_archivo));
-				recv(file_descriptor, buffer, message_size, 0);
-				*message = buffer;*/
 				buffer = malloc(sizeof(t_size));
 				recv(file_descriptor, buffer, sizeof(size_t), 0);
 				free(buffer);
@@ -300,7 +301,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				buffer = malloc(arch->tamanio);
 				arch->informacion = malloc(arch->tamanio);
 				recv(file_descriptor, buffer, arch->tamanio, 0);
-				//arch->informacion = buffer;
+
 				memcpy(arch->informacion, buffer, arch->tamanio);
 				free(buffer);
 
@@ -308,6 +309,8 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 
 				break;
 			case OC_RESP_ESCRIBIR:
+			case OC_FUNCION_SIGNAL:
+			case OC_FUNCION_WAIT:
 				buffer = (char*)*message;
 				status = recv(file_descriptor, buffer, message_size, 0);
 				buffer[message_size] = '\0';
