@@ -212,7 +212,7 @@ void solve_request(int socket, fd_set* set){
 		t_valor_variable valor = leerValorVariable(nombre_variable);
 		connection_send(socket, OC_RESP_LEER_VARIABLE, &valor);
 		break;
-	case OC_FUNCION_SIGNAL: {
+	/*case OC_FUNCION_SIGNAL: {
 		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
 		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
 		semaforoSignal(semaforo);
@@ -223,7 +223,7 @@ void solve_request(int socket, fd_set* set){
 		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
 		semaforoWait(semaforo);
 		break;
-	}
+	}*/
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion
