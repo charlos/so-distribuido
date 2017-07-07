@@ -599,7 +599,8 @@ int update_cache(int cache_entry, int pid, int page, int offset, int size, void 
  */
 int writing_memory(t_write_request * w_req) {
 
-	// TODO : retardo por acceso a memoria
+	// memory delay
+	usleep(1000 * (memory_conf->memory_delay));
 
 	// getting associated frame
 	int frame = get_frame((w_req->pid), (w_req->page));
@@ -737,6 +738,10 @@ int read_cache_entry_and_send(int * client_socket, t_read_request * r_req, int c
  * @NAME readind_memory
  */
 int readind_memory(int * client_socket, t_read_request * r_req) {
+
+	// memory delay
+	usleep(1000 * (memory_conf->memory_delay));
+
 	int frame = get_frame((r_req->pid), (r_req->page));
 	rw_lock_unlock(memory_locks, LOCK_READ, frame);
 	void * memory_read_pos = memory_ptr +  (frame * (memory_conf->frame_size));

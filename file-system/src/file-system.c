@@ -41,7 +41,6 @@ int get_available_block(void);
 int unmap_bitmap_f(void);
 void create_file(int *);
 void delete_file(int *);
-void handshake(int *);
 void load_file_system_properties(void);
 void load(void);
 void print_file_system_properties(void);
@@ -103,54 +102,68 @@ static void check(int test, const char * message, ...) {
 }
 
 void load(void) {
+	struct stat sb;
+
 	// files directory
 	char * files_dir_path = string_from_format("%s/Archivos", (file_system_conf->mount_point));
-	mkdir(files_dir_path, S_IRWXU | S_IRWXG | S_IRWXO);
+	if ((stat(files_dir_path, &sb) < 0) || (stat(files_dir_path, &sb) == 0 && !(S_ISDIR(sb.st_mode))))
+		mkdir(files_dir_path, S_IRWXU | S_IRWXG | S_IRWXO);
 
 	// files directory
 	char * blocks_dir_path = string_from_format("%s/Bloques", (file_system_conf->mount_point));
-	mkdir(blocks_dir_path, S_IRWXU | S_IRWXG | S_IRWXO);
+	if ((stat(blocks_dir_path, &sb) < 0) || (stat(blocks_dir_path, &sb) == 0 && !(S_ISDIR(sb.st_mode))))
+		mkdir(blocks_dir_path, S_IRWXU | S_IRWXG | S_IRWXO);
 
 	// metadata
 	char * metadata_dir_path = string_from_format("%s/Metadata", (file_system_conf->mount_point));
-	mkdir(metadata_dir_path, S_IRWXU | S_IRWXG | S_IRWXO);
+	if ((stat(metadata_dir_path, &sb) < 0) || (stat(metadata_dir_path, &sb) == 0 && !(S_ISDIR(sb.st_mode))))
+		mkdir(metadata_dir_path, S_IRWXU | S_IRWXG | S_IRWXO);
 
 	char * metadata_file_path = string_from_format("%s/Metadata.bin", metadata_dir_path);
-	FILE * metadata_file = fopen(metadata_file_path, "w");
-	fprintf(metadata_file,"TAMANIO_BLOQUES=%d\nCANTIDAD_BLOQUES=%d\nMAGIC_NUMBER=SADICA", BLOCK_SIZE, BLOCKS);
-	fclose(metadata_file);
+	if ((stat(metadata_file_path, &sb) < 0) || (stat(metadata_file_path, &sb) == 0 && !(S_ISREG(sb.st_mode)))) {
+		FILE * metadata_file = fopen(metadata_file_path, "w");
+		fprintf(metadata_file,"TAMANIO_BLOQUES=%d\nCANTIDAD_BLOQUES=%d\nMAGIC_NUMBER=SADICA", BLOCK_SIZE, BLOCKS);
+		fclose(metadata_file);
+	}
 
 	// bitmap
+	bool clean = true;
 	char * bitmap_file_path = string_from_format("%s/Bitmap.bin", metadata_dir_path);
-	FILE * bitmap_file = fopen(bitmap_file_path, "wb");
-	int j = BLOCKS / 8; // 1 byte = 8 bits
-	char ch = '\0';
-	int i = 0;
-	while (i < j) {
-		fwrite(&ch, sizeof(char), 1, bitmap_file);
-		i++;
+	if ((stat(bitmap_file_path, &sb) < 0) || (stat(bitmap_file_path, &sb) == 0 && !(S_ISREG(sb.st_mode)))) {
+		FILE * bitmap_file = fopen(bitmap_file_path, "wb");
+		int j = BLOCKS / 8; // 1 byte = 8 bits
+		char ch = '\0';
+		int i = 0;
+		while (i < j) {
+			fwrite(&ch, sizeof(char), 1, bitmap_file);
+			i++;
+		}
+		fclose(bitmap_file);
+	} else {
+		clean = false;
 	}
-	fclose(bitmap_file);
 
 	int fd; // file descriptor
-	struct stat s; int status; // information about the file
+	int status;
 
 	fd = open(bitmap_file_path, O_RDWR);
 	check(fd < 0, "open %s failed: %s", bitmap_file_path, strerror(errno));
 
-	status = fstat(fd, &s);
+	status = fstat(fd, &sb);
 	check(status < 0, "stat %s failed: %s", bitmap_file_path, strerror (errno));
-	size = s.st_size;
+	size = sb.st_size;
 
 	bitmap_mfile_ptr = mmap ((caddr_t) 0, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	check((bitmap_mfile_ptr == MAP_FAILED), "mmap %s failed: %s", bitmap_file_path, strerror (errno));
 
 	bitmap = bitarray_create_with_mode(bitmap_mfile_ptr, BLOCKS, MSB_FIRST);
 
-	int pos = 0;
-	while (pos < BLOCKS) {
-		bitarray_clean_bit(bitmap, pos);
-		pos++;
+	if (clean) {
+		int pos = 0;
+		while (pos < BLOCKS) {
+			bitarray_clean_bit(bitmap, pos);
+			pos++;
+		}
 	}
 
 	free(bitmap_file_path);
@@ -179,7 +192,7 @@ void process_request(int * client_socket) {
 		printf(logger, " >> client %d >> operation code : %d", * client_socket, ope_code);
 		switch (ope_code) {
 		case FS_HANDSHAKE_OC:
-			handshake(client_socket);
+			fs_handshake_resp(client_socket, SUCCESS);
 			break;
 		case FS_VALIDATE_FILE_OC:
 			validate_file(client_socket);
@@ -203,10 +216,6 @@ void process_request(int * client_socket) {
 	close_client(* client_socket);
 	free(client_socket);
 	return;
-}
-
-void handshake(int * client_socket) {
-	fs_handshake_resp(client_socket, SUCCESS);
 }
 
 void validate_file(int * client_socket) {
