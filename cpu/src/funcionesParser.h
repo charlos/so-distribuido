@@ -53,8 +53,8 @@ void cerrar(t_descriptor_archivo);
 void moverCursor(t_descriptor_archivo, t_valor_variable);
 void escribir(t_descriptor_archivo, void *, t_valor_variable);
 void leer(t_descriptor_archivo, t_puntero, t_valor_variable);
-void wait(t_nombre_semaforo identificador_semaforo);
-void signal(t_nombre_semaforo identificador_semaforo);
+void waitParser(t_nombre_semaforo identificador_semaforo);
+void signalParser(t_nombre_semaforo identificador_semaforo);
 
 
 #endif /* FUNCIONESPARSER_H_ */

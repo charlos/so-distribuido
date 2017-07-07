@@ -30,13 +30,10 @@ void crear_logger(char* pathProceso, t_log** logger, bool active_console, t_log_
 }
 
 
-int serializar_y_enviar_PCB(t_PCB* pcb, int socket_destino){
+int serializar_y_enviar_PCB(t_PCB* pcb, int socket_destino, int OC){
 	t_stream *paquete = pcb_serializer(pcb);
 	int ret;
-	void* buffer = malloc(sizeof(int)+paquete->length);
-	memcpy(buffer,&(paquete->length),sizeof(int));
-	memcpy(buffer+sizeof(int),paquete->data,paquete->length);
-	ret = connection_send(socket_destino, OC_PCB, buffer);
+	ret = connection_send(socket_destino, OC, paquete);
 
 	free(paquete->data);
 	free(paquete);

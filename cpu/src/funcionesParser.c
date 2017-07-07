@@ -167,12 +167,11 @@ void finalizar(void){
 	log_trace(logger, "Finalizar");
 	t_element_stack* contexto = stack_pop(pcb->indice_stack);
 	if(list_size(pcb->indice_stack)==0){
-		pcb->exit_code = FINALIZADO_OK;
+		pcb->exit_code = OC_TERMINA_PROGRAMA;
 	}else{
 		pcb->PC = contexto->retPos;
 	}
 	eliminarContexto(contexto);
-	
 }
 
 t_valor_variable obtenerValorCompartida(t_nombre_compartida variable){
@@ -335,14 +334,15 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
     //TODO: ver como retornar la informacion devuelta por kernel
 }
-void signal(t_nombre_semaforo identificador_semaforo) {
+void signalParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);
 
 	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, identificador_semaforo);
-
+	//TODO agregar recv para que quede bloquedado OC_RESP_WAIT
+	// idem para el wait
 }
 
-void wait(t_nombre_semaforo identificador_semaforo) {
+void waitParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
 
 	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);

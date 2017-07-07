@@ -97,16 +97,22 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 
 	uint8_t operation_code_value = operation_code;
 	uint32_t message_size_value;
-	//size_t message_size_value;
+
 	int i= 0;
 
 	switch ((int)operation_code) {
 		case OC_PCB:
-			message_size_value = *(int*) message;
-			message_size_value += sizeof(int);
+			message_size_value = ((t_stream*) message)->length;
+			message = ((t_stream*) message)->data;
+			break;
+		case OC_TERMINA_PROGRAMA:
+			message_size_value = ((t_stream*) message)->length;
+			message = ((t_stream*) message)->data;
 			break;
 		case OC_CODIGO:
 		case OC_FUNCION_LEER_VARIABLE:
+		case OC_FUNCION_SIGNAL:
+		case OC_FUNCION_WAIT:
 		case OC_SOLICITUD_PROGRAMA_NUEVO:
 			//message_size_value = *(uint8_t*) message;
 			//(uint8_t *)message++;
@@ -181,7 +187,6 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 	int ret = 0;
 	int stream_length;
 	char* buffer;
-	t_stream* pcb_serializado;
 
 	status = recv(file_descriptor, operation_code_value, prot_ope_code_size, 0);
 	if (status <= 0) {
@@ -196,11 +201,11 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			//message = (void*) malloc(message_size);
 			switch ((int)*operation_code_value) {
 			case OC_PCB:
-				pcb_serializado = malloc(sizeof(t_stream));
-				recv(file_descriptor, &(pcb_serializado->length), sizeof(int), 0);
-				pcb_serializado->data = malloc(pcb_serializado->length);
-				recv(file_descriptor, pcb_serializado->data, pcb_serializado->length, 0);
-				*message = pcb_serializado;
+			case OC_TERMINA_PROGRAMA:
+			case OC_TERMINO_INSTRUCCION:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer,message_size, 0);
+				*message = buffer;
 				break;
 			case OC_SOLICITUD_PROGRAMA_NUEVO:
 				*message = malloc(message_size +1);
@@ -300,6 +305,13 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (t_valor_variable *)buffer;
 
+				break;
+			case OC_FUNCION_SIGNAL:
+			case OC_FUNCION_WAIT:
+				buffer = malloc(message_size);
+				status = recv(file_descriptor, buffer, message_size, 0);
+				buffer[message_size] = '\0';
+				*message = buffer;
 				break;
 			case OC_FUNCION_ESCRIBIR_VARIABLE:
 				buffer = malloc(message_size);

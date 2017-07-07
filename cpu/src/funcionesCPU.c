@@ -5,15 +5,7 @@
  *      Author: gtofaletti
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <parser/parser.h>
-#include <commons/config.h>
-#include <commons/collections/list.h>
-#include <shared-library/socket.h>
-#include <shared-library/generales.h>
-#include <shared-library/memory_prot.h>
-#include "cpu.h"
+
 #include "funcionesCPU.h"
 
 extern t_PCB* pcb;
@@ -23,6 +15,7 @@ extern AnSISOP_kernel * func_kernel;
 extern t_cpu_conf* cpu_conf;
 extern t_log* logger;
 extern int pagesize;
+extern int flagDesconeccion;
 
 t_element_stack* nuevoContexto(){
 	t_element_stack* regIndicestack = malloc(sizeof(t_element_stack));
@@ -109,8 +102,8 @@ void inicializarFuncionesParser(void) {
 	func_kernel->AnSISOP_moverCursor = moverCursor;
 	func_kernel->AnSISOP_reservar = alocar;
 	func_kernel->AnSISOP_liberar = liberar;
-	func_kernel->AnSISOP_wait = wait;
-	func_kernel->AnSISOP_signal = signal;
+	func_kernel->AnSISOP_wait = waitParser;
+	func_kernel->AnSISOP_signal = signalParser;
 
 }
 void procesarMsg(char * msg) {
@@ -205,7 +198,14 @@ u_int32_t getOffsetofPos(t_puntero pos){
 	return pos - (page * pagesize);
 }
 
+void handlerDesconexion(int signum){
+	if(signum==SIGUSR1){
+		//printf("handlerDesconexion con signum==SIGUSR1");
+		flagDesconeccion = 1;
+	}
+}
 
+/*
 t_PCB* crear_PCB_Prueba(){
 	pcb = malloc(sizeof(t_PCB));
 	pcb->pid = 1;
@@ -223,7 +223,7 @@ t_PCB* crear_PCB_Prueba(){
 			"liberar a\n"
 			"end\n"
 			"\n";
-
+*/
 /*			"#!/usr/bin/ansisop\n"
 			"begin\n"
 			"variables a, b\n"
@@ -302,7 +302,7 @@ t_PCB* crear_PCB_Prueba(){
 			"end\n"
 			"\n";
 */
-
+/*
 	char *programa = strdup(PROGRAMA);
 
 	pcb->cantidad_paginas = 1;
@@ -314,15 +314,6 @@ t_PCB* crear_PCB_Prueba(){
 	pcb->cantidad_instrucciones = metadata->instrucciones_size;
 	pcb->indice_codigo = obtener_indice_codigo(metadata);
 	pcb->indice_etiquetas = obtener_indice_etiquetas(metadata);
-
-
-//	void _testdic(char* etiqueta, int* linea) {
-//		log_trace(logger, "Etiqueta [%s] linea [%d]", etiqueta,*linea);
-//	}
-
-//	log_trace(logger, "Luego de obtener indice etiquetas");
-//	dictionary_iterator(pcb->indice_etiquetas, (void*) _testdic);
-
 	pcb->indice_stack = list_create();
 
 	metadata_destruir(metadata);
@@ -330,7 +321,7 @@ t_PCB* crear_PCB_Prueba(){
 
 	return pcb;
 }
-
+*/
 
 
 t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata){

@@ -195,6 +195,26 @@ void solve_request(int socket, fd_set* set){
 		t_valor_variable valor = leerValorVariable(nombre_variable);
 		connection_send(socket, OC_RESP_LEER_VARIABLE, &valor);
 		break;
+	case OC_FUNCION_SIGNAL:
+		//TODO Hacer signal al semaforo y desbloquear programas si los hubiera
+		break;
+	case OC_FUNCION_WAIT:
+		//TODO Hacer wait al semaforo y bloquear el programa si corresponde
+		break;
+	case OC_TERMINA_PROGRAMA:
+		pcb = deserializer_pcb(buffer);
+		//TODO cambiar PCB a cola exit y no se si alguna cosa más
+		break;
+	case OC_DESCONEX_CPU:
+		pcb = deserializer_pcb(buffer);
+		//TODO eliminar
+		break;
+	case OC_TERMINO_INSTRUCCION:
+		pcb = deserializer_pcb(buffer);
+		//TODO ver si queda quantum, si hay --> responder que siga procesando
+		//TODO ver si el programa no se bloqueó, si se bloqueó --> pasar PCB a cola de bloqueados
+		//
+		break;
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion
@@ -556,3 +576,4 @@ void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantida
 	pedido_free->posicion = pedido_free->posicion % TAMANIO_PAGINAS;
 
 }
+

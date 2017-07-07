@@ -377,11 +377,5 @@ t_stream* argsVars_serializer(t_list* argsVars){
 	return stream;
 }
 
-/*int indice_codigo_size(t_indice_codigo* indiceCodigo){
-	int i = 0;
-	while(indiceCodigo[i] != "\0\0\0\0\0\0\0\0"){
-		i++;
-	}
-	return i;
-}*/
+
 

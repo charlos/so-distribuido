@@ -125,5 +125,5 @@ char* obtener_nombre_proceso(char*);
 	 * 			t_log_level: tipo de seguimiento que se quiere en el log
 	 */
 void crear_logger(char*, t_log**, bool, t_log_level);
-
+int serializar_y_enviar_PCB(t_PCB* , int , int );
 #endif /* GENERALES_H_ */
