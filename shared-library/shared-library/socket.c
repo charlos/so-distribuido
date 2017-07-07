@@ -163,7 +163,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			break;
 		case OC_FUNCION_SIGNAL:
 		case OC_FUNCION_WAIT:
-			message_size_value = sizeof(t_nombre_semaforo);
+			message_size_value = strlen((char *)message);
 			break;
 //		DEFINIR COMPORTAMIENTO
 		default:
@@ -309,6 +309,8 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 
 				break;
 			case OC_RESP_ESCRIBIR:
+			case OC_FUNCION_SIGNAL:
+			case OC_FUNCION_WAIT:
 				buffer = (char*)*message;
 				status = recv(file_descriptor, buffer, message_size, 0);
 				buffer[message_size] = '\0';
@@ -334,12 +336,6 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = buffer;
 				break;
 			case OC_FUNCION_ESCRIBIR_VARIABLE:
-				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
-				*message = buffer;
-				break;
-			case OC_FUNCION_SIGNAL:
-			case OC_FUNCION_WAIT:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = buffer;
