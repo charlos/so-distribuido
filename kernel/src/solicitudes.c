@@ -153,6 +153,10 @@ void solve_request(int socket, fd_set* set){
 	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
 	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
 	    resp = abrir_archivo(pid, direccion, flags);
+
+	    fs_create_file(fs_socket, direccion, logger);
+	    char * buffer = "Alo";
+	    fs_write(fs_socket, direccion, 0, 5, 4, buffer, logger);
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(socket, OC_RESP_ABRIR, &resp);
 	    break;
@@ -208,6 +212,18 @@ void solve_request(int socket, fd_set* set){
 		t_valor_variable valor = leerValorVariable(nombre_variable);
 		connection_send(socket, OC_RESP_LEER_VARIABLE, &valor);
 		break;
+	case OC_FUNCION_SIGNAL: {
+		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
+		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
+		semaforoSignal(semaforo);
+		break;
+	}
+	case OC_FUNCION_WAIT: {
+		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
+		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
+		semaforoWait(semaforo);
+		break;
+	}
 	default:
 		printf("Desconexion");
 		//TODO Ver que hacer con cada desconexion

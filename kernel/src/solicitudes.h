@@ -12,6 +12,7 @@
 #include <shared-library/socket.h>
 #include <shared-library/generales.h>
 #include "kernel_generales.h"
+#include "syscall_semaforos.h"
 
 typedef struct{
 	int pid;
