@@ -332,7 +332,8 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
     connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 
     void * buffer = malloc(tamanio);
-    connection_recv(server_socket_kernel, OC_RESP_LEER, buffer);
+    uint8_t * operation_code = malloc(sizeof(uint8_t));
+    connection_recv(server_socket_kernel, operation_code, &buffer);
 
     //TODO: ver como retornar la informacion devuelta por kernel
 }
