@@ -17,6 +17,16 @@
 #include <commons/collections/list.h>
 #include <signal.h>
 #include <stdio_ext.h>
+#include <sys/time.h>
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
 
 typedef struct {
 	char* ipAddress;
@@ -29,6 +39,7 @@ typedef struct {
 	int pid;
 	int terminate;
 	uint16_t port;
+	uint8_t cantidad_escrituras;
 } threadpid;
 
 uint16_t puerto_base;
