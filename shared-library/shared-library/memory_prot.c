@@ -33,19 +33,38 @@ int recv_operation_code(int * client_socket, t_log * logger) {
 	║ MEMORY - HANDSHAKE ║
 	╚════════════════════╝ **/
 
-int handshake(int * server_socket, t_log * logger) {
+int handshake(int * server_socket, char type, int stack_size, t_log * logger) {
 
-	/**	╔═════════════════════════╗
-		║ operation_code (1 byte) ║
-		╚═════════════════════════╝ **/
+	/**	╔═════════════════════════╦═══════════════╦═══════════════════════════════╗
+		║ operation_code (1 byte) ║ type (1 byte) ║ stack size (4 bytes optional) ║
+		╚═════════════════════════╩═══════════════╩═══════════════════════════════╝ **/
 
 	uint8_t prot_ope_code = 1;
-	uint8_t req_ope_code = HANDSHAKE_OC;
+	uint8_t prot_type = 1;
+	uint8_t prot_stack_size = 0;
 
-	int msg_size = sizeof(char) * (prot_ope_code);
+	uint8_t req_ope_code = HANDSHAKE_OC;
+	uint8_t req_ope_type = type;
+	uint8_t req_stack_size = 0;
+
+	if (type == 'k') {
+		if (stack_size && stack_size > 0) {
+			prot_stack_size = 1;
+			req_stack_size = stack_size;
+		} else {
+			return UNDEFINED_STACK_SIZE;
+		}
+	}
+
+	int msg_size = sizeof(char) * (prot_ope_code + prot_type + prot_stack_size);
 	void * request = malloc(msg_size);
 	memcpy(request, &req_ope_code, prot_ope_code);
+	memcpy(request + prot_ope_code, &req_ope_type, prot_type);
+	if (prot_stack_size > 0) {
+		memcpy(request + prot_ope_code + prot_type, &req_stack_size, prot_stack_size);
+	}
 	socket_send(&server_socket, request, msg_size, 0);
+
 	free(request);
 
 	uint8_t resp_prot_code = 4;
@@ -56,6 +75,30 @@ int handshake(int * server_socket, t_log * logger) {
 		return DISCONNECTED_SERVER;
 	}
 	return memory_size;
+}
+
+t_handshake_request * handshake_recv_req(int * client_socket, t_log * logger) {
+	t_handshake_request * request = malloc(sizeof(t_handshake_request));
+	uint8_t prot_type = 1;
+	int received_bytes = socket_recv(client_socket, &(request->type), prot_type);
+	if (received_bytes <= 0) {
+		if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+		request->exec_code = DISCONNECTED_CLIENT;
+		return request;
+	}
+	if ((request->type) == 'k') {
+		uint8_t stack_size = 1;
+		received_bytes = socket_recv(client_socket, &(request->stack_size), stack_size);
+		if (received_bytes <= 0) {
+			if (logger) log_error(logger, "------ CLIENT %d >> disconnected", * client_socket);
+			request->exec_code = DISCONNECTED_CLIENT;
+			return request;
+		}
+	} else {
+		request->stack_size = 0;
+	}
+	request->exec_code = SUCCESS;
+	return request;
 }
 
 void handshake_resp(int * client_socket, int memory_size) {
