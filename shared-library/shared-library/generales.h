@@ -16,8 +16,23 @@
 #include <parser/metadata_program.h>
 #include <stdint.h>
 
-typedef t_list t_stack;
 
+//Exit Code de proceso
+#define EC_FINALIZACION_OK 		0
+#define EC_SIN_RECURSOS_PARA_EJECUTAR -1
+#define EC_NO_EXISTE_ARCHIVO 		-2
+#define EC_SIN_PERMISO_LECTURA		-3
+#define EC_SIN_PERMISO_ESCRITURA	-4
+#define EC_EXCEPCION_MEMORIA		-5
+#define EC_DESCONEXION_CONSOLA		-6
+#define EC_FINALIZADO_POR_CONSOLA	-7
+#define EC_ALOCAR_MUY_GRANDE		-8
+#define EC_SIN_PAGINAS_PROCESO		-9
+#define EC_STACKOVERFLOW			-10
+#define EC_DESCONOCIDO				-20
+
+
+typedef t_list t_stack;
 
 typedef struct{
 	char* nombre;
@@ -133,4 +148,6 @@ char* obtener_nombre_proceso(char*);
 	 */
 void crear_logger(char*, t_log**, bool, t_log_level);
 int serializar_y_enviar_PCB(t_PCB* , int , int );
+void pcb_destroy(t_PCB* pcb);
+
 #endif /* GENERALES_H_ */

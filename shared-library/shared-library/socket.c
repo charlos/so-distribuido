@@ -117,6 +117,8 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_NUEVA_CONSOLA_PID:
 			message_size_value = sizeof(uint8_t);
 			break;
+		case OC_QUANTUM_SLEEP:
+		case OC_RESP_QUANTUM_SLEEP:
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:

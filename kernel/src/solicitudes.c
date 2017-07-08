@@ -257,11 +257,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
-		//TODO eliminar
+		//TODO eliminar cpu del kernel
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		resp = 0;
 		pcb = deserializer_pcb(buffer);
+
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		auxPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
@@ -275,6 +276,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		pcb_destroy(auxPCB);
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, &resp);
+
 		break;
 	default:
 		fprintf(stderr, "Desconexion\n");

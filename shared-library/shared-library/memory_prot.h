@@ -26,7 +26,9 @@
 #define	DISCONNECTED_SERVER				-202
 #define	ENOSPC							-203
 #define	OUT_OF_FRAME				  	-204
-
+#define	PAGE_FAULT						-205
+#define	SEGMENTATION_FAULT				-206
+#define UNDEFINED_STACK_SIZE			-207
 
 
 /**	╔═════════════════════════════════╗
@@ -47,13 +49,27 @@ int recv_operation_code(int *, t_log *);
 	║ MEMORY - HANDSHAKE ║
 	╚════════════════════╝ **/
 
+typedef struct {
+	int16_t exec_code;
+	char type;
+	uint8_t stack_size;
+} t_handshake_request;
+
 /**
  * @NAME handshake
  * @DESC
  *
  * @PARAMS
  */
-int handshake(int *, t_log *);
+int handshake(int *, char, int, t_log *);
+
+/**
+ * @NAME handshake_recv_req
+ * @DESC
+ *
+ * @PARAMS
+ */
+t_handshake_request * handshake_recv_req(int *, t_log *);
 
 /**
  * @NAME handshake_resp

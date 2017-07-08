@@ -41,5 +41,31 @@ int serializar_y_enviar_PCB(t_PCB* pcb, int socket_destino, int OC){
 	return ret;
 }
 
+void element_stack_destroy(t_element_stack* contexto){
+	list_destroy_and_destroy_elements(contexto->args, (void*) free);
+	list_destroy_and_destroy_elements(contexto->vars, (void*) free);
+	free(contexto->retVar);
+	free(contexto);
+}
 
+void pcb_destroy(t_PCB* pcb){
+	/*
+	typedef struct{
+	uint16_t pid;
+	uint16_t PC;
+	uint16_t cantidad_paginas;
+	int_least16_t exit_code;
+	uint16_t SP;
+	uint16_t cantidad_instrucciones;
+	t_stack* indice_stack; //lista con elementos t_element_stack
+	t_indice_codigo* indice_codigo; //lista con elementos t_indice_codigo
+	t_dictionary* indice_etiquetas;
+	}t_PCB;
+	*/
+
+	list_destroy_and_destroy_elements(pcb->indice_stack, (void*) element_stack_destroy);
+	list_destroy_and_destroy_elements(pcb->indice_codigo, (void*) free);
+	dictionary_clean_and_destroy_elements(pcb->indice_etiquetas, (void*) free);
+	free(pcb);
+}
 
