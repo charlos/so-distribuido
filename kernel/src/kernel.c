@@ -122,6 +122,10 @@ void manage_select(t_aux* estructura){
 						log_trace(logger, "Nueva conexion: socket %d", nuevaConexion);
 						FD_SET(nuevaConexion, (estructura->master));
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
+						if(*(estructura->master) == master_cpu){
+							t_cpu* cpu = crear_cpu(fd_seleccionado);
+							list_add(lista_cpu, cpu);
+						}
 					}
 				} else {
 					pthread_t hilo_solicitud;
