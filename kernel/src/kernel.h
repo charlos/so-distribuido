@@ -24,7 +24,6 @@
 
 sem_t* semPlanificarLargoPlazo;
 sem_t* semPlanificarCortoPlazo;
-sem_t* semCantidadProgramsPlanificados;
 sem_t* semColaListos;
 sem_t* semCantidadProgramasPlanificados;
 sem_t* semColaBloqueados;

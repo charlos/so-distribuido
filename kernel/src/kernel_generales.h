@@ -53,6 +53,12 @@ typedef struct{
 	fd_set* set;
 }t_info_socket_solicitud;
 
+typedef struct{
+	int cuenta;
+	t_queue* cola;
+}t_semaphore;
+
+
 fd_set master_cpu, master_prog;
 int registro_pid;
 t_log* logger;
@@ -87,4 +93,7 @@ t_cpu* cpu_obtener_libre(t_list* lista_cpu);
 void cpu_enviar_pcb(t_cpu* cpu, t_PCB* pcb);
 t_cpu* obtener_cpu(int socket);
 t_cpu* find_by_fd(int fd);
+bool proceso_bloqueado(t_PCB* pcb);
+t_PCB* sacar_pcb(t_list* list, t_PCB* pcb);
+
 #endif /* KERNEL_GENERALES_H_ */

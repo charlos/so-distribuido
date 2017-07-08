@@ -80,3 +80,37 @@ void crearSemaforos(){
 		i++;
 	}
 }
+
+/**
+ * si el pid se encuentra en la cola de bloqueados, devuelve TRUE
+ * pero ademas tira la magia de actualizarlo (si... es cualquiera, pero me ahorra tener que recorrer la cola dos veces)
+ */
+bool proceso_bloqueado(t_PCB* pcb){
+	bool encontroPCB = false;
+	bool _is_pcb(t_PCB* p) {
+		if(p->pid == pcb->pid){
+			encontroPCB = true;
+		}
+		return (p->pid == pcb->pid);
+	}
+	sem_wait(semColaBloqueados);
+	// esto es un asco, pero bueno... elimino el viejo pcb de la cola de bloqueados y pongo el nuevo
+	t_PCB* aux = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
+	if(encontroPCB){
+		list_add(cola_bloqueados, pcb);
+	}
+	sem_post(semColaBloqueados);
+	if(encontroPCB){
+		pcb_destroy(aux);
+	}
+
+	return encontroPCB;
+}
+
+t_PCB* sacar_pcb(t_list* list, t_PCB* pcb){
+	bool _is_pcb(t_PCB* p) {
+		return (p->pid == pcb->pid);
+	}
+	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
+	return pcbEncontrado;
+}

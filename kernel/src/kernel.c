@@ -211,7 +211,8 @@ void pasarDeReadyAExecute(){
 
 	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
 
-	enviar_pcb_a_cpu(pcb, cpu);
+	serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_TERMINO_INSTRUCCION);
+
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){
@@ -219,6 +220,7 @@ void pasarDeExecuteAReady(t_cpu* cpu){
 	sem_wait(semColaListos);
 	queue_push(cola_listos, cpu->proceso_asignado);
 	sem_post(semColaListos);
+	cpu->proceso_asignado = NULL;
 }
 
 void pasarDeExecuteAExit(t_cpu* cpu){
@@ -226,6 +228,7 @@ void pasarDeExecuteAExit(t_cpu* cpu){
 	sem_wait(semColaFinalizados);
 	queue_push(cola_finalizados, cpu->proceso_asignado);
 	sem_post(semColaFinalizados);
+	cpu->proceso_asignado = NULL;
 }
 
 void pasarDeExecuteABlocked(t_cpu* cpu){
@@ -233,13 +236,16 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+	cpu->proceso_asignado = NULL;
 }
 
-void pasarDeBlockedAReady(t_cpu* cpu){
-	cpu->quantum = 0;
+void pasarDeBlockedAReady(t_PCB* pcbASacar){
 	sem_wait(semColaBloqueados);
-	queue_push(cola_bloqueados, cpu->proceso_asignado);
+	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
 	sem_post(semColaBloqueados);
+	sem_wait(semColaListos);
+	list_add(cola_listos, pcb);
+	sem_post(semColaListos);
 }
 
 void enviar_a_ejecutar(t_cpu* cpu){
