@@ -8,8 +8,12 @@
 #include "kernel_generales.h"
 
 
-void load_kernel_properties(char* ruta_config) {
-	t_config * conf = config_create(ruta_config);
+void load_kernel_properties(char * ruta) {
+	t_config * conf;
+	if(strcmp(ruta,"1") == 0)
+		conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
+	else conf = config_create(ruta);
+
 	kernel_conf = malloc(sizeof(t_kernel_conf));
 	kernel_conf->program_port = config_get_int_value(conf, "PUERTO_PROG");
 	kernel_conf->cpu_port = config_get_int_value(conf, "PUERTO_CPU");
@@ -53,7 +57,18 @@ void crearVariablesCompartidas(){
 		list_add(tabla_variables_compartidas,variable);
 		i++;
 	}
+}
+/*
+t_cpu* obtener_cpu(int socket){
+	return find_by_fd(socket);
+}*/
 
+t_cpu* find_by_fd(int fd) {
+	int _is_fd(t_cpu *cpu) {
+		return (cpu->file_descriptor == fd);
+	}
+
+	return list_find(lista_cpu, (void*) _is_fd);
 }
 
 void crearSemaforos(){
@@ -65,9 +80,46 @@ void crearSemaforos(){
 	char** semaforos_cfg = string_split(value_without_brackets, ",");
 	while(semaforos_cfg[i]!=NULL){
 		string_trim(&(semaforos_cfg[i]));
-		dictionary_put(semaforos, semaforos_cfg[i], atoi(kernel_conf->sem_init[i]));
+		t_semaphore* semaforo = malloc(sizeof(t_semaphore));
+		semaforo->cola = queue_create();
+		semaforo->cuenta = atoi(kernel_conf->sem_init[i]);
+		dictionary_put(semaforos, semaforos_cfg[i], semaforo);
 		i++;
 	}
+}
+
+/**
+ * si el pid se encuentra en la cola de bloqueados, devuelve TRUE
+ * pero ademas tira la magia de actualizarlo (si... es cualquiera, pero me ahorra tener que recorrer la cola dos veces)
+ */
+bool proceso_bloqueado(t_PCB* pcb){
+	bool encontroPCB = false;
+	bool _is_pcb(t_PCB* p) {
+		if(p->pid == pcb->pid){
+			encontroPCB = true;
+		}
+		return (p->pid == pcb->pid);
+	}
+	sem_wait(semColaBloqueados);
+	// esto es un asco, pero bueno... elimino el viejo pcb de la cola de bloqueados y pongo el nuevo
+	t_PCB* aux = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
+	if(encontroPCB){
+		list_add(cola_bloqueados, pcb);
+	}
+	sem_post(semColaBloqueados);
+	if(encontroPCB){
+		pcb_destroy(aux);
+	}
+
+	return encontroPCB;
+}
+
+t_PCB* sacar_pcb(t_list* list, t_PCB* pcb){
+	bool _is_pcb(t_PCB* p) {
+		return (p->pid == pcb->pid);
+	}
+	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
+	return pcbEncontrado;
 }
 
 t_cpu* obtener_cpu(int file_descriptor){

@@ -20,8 +20,6 @@
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 256 )
 #define BUF_LEN ( 1 * EVENT_SIZE )
 
-
-
 int main(int argc, char* argv[]) {
 
 	cola_listos = queue_create();
@@ -36,6 +34,27 @@ int main(int argc, char* argv[]) {
 	tabla_paginas_heap = list_create();
 	tabla_paginas_por_proceso = list_create();
 	tabla_sockets_procesos = list_create();
+
+	cola_nuevos = queue_create();
+	cola_bloqueados = queue_create();
+	cola_cpu = queue_create();
+	cola_ejecutando = queue_create();
+	cola_exit = queue_create();
+	cola_finalizados = queue_create();
+	cola_listos = queue_create();
+
+	semColaBloqueados = malloc(sizeof(sem_t));
+	semColaFinalizados = malloc(sizeof(sem_t));
+	semColaListos = malloc(sizeof(sem_t));
+	semColaNuevos = malloc(sizeof(sem_t));
+
+	sem_init(semColaBloqueados, 0, 1);
+	sem_init(semColaListos, 0, 1);
+	sem_init(semColaNuevos, 0, 1);
+	sem_init(semColaFinalizados, 0, 1);
+
+	lista_cpu = list_create();
+
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
 
@@ -205,7 +224,7 @@ void planificador_corto_plazo(){
 }
 
 void pasarDeNewAReady(){
-	sem_wait(semCantidadProgramsPlanificados);
+	sem_wait(semCantidadProgramasPlanificados);
 	sem_wait(semColaListos);
 	while(cantidad_programas_planificados < grado_multiprogramacion && queue_size(cola_nuevos) > 0){
 		queue_push(cola_listos, queue_pop(cola_nuevos));
@@ -220,37 +239,74 @@ void pasarDeReadyAExecute(){
 	t_PCB* pcb = queue_pop(cola_listos);
 	sem_post(semColaListos);
 
-//	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
-//	cpu_enviar_pcb(cpu, pcb);
+	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
+
+	serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
 
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){
-	cpu->quantum = 0;
 	sem_wait(semColaListos);
 	queue_push(cola_listos, cpu->proceso_asignado);
 	sem_post(semColaListos);
+	liberar_cpu(cpu);
 }
 
 void pasarDeExecuteAExit(t_cpu* cpu){
-	cpu->quantum = 0;
 	sem_wait(semColaFinalizados);
 	queue_push(cola_finalizados, cpu->proceso_asignado);
 	sem_post(semColaFinalizados);
+	liberar_cpu(cpu);
 }
 
 void pasarDeExecuteABlocked(t_cpu* cpu){
-	cpu->quantum = 0;
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+	liberar_cpu(cpu);
 }
 
-void pasarDeBlockedAReady(t_cpu* cpu){
-	cpu->quantum = 0;
+void pasarDeBlockedAReady(t_PCB* pcbASacar){
 	sem_wait(semColaBloqueados);
-	queue_push(cola_bloqueados, cpu->proceso_asignado);
+	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
 	sem_post(semColaBloqueados);
+	sem_wait(semColaListos);
+	list_add(cola_listos, pcb);
+	sem_post(semColaListos);
+}
+
+void enviar_a_ejecutar(t_cpu* cpu){
+
+}
+
+void liberar_cpu(t_cpu* cpu){
+	sem_wait(semListaCpu);
+	cpu->quantum = 0;
+	cpu->proceso_asignado = NULL;
+	sem_post(semListaCpu);
+
+	sem_post(semPlanificarCortoPlazo); //como se libera una cpu se habilita el planificador de corto plazo
+}
+
+t_cpu* cpu_obtener_libre(t_list* lista_cpu){
+	t_cpu* cpu = NULL;
+	int i;
+	sem_wait(semListaCpu);
+	for (i = 0; i < list_size(lista_cpu); i++) {
+		cpu = list_get(lista_cpu, i);
+		if( cpu->proceso_asignado == NULL ) break; //si se encuentra una cpu libre se termina la busqueda
+	}
+	sem_post(semListaCpu);
+	return cpu;
+}
+
+bool continuar_procesando(t_cpu* cpu){
+	if(kernel_conf->algoritmo == PLANIFICACION_ROUND_ROBIN){
+		cpu->quantum++;
+		return (cpu->quantum < kernel_conf->quantum);
+	} else {
+		return true;
+	}
 }
 
 void actualizar_quantum_sleep(char* ruta){

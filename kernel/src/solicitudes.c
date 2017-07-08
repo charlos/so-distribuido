@@ -22,6 +22,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	t_pagina_heap* pagina;
 	t_read_response* respuesta_pedido_pagina;
 	t_PCB* pcb;
+	t_PCB* auxPCB;
+	t_cpu* cpu;
+	char* nombre_semaforo;
+	t_semaphore* semaforo;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
 	t_heapMetadata* metadata_bloque;
@@ -89,6 +93,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		tabla_proceso = malloc(sizeof(t_table_file));
 		tabla_proceso->pid = pcb->pid;
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
+
+		sem_wait(semColaNuevos);
+		queue_push(cola_nuevos, pcb);
+		sem_post(semColaNuevos);
 
 		break;
 	}
@@ -257,18 +265,35 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER_VARIABLE, &valor);
 		break;
 	case OC_FUNCION_SIGNAL:
-	    //TODO Hacer signal al semaforo y desbloquear programas si los hubiera
-		resp = 1;
+		//TODO nombre_semaforo deberia venir en "buffer"
+		nombre_semaforo	= (char*)buffer;
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		semaforo = dictionary_get(semaforos, nombre_semaforo);
+		semaforo->cuenta++;
+		if(semaforo->cuenta <= 0){
+			auxPCB = queue_pop(semaforo->cola); //saco algun programa de la cola del semaforo
+			pasarDeBlockedAReady(auxPCB); //pasa el proceso a la cola de listos
+			pcb_destroy(auxPCB);
+		}
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
+		resp = 1;
 		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, &resp);
 //		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
 //		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
 //		semaforoSignal(semaforo);
 		break;
 	case OC_FUNCION_WAIT:
-		//TODO Hacer wait al semaforo y bloquear el programa si corresponde
+		//TODO nombre_semaforo deberia venir en "buffer"
+		nombre_semaforo	= (char*)buffer;
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		semaforo = dictionary_get(semaforos, nombre_semaforo);
+		semaforo->cuenta--;
+		if(semaforo->cuenta < 0){
+			queue_push(semaforo->cola, cpu->proceso_asignado); //pongo el programa en la cola del semaforo
+			pasarDeExecuteABlocked(cpu); //bloquea el programa
+		}
+		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb para ser encolado en bloqueados
 		resp = 1;
-		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
 		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, &resp);
 //		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
 //		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
@@ -276,17 +301,36 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_TERMINA_PROGRAMA:
 		pcb = deserializer_pcb(buffer);
-		//TODO cambiar PCB a cola exit y no se si alguna cosa más
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		cpu->proceso_asignado = pcb;
+		pasarDeExecuteAExit(cpu);
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		cpu->proceso_asignado = pcb;
+		pasarDeExecuteAReady(cpu);
 		//TODO eliminar cpu del kernel
 		break;
 	case OC_TERMINO_INSTRUCCION:
+		resp = -1; //por default no continua procesando
 		pcb = deserializer_pcb(buffer);
-		//TODO ver si queda quantum, si hay --> responder que siga procesando
-		//TODO ver si el programa no se bloqueó, si se bloqueó --> pasar PCB a cola de bloqueados
-		//TODO ver si el programa finalizó por orden de consola o por muerte de consola
+
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		auxPCB = cpu->proceso_asignado;
+		cpu->proceso_asignado = pcb;
+		if( !proceso_bloqueado(pcb) ){ // se verifica si el proceso no está bloqueado
+			if(continuar_procesando(cpu)){
+				//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
+				resp = kernel_conf->quantum_sleep;
+			} else {
+				pasarDeExecuteAReady(cpu);
+			}
+		}
+		pcb_destroy(auxPCB);
+		//enviar oc para continuar ejecutando el proceso o no
+		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, &resp);
+
 		break;
 	default:
 		fprintf(stderr, "Desconexion\n");

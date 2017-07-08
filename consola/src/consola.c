@@ -159,6 +159,12 @@ void thread_subprograma(threadpid* thread_recon) {
 	int sub_console_socket;
 	void * buffer;
 	thread_recon->terminate = 0;
+	thread_recon->cantidad_escrituras = 0;
+	char* tiempo_comienzo = temporal_get_string_time();
+	struct timeval t1, t2;
+	uint32_t elapsedTime;
+
+	gettimeofday(&t1, NULL);
 
 	sub_console_socket = connect_to_socket(console_config->ipAddress, console_config->port);
 	connection_send(sub_console_socket, OC_SOLICITUD_PROGRAMA_NUEVO, thread_recon->file_content);
@@ -167,27 +173,10 @@ void thread_subprograma(threadpid* thread_recon) {
 	if(result > 1 && operation_code == OC_NUEVA_CONSOLA_PID)
 		thread_recon->pid = *(uint8_t *) buffer;
 
-	//printf("%d", thread_recon->pid);
+
 	log_trace(logger, "PID DEL PROGRAMA: %d", thread_recon->pid);
-	//fprintf(stdout, "%d", thread_recon->pid);
 
-	int listening_socket = open_socket(2, obtener_puerto());
-
-	int nuevaConexion, fd_seleccionado, recibido, set_fd_max, i;
-	uint8_t* operation_code;
-	char buf[512];
-	fd_set lectura;
-	pthread_attr_t attr;
-	//t_info_socket_solicitud* info_solicitud = malloc(sizeof(t_info_socket_solicitud));
-	set_fd_max = listening_socket;
-	FD_ZERO(&lectura);
-	FD_ZERO((estructura->master));
-
-	int active = 1;
-	while(active) {
-
-		//signal(SIGUSR1, _handler_morir);
-		if(thread_recon->terminate) pthread_exit(NULL);
+	while(!(thread_recon->terminate)) {
 
 		result = connection_recv(sub_console_socket, &operation_code, &buffer);
 		if(operation_code == OC_INSTRUCCION_CONSOLA)
@@ -195,37 +184,23 @@ void thread_subprograma(threadpid* thread_recon) {
 		else if(operation_code == OC_ESCRIBIR_EN_CONSOLA) {
 			printf("[Process: %d] %s \n", thread_recon->pid, (char *) buffer);
 			log_trace(logger, "PID %d: %s", thread_recon->pid, (char *)buffer);
+			thread_recon->cantidad_escrituras++;
 		}
 
 		if(!result)
-			active = 0;
-
-		/*select(set_fd_max +1, &lectura, NULL, NULL, NULL);
-		for(fd_seleccionado = 0 ; fd_seleccionado <= set_fd_max ; fd_seleccionado++){
-			if(fd_seleccionado == 1)continue;
-			if(FD_ISSET(fd_seleccionado, &lectura)){
-				if(fd_seleccionado == listening_socket){
-					if((nuevaConexion = accept_connection(listening_socket)) == -1){
-						log_error(logger, "Error al aceptar conexion");
-					} else {
-						log_trace(logger, "Nueva conexion: socket %d", nuevaConexion);
-						FD_SET(nuevaConexion, (estructura->master));
-						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
-					}
-				} else {
-					pthread_t hilo_solicitud;
-
-						info_solicitud->file_descriptor = fd_seleccionado;
-						info_solicitud->set = estructura->master;
-
-
-						solve_request(info_solicitud);
-
-				}
-			}
-		}*/
+			thread_recon->terminate = 1;
 	}
 
+	char* tiempo_finalizacion = temporal_get_string_time();
+	gettimeofday(&t2, NULL);
+	elapsedTime = (t2.tv_usec - t1.tv_usec) / 1000.0;
+
+	log_trace("[PID: %d] Momento de inicio: %s", thread_recon->pid, tiempo_comienzo);
+	log_trace("[PID: %d] Momento de finalizacion: %s", thread_recon->pid, tiempo_finalizacion);
+	log_trace("[PID: %d] Cantidad de impresiones: %d", thread_recon->pid, thread_recon->cantidad_escrituras);
+	log_trace("[PID: %d] Tiempo de ejecucion: %d", thread_recon->pid, elapsedTime);
+
+	pthread_exit(NULL);
 
 }
 
