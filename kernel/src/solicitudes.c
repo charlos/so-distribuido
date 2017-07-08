@@ -161,13 +161,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &resp);
 	    break;
 	case OC_FUNCION_ESCRIBIR: {
-
+		int resp;
 		escritura = malloc(sizeof(t_archivo));
-		//TODO si es FD 1 enviar a consola para imprimir
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
-		if(escritura->descriptor_archivo == 0)
-		{
+		if(escritura->descriptor_archivo == 0){
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
 
@@ -179,7 +177,30 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			char * inf = malloc(strlen((char*)escritura->informacion));
 			strcpy(inf, (char*)escritura->informacion);
 
-			connection_send(socket_proceso, OC_RESP_ESCRIBIR, inf);
+			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+		}else{
+			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
+			t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, escritura->descriptor_archivo);
+			if(file==NULL){
+				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_ARCHIVO_NO_ABIERTO);
+			}else{
+				if(file->flags.escritura){
+					//TODO falta meter el valor del puntero del archivo como offset en lugar de ese feo 999
+					 resp = fs_write(fs_socket, escritura->descriptor_archivo, 999, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 switch(resp){
+					 	 case SUCCESS:
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, &resp);
+					 		break;
+					 	 case ENOSPC:
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_FS_LLENO);
+					 		break;
+					 	 default:
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_DESCONOCIDO);
+					 }
+				}else{
+					connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_SIN_PERMISO_ESCRITURA);
+				}
+			}
 		}
 		break;
 	}
@@ -478,6 +499,19 @@ int buscarArchivoTablaGlobal(char* direccion){
 		resp = -1;
 	}
 	return resp;
+
+}
+
+t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, char* archivo){
+
+	t_process_file* file;
+
+	bool _porNombre(char* var){
+		return string_equals_ignore_case(var, archivo);
+	}
+	file = list_find(tabla->tabla_archivos,(void*) _porNombre);
+
+	return file;
 
 }
 

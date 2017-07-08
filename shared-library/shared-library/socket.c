@@ -119,6 +119,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			break;
 		case OC_QUANTUM_SLEEP:
 		case OC_RESP_QUANTUM_SLEEP:
+		case OC_RESP_ESCRIBIR:
 		case OC_MEMORIA_INSUFICIENTE:
 		case OC_SOLICITUD_MEMORIA:
 		case OC_LIBERAR_MEMORIA:
@@ -150,7 +151,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = *(size_t *)message;
 			//message++;
 			break;
-		case OC_RESP_ESCRIBIR:
+		case OC_ESCRIBIR_EN_CONSOLA:
 			message_size_value = strlen((char*)message);
 			break;
 		case OC_FUNCION_LEER:
@@ -244,6 +245,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = buffer;
 				break;
+			case OC_RESP_ESCRIBIR:
 			case OC_NUEVA_CONSOLA_PID:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
@@ -313,7 +315,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = arch;
 
 				break;
-			case OC_RESP_ESCRIBIR:
+			case OC_ESCRIBIR_EN_CONSOLA:
 			case OC_FUNCION_SIGNAL:
 			case OC_FUNCION_WAIT:
 				buffer = (char*)*message;

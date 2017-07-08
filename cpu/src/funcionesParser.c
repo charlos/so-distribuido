@@ -129,8 +129,12 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
 
     resp = memory_write(server_socket_memoria,  pcb->pid, page, offset, size, size, &valor_variable, logger);
 
-    if (resp!=1){
-    	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", page, offset,valor_variable);
+    if (resp==DISCONNECTED_SERVER){
+    	pcb->exit_code=EC_ERROR_CONEXION;
+    	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d]) ERROR_CONEXION", page, offset,valor_variable);
+    }else if (resp==PAGE_FAULT || resp==SEGMENTATION_FAULT){
+    	pcb->exit_code=EC_STACKOVERFLOW;
+    	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d]) STACKOVERFLOW", page, offset,valor_variable);
     }
 }
 
@@ -298,6 +302,13 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     memcpy(buffer + size_siz + size_desc + size_pid + size_tam, informacion, size_inf);
 
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
+
+    uint8_t * operation_code = malloc(sizeof(uint8_t));
+    int resp;
+    connection_recv(server_socket_kernel, operation_code, &resp);
+    if(resp<0){
+    	pcb->exit_code=resp;
+    }
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){

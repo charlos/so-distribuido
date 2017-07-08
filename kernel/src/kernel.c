@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
 	tabla_sockets_procesos = list_create();
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
-	TAMANIO_PAGINAS = handshake(memory_socket, logger);
+	TAMANIO_PAGINAS = handshake(memory_socket,'K', kernel_conf->stack_size, logger);
 	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
 	fs_handshake(&fs_socket, logger);
 

@@ -178,7 +178,7 @@ void thread_subprograma(threadpid* thread_recon) {
 		result = connection_recv(sub_console_socket, &operation_code, &buffer);
 		if(operation_code == OC_INSTRUCCION_CONSOLA)
 			printf("[%d] %s\n", thread_recon->pid, (char *) buffer);
-		else if(operation_code == OC_RESP_ESCRIBIR) {
+		else if(operation_code == OC_ESCRIBIR_EN_CONSOLA) {
 			printf("[Process: %d] %s \n", thread_recon->pid, (char *) buffer);
 			log_trace(logger, "PID %d: %s", thread_recon->pid, (char *)buffer);
 		}
