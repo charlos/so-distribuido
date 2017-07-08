@@ -599,17 +599,31 @@ int buscarArchivoTablaGlobal(char* direccion){
 
 }
 
-t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, char* archivo){
+t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, int fd_archivo){
 
 	t_process_file* file;
-
-	bool _porNombre(char* var){
-		return string_equals_ignore_case(var, archivo);
+	bool _porPID(t_process_file* var){
+		return var->proceso_fd == fd_archivo;
 	}
-	file = list_find(tabla->tabla_archivos,(void*) _porNombre);
-
+	file = list_find(tabla->tabla_archivos,(void*) _porPID);
 	return file;
+}
+char* getPath_Global(int fdGlobal){
+	t_global_file * filereg;
+	int i;
+	for (i=0;i<=fdGlobal;i++){
+		filereg = list_get(tabla_global_archivos,i);
+	}
 
+	return filereg->file;
+}
+
+char* getPathFrom_PID_FD(int pid, int fdProceso){
+	t_table_file* tabla_archivos_proceso = getTablaArchivo(pid);
+	t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, pid);
+
+	char* path = getPath_Global(file->global_fd);
+	return path;
 }
 
 int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
