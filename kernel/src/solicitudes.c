@@ -133,6 +133,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		log_trace(logger, "Mando a cpu puntero de malloc pedido. Posicion: %d", bloque_heap_ptr);
 		printf("Mandando heap\n");
 
+	    sumar_syscall(info_solicitud->file_descriptor);
+	    sumar_espacio_reservado(pedido->espacio_pedido, info_solicitud->file_descriptor);
 		break;
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;		// liberar buffer
@@ -153,6 +155,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			break;
 		}
 		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+
+	    sumar_syscall(info_solicitud->file_descriptor);
+
 		break;
 	case OC_FUNCION_ABRIR:
 	    memcpy(pid, buffer, sizeof(int));
@@ -160,22 +165,27 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    direccion = malloc(length_direccion);
 	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
 	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
-	    resp = abrir_archivo(pid, direccion, flags);
 
+	    resp = abrir_archivo(pid, direccion, flags);
+	    int fd_proceso = cargarArchivoTablaProceso(pid, resp, flags);
 	    fs_create_file(fs_socket, direccion, logger);
+
 	    char * buffer = "Alo";
 	    fs_write(fs_socket, direccion, 0, 5, 4, buffer, logger);
+	    fs_validate_file(fs_socket, direccion, logger);
+
+
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &resp);
+
+	    sumar_syscall(info_solicitud->file_descriptor);
 	    break;
 	case OC_FUNCION_ESCRIBIR: {
-
+		int resp;
 		escritura = malloc(sizeof(t_archivo));
-		//TODO si es FD 1 enviar a consola para imprimir
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
-		if(escritura->descriptor_archivo == 0)
-		{
+		if(escritura->descriptor_archivo == 0){
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
 
@@ -187,7 +197,30 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			char * inf = malloc(strlen((char*)escritura->informacion));
 			strcpy(inf, (char*)escritura->informacion);
 
-			connection_send(socket_proceso, OC_RESP_ESCRIBIR, inf);
+			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+		}else{
+			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
+			t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, escritura->descriptor_archivo);
+			if(file==NULL){
+				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_ARCHIVO_NO_ABIERTO);
+			}else{
+				if(file->flags.escritura){
+					//TODO falta meter el valor del puntero del archivo como offset en lugar de ese feo 999
+					 resp = fs_write(fs_socket, escritura->descriptor_archivo, 999, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 switch(resp){
+					 	 case SUCCESS:
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, &resp);
+					 		break;
+					 	 case ENOSPC:
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_FS_LLENO);
+					 		break;
+					 	 default:
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_DESCONOCIDO);
+					 }
+				}else{
+					connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_SIN_PERMISO_ESCRITURA);
+				}
+			}
 		}
 		break;
 	}
@@ -204,6 +237,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, respuesta_memoria);
 		break;
 	}
+	case OC_FUNCION_MOVER_CURSOR: {
+		t_valor_variable valor_variable;
+		t_descriptor_archivo descriptor_archivo;
+
+		memcpy(&descriptor_archivo, buffer, sizeof(t_descriptor_archivo));
+		memcpy(&valor_variable, buffer+sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
+
+	}
+	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
 		size_nombre = (int)*buffer;
 
@@ -214,6 +256,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
 		asignarValorVariable(variable_recibida);
+
 		break;
 	case OC_FUNCION_LEER_VARIABLE:
 		nombre_variable	= (char*)buffer;
@@ -525,6 +568,19 @@ int buscarArchivoTablaGlobal(char* direccion){
 
 }
 
+t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, char* archivo){
+
+	t_process_file* file;
+
+	bool _porNombre(char* var){
+		return string_equals_ignore_case(var, archivo);
+	}
+	file = list_find(tabla->tabla_archivos,(void*) _porNombre);
+
+	return file;
+
+}
+
 int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
 	t_process_file* file = malloc(sizeof(t_process_file));
 	file->global_fd = fd_global;
@@ -654,3 +710,21 @@ void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantida
 
 }
 
+void sumar_syscall(int socket){
+	t_cpu* cpu = obtener_cpu(socket);
+
+	int * _mismopid(t_par_socket_pid * target) {
+		return cpu->proceso_asignado->pid == target->pid;
+	}
+	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+	parEncontrado->cantidad_syscalls++;
+}
+
+void sumar_espacio_reservado(int espacio_pedido, int socket){
+	t_cpu* cpu = obtener_cpu(socket);
+	int * _mismopid(t_par_socket_pid * target) {
+		return cpu->proceso_asignado->pid == target->pid;
+	}
+	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+	parEncontrado->memoria_reservada += espacio_pedido;
+}

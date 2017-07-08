@@ -55,7 +55,7 @@ void crearVariablesCompartidas(){
 	}
 }
 
-t_cpu* obtener_cpu(socket){
+t_cpu* obtener_cpu(int socket){
 	return find_by_fd(socket);
 }
 
@@ -116,4 +116,11 @@ t_PCB* sacar_pcb(t_list* list, t_PCB* pcb){
 	}
 	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
 	return pcbEncontrado;
+}
+
+t_cpu* obtener_cpu(int file_descriptor){
+	bool _mismo_file_descriptor(t_cpu* cpu){
+		return cpu->file_descriptor == file_descriptor;
+	}
+	return list_find(lista_cpu, (void*)_mismo_file_descriptor);
 }

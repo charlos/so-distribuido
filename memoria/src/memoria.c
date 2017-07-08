@@ -49,6 +49,7 @@ pthread_rwlock_t * cache_memory_locks;
 pthread_mutex_t mutex_lock;
 
 int stack_size;
+int kernel_client;
 
 #define	SOCKET_BACKLOG 			100
 #define	LOCK_READ 				0
@@ -57,15 +58,19 @@ int stack_size;
 #define CACHE_HIT 				1
 #define CACHE_MISS 			   -1
 
+#define CODE_SEGMENT 			'c'
+#define STACK_SEGMENT 			's'
+#define HEAP_SEGMENT 			'h'
+
 bool frame_is_available(int);
 bool page_is_right(int, int, int);
 int assign_cache_entry(int);
-int assign_pages_to_process(int, int);
+int assign_pages_to_process(int, int, bool);
 int cleaning_process_entries(int);
 int get_available_frame(void);
 int get_cache_entry(int, int, int);
 int get_frame(int, int);
-int inicialize_page(int, int);
+int inicialize_page(int, int, char);
 int init_locks(void);
 int least_recently_used(int, int *);
 int read_cache_entry_and_send(int *, t_read_request *, int);
@@ -75,7 +80,7 @@ int rw_lock_unlock(pthread_rwlock_t *, int, int);
 int searching_on_overflow(int, int, int);
 int update_cache(int, int, int, int, int, void *);
 int writing_cache(t_write_request *);
-int writing_memory(t_write_request *);
+int writing_memory(t_write_request *, int);
 unsigned int hashing(int, int);
 void add_to_overflow(int, int);
 void assign_page(int *);
@@ -188,6 +193,7 @@ void load(void) {
 	while (frame < (memory_conf->frames)) {
 		reg = malloc(sizeof(t_reg_invert_table));
 		reg->frame = frame;
+		reg->segment = ' ';
 		if (frame < first_free_frame) {
 			reg->page = frame;
 			reg->pid = -1;
@@ -324,8 +330,10 @@ void process_request(int * client_socket) {
  */
 void mem_handshake(int * client_socket) {
 	t_handshake_request * hs_req = handshake_recv_req(client_socket, logger);
-	if (hs_req->type == 'k')
+	if (hs_req->type == 'k') {
+		kernel_client =  * client_socket;
 		stack_size = (hs_req->stack_size);
+	}
 	free(hs_req);
 	handshake_resp(client_socket, (memory_conf->frame_size));
 }
@@ -336,7 +344,7 @@ void mem_handshake(int * client_socket) {
 void inicialize_process(int * client_socket) {
 	t_init_process_request * init_req = init_process_recv_req(client_socket, logger);
 	if ((init_req->exec_code) == DISCONNECTED_CLIENT) return;
-	int resp_code = assign_pages_to_process((init_req->pid), (init_req->pages));
+	int resp_code = assign_pages_to_process((init_req->pid), (init_req->pages), true);
 	free(init_req);
 	init_process_send_resp(client_socket, resp_code);
 }
@@ -344,7 +352,7 @@ void inicialize_process(int * client_socket) {
 /**
  * @NAME assign_pages_to_process
  */
-int assign_pages_to_process(int pid, int required_pages) {
+int assign_pages_to_process(int pid, int required_pages, bool init) {
 
 	pthread_mutex_lock(&mutex_lock);
 	if ((available_frame_list->elements_count) < required_pages) {
@@ -372,11 +380,20 @@ int assign_pages_to_process(int pid, int required_pages) {
 		pages_per_process->pages_count= 0;
 		list_add(pages_per_process_list, pages_per_process);
 	}
+
+	int code_pages;
+	if (init) {
+		code_pages = required_pages - stack_size;
+	}
+
 	int i;
 	for (i = 0; i < required_pages; i++) {
 		(pages_per_process->pages_count)++;
-		inicialize_page(pid, ((pages_per_process->pages_count) - 1)); // assigning frames
+		inicialize_page(pid, ((pages_per_process->pages_count) - 1),
+				((init) ? ((code_pages > 0) ? CODE_SEGMENT: STACK_SEGMENT) : HEAP_SEGMENT)); // assigning frames
+		if (init) code_pages--;
 	}
+
 	pthread_mutex_unlock(&mutex_lock);
 
 	return SUCCESS;
@@ -385,7 +402,7 @@ int assign_pages_to_process(int pid, int required_pages) {
 /**
  * @NAME inicialize_page
  */
-int inicialize_page(int pid, int page) {
+int inicialize_page(int pid, int page, char segment) {
 	int assigned_frame;
 	int h_frame = hashing(pid, page);
 	if (frame_is_available(h_frame)) {
@@ -398,6 +415,7 @@ int inicialize_page(int pid, int page) {
 	invert_table_ptr += assigned_frame;
 	invert_table_ptr->pid = pid;
 	invert_table_ptr->page = page;
+	invert_table_ptr->segment = segment;
 	return EXIT_SUCCESS;
 }
 
@@ -433,7 +451,7 @@ void write_page(int * client_socket) {
 			|| (((w_req->offset) + (w_req->size)) > (memory_conf->frame_size))) {
 		write_send_resp(client_socket, OUT_OF_FRAME);
 	} else {
-		int res = writing_memory(w_req);
+		int res = writing_memory(w_req, * client_socket);
 		if (res == SUCCESS)
 			writing_cache(w_req);
 		write_send_resp(client_socket, res);
@@ -604,7 +622,7 @@ int update_cache(int cache_entry, int pid, int page, int offset, int size, void 
 /**
  * @NAME writing_memory
  */
-int writing_memory(t_write_request * w_req) {
+int writing_memory(t_write_request * w_req, int client) {
 
 	// memory delay
 	usleep(1000 * (memory_conf->memory_delay));
@@ -613,6 +631,12 @@ int writing_memory(t_write_request * w_req) {
 	int frame = get_frame((w_req->pid), (w_req->page));
 	if (frame < 0)
 		return PAGE_FAULT;
+
+	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
+	invert_table_ptr += frame;
+	if (kernel_client != client && (invert_table_ptr->segment) != STACK_SEGMENT) {
+		return SEGMENTATION_FAULT;
+	}
 
 	rw_lock_unlock(memory_locks, LOCK_WRITE, frame);
 	void * write_pos = (memory_ptr + (frame * (memory_conf->frame_size)) + ((w_req->offset))); // getting write position
@@ -779,7 +803,7 @@ int readind_memory(int * client_socket, t_read_request * r_req) {
 void assign_page(int * client_socket) {
 	t_assign_pages_request * assign_req = init_process_recv_req(client_socket, logger);
 	if ((assign_req->exec_code) == DISCONNECTED_CLIENT) return;
-	int resp_code = assign_pages_to_process((assign_req->pid), (assign_req->pages));
+	int resp_code = assign_pages_to_process((assign_req->pid), (assign_req->pages), false);
 	free(assign_req);
 	init_process_send_resp(client_socket, resp_code);
 }
@@ -996,13 +1020,13 @@ void memory_console(void * unused) {
 					printf("\n");
 				} else if (strcmp(param, DUMP_MEMORY_STRUCT_CMD) == 0) {
 					printf("\n >> invert table");
-					printf("\n        #frame         #pid        #page");
-					printf("\n    __________   __________   __________");
+					printf("\n        #frame         #pid        #page    #seg_type");
+					printf("\n    __________   __________   __________   __________");
 					t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 					int frame = 0;
 					pthread_mutex_lock(&mutex_lock);
 					while (frame < (memory_conf->frames)) {
-						printf("\n    %10d | %10d | %10d", (invert_table_ptr->frame), (invert_table_ptr->pid), (invert_table_ptr->page));
+						printf("\n    %10d | %10d | %10d | %9c", (invert_table_ptr->frame), (invert_table_ptr->pid), (invert_table_ptr->page), (invert_table_ptr->segment));
 						frame++;
 						invert_table_ptr++;
 					}

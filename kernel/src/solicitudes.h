@@ -27,6 +27,8 @@ typedef struct{
 typedef struct {
 	int pid;
 	int socket;
+	int cantidad_syscalls;
+	int memoria_reservada;
 } t_par_socket_pid;
 
 t_list* tabla_paginas_heap;
@@ -44,6 +46,7 @@ void juntar_bloques(t_heapMetadata* metadata1, t_heapMetadata* metadata2);
 int abrir_archivo(int, char*, t_banderas);
 void agregar_bloque_libre(char* pagina, int offset);
 int buscarArchivoTablaGlobal(char*);
+t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, char* archivo);
 int crearArchivoTablaGlobal(char*);
 int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags);
 int nuevoFD_PID(int);

@@ -32,8 +32,8 @@ void procesarMsg(char * msg);
 
 int main(void) {
 
-	uint8_t continuar = 0;
-	uint8_t quantum_sleep = 0;
+	int continuar = -1;
+	uint16_t quantum_sleep = 0;
 
 	signal(SIGUSR1, &handlerDesconexion);
 
@@ -44,14 +44,14 @@ int main(void) {
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 	inicializarFuncionesParser();
-	pagesize = handshake(server_socket_memoria, logger);
+	pagesize = handshake(&server_socket_memoria,'C',0, logger);
 
 	log_trace(logger, "Socket kernel: %i \n", server_socket_kernel);
 
 	if (pagesize>0){
 		log_trace(logger, "Handshake con Memoria. El tamaño de la página es %d",pagesize);
 	} else {
-		log_trace(logger, "Problema con Handshake con Memoria.");
+		log_error(logger, "Problema con Handshake con Memoria.");
 	}
 
 	int pc, page, offset, pageend, size_to_read, operation_code;
@@ -60,15 +60,20 @@ int main(void) {
 
 	while(1){
 
-		if(!continuar){
+		if(continuar==-1){
 
 			connection_recv(server_socket_kernel, &operation_code, &pcb_serializado);
-
+			if(operation_code!=OC_PCB){
+				log_error(logger, "Problema al intentar recibir PCB");
+				exit(0);
+			}
 			pcb = deserializer_pcb(pcb_serializado);
 			free(pcb_serializado);
+		}else{
+			quantum_sleep = continuar;
 		}
-
-		continuar = 1; //lo pongo en 0 para que al final kernel diga si se continua o no.
+		sleep(quantum_sleep);
+		continuar = -1;
 
 		nextPageOffsetInStack = malloc(sizeof(t_page_offset));
 		getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
@@ -132,18 +137,19 @@ int main(void) {
 
 		pcb->PC++;
 
-		//TODO avisarle a kernel el fin de ejecución de la línea, según respuesta se sigue procesando o se devuelve el pcb
-
 		if(pcb->exit_code == OC_TERMINA_PROGRAMA){
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINA_PROGRAMA);
 		} else if(flagDesconeccion){
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_DESCONEX_CPU);
-			exit(1);
-		} else {
+			exit(0);
+		} else if(pcb->exit_code<0){
+			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_ERROR_EJECUCION_CPU);
+			pcb_destroy(pcb);
+		}else {
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
 
 			connection_recv(server_socket_kernel, &operation_code, &continuar);
-			if(operation_code==OC_RESP_TERMINO_INSTRUCCION && !continuar){
+			if(operation_code==OC_RESP_TERMINO_INSTRUCCION && continuar==-1){
 				pcb_destroy(pcb);
 			}
 		}

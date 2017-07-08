@@ -85,7 +85,7 @@ t_list* tabla_variables_compartidas;
  */
 t_PCB* crear_PCB();
 
-void load_kernel_properties(void);
+void load_kernel_properties(char* ruta );
 void crearVariablesCompartidas(void);
 
 //CPU

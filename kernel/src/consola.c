@@ -5,10 +5,11 @@
  *      Author: utnso
  */
 
-
+#include "kernel_generales.h"
+#include "solicitudes.h"
 
 int iniciar_consola(){
-	/*char* command = malloc(sizeof(char)*256);
+	char* command = malloc(sizeof(char)*256);
 
 	printf("/*******************************************************\\ \n");
 	printf("| multiprogramming		: cambiar multiprogramacion 	  |\n");
@@ -16,14 +17,14 @@ int iniciar_consola(){
 	printf("| process pid 			: obtener informacion de proceso  |\n");
 	printf("| global_file_table     : tabla global de archivos	      |\n");
 	printf("| kill pid         		: finalizar proceso   			  |\n");
-	printf("| stop         			: detener planificacion		      |\n");*/
-//	printf("\\********************************************************/\n");
-/*
+	printf("| stop         			: detener planificacion		      |\n");
+	printf("\\********************************************************/\n");
+
 	fgets(command, 256, stdin);
 
-	int ret = read_command(command);*/
+	int ret = read_command(command);
 }
-/*
+
 int read_command(char* command) {
 
 	int caracter = 0;
@@ -53,7 +54,7 @@ int read_command(char* command) {
 //
 	}
 	else if(strcmp(palabras[0], "multiprogramming")==0) {
-//
+//		kernel_conf->grado_multiprog = atoi(palabras[1]);
 	}
 	else if(strcmp(palabras[0], "stop")==0) {
 
@@ -73,4 +74,4 @@ void imprimir_tabla_global_de_archivos(){
 		printf("%s	|	%d", f->file, f->open);
 	}
 	list_iterate(tabla_global_archivos, (void*) _imprimir_entrada);
-}*/
+}

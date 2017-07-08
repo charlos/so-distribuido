@@ -61,7 +61,7 @@ typedef struct {
  *
  * @PARAMS
  */
-int handshake(int *, char, int, t_log *);
+int handshake(int, char, int, t_log *);
 
 /**
  * @NAME handshake_recv_req
