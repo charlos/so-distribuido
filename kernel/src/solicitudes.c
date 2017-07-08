@@ -125,6 +125,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		log_trace(logger, "Mando a cpu puntero de malloc pedido. Posicion: %d", bloque_heap_ptr);
 		printf("Mandando heap\n");
 
+	    sumar_syscall(info_solicitud->file_descriptor);
+	    sumar_espacio_reservado(pedido->espacio_pedido, info_solicitud->file_descriptor);
 		break;
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;		// liberar buffer
@@ -145,6 +147,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			break;
 		}
 		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+
+	    sumar_syscall(info_solicitud->file_descriptor);
+
 		break;
 	case OC_FUNCION_ABRIR:
 	    memcpy(pid, buffer, sizeof(int));
@@ -164,6 +169,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &resp);
+
+	    sumar_syscall(info_solicitud->file_descriptor);
 	    break;
 	case OC_FUNCION_ESCRIBIR: {
 
@@ -220,6 +227,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
 		asignarValorVariable(variable_recibida);
+
 		break;
 	case OC_FUNCION_LEER_VARIABLE:
 		nombre_variable	= (char*)buffer;
@@ -624,3 +632,21 @@ void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantida
 
 }
 
+void sumar_syscall(int socket){
+	t_cpu* cpu = obtener_cpu(socket);
+
+	int * _mismopid(t_par_socket_pid * target) {
+		return cpu->proceso_asignado->pid == target->pid;
+	}
+	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+	parEncontrado->cantidad_syscalls++;
+}
+
+void sumar_espacio_reservado(int espacio_pedido, int socket){
+	t_cpu* cpu = obtener_cpu(socket);
+	int * _mismopid(t_par_socket_pid * target) {
+		return cpu->proceso_asignado->pid == target->pid;
+	}
+	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+	parEncontrado->memoria_reservada += espacio_pedido;
+}

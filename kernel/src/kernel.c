@@ -24,10 +24,6 @@
 
 int main(int argc, char* argv[]) {
 
-	char buffer[BUF_LEN];
-	int notificador =  inotify_init();
-
-
 	cola_listos = queue_create();
 	registro_pid = 1;
 
@@ -35,14 +31,14 @@ int main(int argc, char* argv[]) {
 	log_trace(logger, "Log Creado!!");
 
 	tabla_variables_compartidas = list_create();
-	load_kernel_properties();
+	load_kernel_properties(argv[1]);
 	tabla_archivos = list_create();
 	tabla_paginas_heap = list_create();
 	tabla_paginas_por_proceso = list_create();
 	tabla_sockets_procesos = list_create();
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
-	TAMANIO_PAGINAS = handshake(memory_socket, logger);
+	TAMANIO_PAGINAS = handshake(memory_socket,'k', kernel_conf->stack_size, logger);
 	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
 	fs_handshake(&fs_socket, logger);
 
@@ -64,6 +60,7 @@ int main(int argc, char* argv[]) {
 	estruc_prog->master = &master_prog;
 
 
+
 //	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	// Se crea hilo de cpu's
@@ -74,7 +71,16 @@ int main(int argc, char* argv[]) {
 
 //	pthread_attr_destroy(&attr);
 
-
+	while(1){
+		char buffer[BUF_LEN];
+		int notificador =  inotify_init();
+		int watch_descriptor = inotify_add_watch(notificador, argv[1], IN_MODIFY );
+		int length = read(notificador, buffer, BUF_LEN);
+		if (length < 0) {
+			perror("read");
+		}
+		actualizar_quantum_sleep();
+	}
 
 	pthread_join(hilo_consola, NULL);
 	pthread_join(hilo_cpu, NULL);
@@ -122,8 +128,8 @@ void manage_select(t_aux* estructura){
 						log_trace(logger, "Nueva conexion: socket %d", nuevaConexion);
 						FD_SET(nuevaConexion, (estructura->master));
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
-						if(*(estructura->master) == master_cpu){
-							t_cpu* cpu = crear_cpu(fd_seleccionado);
+						if(estructura->port == kernel_conf->cpu_port){
+							t_cpu* cpu = cpu_create(fd_seleccionado);
 							list_add(lista_cpu, cpu);
 						}
 					}
@@ -134,14 +140,14 @@ void manage_select(t_aux* estructura){
 					info_solicitud->set = estructura->master;
 
 //					FD_CLR(fd_seleccionado, estructura->master);
-//					pthread_attr_init(&attr);
+					pthread_attr_init(&attr);
 					solve_request(info_solicitud);
-//					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-//					pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
+					pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
 //					solve_request(fd_seleccionado, &(estructura->master));
 
-//					pthread_attr_destroy(&attr);
+					pthread_attr_destroy(&attr);
 				}
 			}
 		}
@@ -244,4 +250,9 @@ void pasarDeBlockedAReady(t_cpu* cpu){
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+}
+
+void actualizar_quantum_sleep(char* ruta){
+	t_config * conf = config_create(ruta);
+	kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
 }
