@@ -20,12 +20,6 @@
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 256 )
 #define BUF_LEN ( 1 * EVENT_SIZE )
 
-sem_t* semColaNuevos;
-sem_t* semColaListos;
-sem_t* semCantidadProgramasPlanificados;
-
-sem_t* semColaFinalizados;
-
 int main(int argc, char* argv[]) {
 
 	cola_listos = queue_create();
@@ -41,10 +35,25 @@ int main(int argc, char* argv[]) {
 	tabla_paginas_por_proceso = list_create();
 	tabla_sockets_procesos = list_create();
 
-	sem_init(semColaBloqueados, 0, 0);
-	sem_init(semColaListos, 0, 0);
-	sem_init(semColaNuevos, 0, 0);
-	sem_init(semColaFinalizados, 0, 0);
+	cola_nuevos = queue_create();
+	cola_bloqueados = queue_create();
+	cola_cpu = queue_create();
+	cola_ejecutando = queue_create();
+	cola_exit = queue_create();
+	cola_finalizados = queue_create();
+	cola_listos = queue_create();
+
+	semColaBloqueados = malloc(sizeof(sem_t));
+	semColaFinalizados = malloc(sizeof(sem_t));
+	semColaListos = malloc(sizeof(sem_t));
+	semColaNuevos = malloc(sizeof(sem_t));
+
+	sem_init(semColaBloqueados, 0, 1);
+	sem_init(semColaListos, 0, 1);
+	sem_init(semColaNuevos, 0, 1);
+	sem_init(semColaFinalizados, 0, 1);
+
+	lista_cpu = list_create();
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
