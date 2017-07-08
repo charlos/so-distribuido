@@ -152,11 +152,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    direccion = malloc(length_direccion);
 	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
 	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
-	    resp = abrir_archivo(pid, direccion, flags);
 
+	    resp = abrir_archivo(pid, direccion, flags);
+	    int fd_proceso = cargarArchivoTablaProceso(pid, resp, flags);
 	    fs_create_file(fs_socket, direccion, logger);
+
 	    char * buffer = "Alo";
 	    fs_write(fs_socket, direccion, 0, 5, 4, buffer, logger);
+	    fs_validate_file(fs_socket, direccion, logger);
+
+
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &resp);
 	    break;
@@ -196,6 +201,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, respuesta_memoria);
 		break;
 	}
+	case OC_FUNCION_MOVER_CURSOR: {
+		t_valor_variable valor_variable;
+		t_descriptor_archivo descriptor_archivo;
+
+		memcpy(&descriptor_archivo, buffer, sizeof(t_descriptor_archivo));
+		memcpy(&valor_variable, buffer+sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
+
+	}
+	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
 		size_nombre = (int)*buffer;
 
