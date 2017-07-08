@@ -48,6 +48,8 @@ pthread_rwlock_t * memory_locks;
 pthread_rwlock_t * cache_memory_locks;
 pthread_mutex_t mutex_lock;
 
+int stack_size;
+
 #define	SOCKET_BACKLOG 			100
 #define	LOCK_READ 				0
 #define	LOCK_WRITE 				1
@@ -321,6 +323,10 @@ void process_request(int * client_socket) {
  * @NAME mem_handshake
  */
 void mem_handshake(int * client_socket) {
+	t_handshake_request * hs_req = handshake_recv_req(client_socket, logger);
+	if (hs_req->type == 'k')
+		stack_size = (hs_req->stack_size);
+	free(hs_req);
 	handshake_resp(client_socket, (memory_conf->frame_size));
 }
 
