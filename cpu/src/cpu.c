@@ -32,8 +32,8 @@ void procesarMsg(char * msg);
 
 int main(void) {
 
-	int continuar = 0;
-	int quantum_sleep = 0;
+	uint8_t continuar = 0;
+	uint8_t quantum_sleep = 0;
 
 	signal(SIGUSR1, &handlerDesconexion);
 
@@ -58,11 +58,17 @@ int main(void) {
 	char* instruccion;
 	char* pcb_serializado;
 
-	while(continuar){
+	while(1){
 
-		connection_recv(server_socket_kernel, &operation_code, &pcb_serializado);
+		if(!continuar){
 
-		pcb = deserializer_pcb(pcb_serializado);
+			connection_recv(server_socket_kernel, &operation_code, &pcb_serializado);
+
+			pcb = deserializer_pcb(pcb_serializado);
+			free(pcb_serializado);
+		}
+
+		continuar = 1; //lo pongo en 0 para que al final kernel diga si se continua o no.
 
 		nextPageOffsetInStack = malloc(sizeof(t_page_offset));
 		getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
@@ -132,10 +138,14 @@ int main(void) {
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINA_PROGRAMA);
 		} else if(flagDesconeccion){
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_DESCONEX_CPU);
+			exit(1);
 		} else {
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
 
 			connection_recv(server_socket_kernel, &operation_code, &continuar);
+			if(operation_code==OC_RESP_TERMINO_INSTRUCCION && !continuar){
+				pcb_destroy(pcb);
+			}
 		}
 
 	}

@@ -237,13 +237,13 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
-		//TODO eliminar
+		//TODO eliminar cpu del kernel
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		pcb = deserializer_pcb(buffer);
 		//TODO ver si queda quantum, si hay --> responder que siga procesando
 		//TODO ver si el programa no se bloqueó, si se bloqueó --> pasar PCB a cola de bloqueados
-		//
+		//TODO ver si el programa finalizó por orden de consola o por muerte de consola
 		break;
 	default:
 		fprintf(stderr, "Desconexion\n");
