@@ -211,32 +211,29 @@ void pasarDeReadyAExecute(){
 
 	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
 
-	serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_TERMINO_INSTRUCCION);
+	serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
 
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){
-	cpu->quantum = 0;
 	sem_wait(semColaListos);
 	queue_push(cola_listos, cpu->proceso_asignado);
 	sem_post(semColaListos);
-	cpu->proceso_asignado = NULL;
+	liberar_cpu(cpu);
 }
 
 void pasarDeExecuteAExit(t_cpu* cpu){
-	cpu->quantum = 0;
 	sem_wait(semColaFinalizados);
 	queue_push(cola_finalizados, cpu->proceso_asignado);
 	sem_post(semColaFinalizados);
-	cpu->proceso_asignado = NULL;
+	liberar_cpu(cpu);
 }
 
 void pasarDeExecuteABlocked(t_cpu* cpu){
-	cpu->quantum = 0;
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
-	cpu->proceso_asignado = NULL;
+	liberar_cpu(cpu);
 }
 
 void pasarDeBlockedAReady(t_PCB* pcbASacar){
@@ -252,15 +249,31 @@ void enviar_a_ejecutar(t_cpu* cpu){
 
 }
 
+void liberar_cpu(t_cpu* cpu){
+	sem_wait(semListaCpu);
+	cpu->quantum = 0;
+	cpu->proceso_asignado = NULL;
+	sem_post(semListaCpu);
+
+	sem_post(semPlanificarCortoPlazo); //como se libera una cpu se habilita el planificador de corto plazo
+}
+
 t_cpu* cpu_obtener_libre(t_list* lista_cpu){
 	t_cpu* cpu = NULL;
+	int i;
+	sem_wait(semListaCpu);
+	for (i = 0; i < list_size(lista_cpu); i++) {
+		cpu = list_get(lista_cpu, i);
+		if( cpu->proceso_asignado == NULL ) break; //si se encuentra una cpu libre se termina la busqueda
+	}
+	sem_post(semListaCpu);
 	return cpu;
 }
 
 bool continuar_procesando(t_cpu* cpu){
-	if(algoritmo_planificacion == PLANIFICACION_ROUND_ROBIN){
+	if(kernel_conf->algoritmo == PLANIFICACION_ROUND_ROBIN){
 		cpu->quantum++;
-		return (cpu->quantum < quantum_planificacion);
+		return (cpu->quantum < kernel_conf->quantum);
 	} else {
 		return true;
 	}

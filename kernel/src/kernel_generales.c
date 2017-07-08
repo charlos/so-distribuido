@@ -76,7 +76,10 @@ void crearSemaforos(){
 	char** semaforos_cfg = string_split(value_without_brackets, ",");
 	while(semaforos_cfg[i]!=NULL){
 		string_trim(&(semaforos_cfg[i]));
-		dictionary_put(semaforos, semaforos_cfg[i], atoi(kernel_conf->sem_init[i]));
+		t_semaphore* semaforo = malloc(sizeof(t_semaphore));
+		semaforo->cola = queue_create();
+		semaforo->cuenta = atoi(kernel_conf->sem_init[i]);
+		dictionary_put(semaforos, semaforos_cfg[i], semaforo);
 		i++;
 	}
 }

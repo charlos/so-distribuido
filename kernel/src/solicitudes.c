@@ -24,6 +24,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	t_PCB* pcb;
 	t_PCB* auxPCB;
 	t_cpu* cpu;
+	char* nombre_semaforo;
 	t_semaphore* semaforo;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
@@ -92,6 +93,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		tabla_proceso = malloc(sizeof(t_table_file));
 		tabla_proceso->pid = pcb->pid;
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
+
+		sem_wait(semColaNuevos);
+		queue_push(cola_nuevos, pcb);
+		sem_post(semColaNuevos);
 
 		break;
 	}
@@ -218,6 +223,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_FUNCION_SIGNAL:
 		//TODO nombre_semaforo deberia venir en "buffer"
+		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
 		semaforo->cuenta++;
@@ -235,6 +241,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_FUNCION_WAIT:
 		//TODO nombre_semaforo deberia venir en "buffer"
+		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
 		semaforo->cuenta--;
@@ -257,10 +264,13 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		cpu->proceso_asignado = pcb;
+		pasarDeExecuteAReady(cpu);
 		//TODO eliminar cpu del kernel
 		break;
 	case OC_TERMINO_INSTRUCCION:
-		resp = 0;
+		resp = -1; //por default no continua procesando
 		pcb = deserializer_pcb(buffer);
 
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
@@ -268,7 +278,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu->proceso_asignado = pcb;
 		if( !proceso_bloqueado(pcb) ){ // se verifica si el proceso no está bloqueado
 			if(continuar_procesando(cpu)){
-				resp = 1;
+				//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
+				resp = kernel_conf->quantum_sleep;
 			} else {
 				pasarDeExecuteAReady(cpu);
 			}

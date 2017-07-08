@@ -17,21 +17,22 @@
 
 
 #define PUERTO_DE_ESCUCHA 53000
-#define PLANIFICACION_FIFO 0
-#define PLANIFICACION_ROUND_ROBIN 1
+#define PLANIFICACION_FIFO "FIFO"
+#define PLANIFICACION_ROUND_ROBIN "RR"
 
 #define CPU 5
 
 sem_t* semPlanificarLargoPlazo;
 sem_t* semPlanificarCortoPlazo;
+sem_t* semColaNuevos;
 sem_t* semColaListos;
 sem_t* semCantidadProgramasPlanificados;
 sem_t* semColaBloqueados;
 sem_t* semColaFinalizados;
+sem_t* semListaCpu;
 int grado_multiprogramacion, cantidad_programas_planificados;
 
-int algoritmo_planificacion;
-int quantum_planificacion;
+
 
 
 typedef struct{
@@ -62,5 +63,6 @@ void planificador_corto_plazo();
 void enviar_a_ejecutar(t_cpu* cpu);
 t_cpu* cpu_obtener_libre(t_list* lista_cpu);
 bool continuar_procesando(t_cpu* cpu);
+void liberar_cpu(t_cpu* cpu);
 
 #endif /* KERNEL_H_ */
