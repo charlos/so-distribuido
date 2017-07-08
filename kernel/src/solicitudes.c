@@ -93,10 +93,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		tabla_proceso = malloc(sizeof(t_table_file));
 		tabla_proceso->pid = pcb->pid;
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
+		list_add(tabla_archivos, tabla_proceso);
 
 		sem_wait(semColaNuevos);
 		queue_push(cola_nuevos, pcb);
 		sem_post(semColaNuevos);
+		sem_post(semPlanificarLargoPlazo);
 
 		break;
 	}
@@ -167,16 +169,22 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
 
 	    resp = abrir_archivo(pid, direccion, flags);
-	    int fd_proceso = cargarArchivoTablaProceso(pid, resp, flags);
-	    fs_create_file(fs_socket, direccion, logger);
+	    if(resp == -1) {
 
-	    char * buffer = "Alo";
-	    fs_write(fs_socket, direccion, 0, 5, 4, buffer, logger);
+	    	int _mismoPid(t_par_socket_pid par){
+	    		 return par.pid == pid;
+	    	}
+
+	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
+	    	connect_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, "No existe archivo");
+	    }
+
+	    int fd_proceso = cargarArchivoTablaProceso(pid, resp, flags);
 	    fs_validate_file(fs_socket, direccion, logger);
 
 
 	    //TODO respuesta al pedido de abrir archivo
-	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &resp);
+	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &fd_proceso);
 
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    break;
@@ -231,11 +239,34 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
 
-		t_read_response * respuesta_memoria = memory_read(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, sizeof(t_puntero), logger);
+		t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
 
-		log_trace(logger, "%s", (char *)respuesta_memoria->buffer);
-		connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, respuesta_memoria);
-		break;
+		char * path = getPathFrom_PID_FD(archivo_a_leer->pid, archivo_a_leer->descriptor_archivo);
+		//TODO agregar campo offset en tabla de archivos local
+		t_fs_read_resp * read_response = fs_read(fs_socket, path, 0, archivo_a_leer->tamanio, logger);
+
+		if(read_response->exec_code != SUCCESS) {
+
+
+		} else {
+
+			int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger)
+
+			if(!resultado) {
+				//TODO error
+			}
+			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
+		}
+	}
+	break;
+	case OC_FUNCION_CERRAR: {
+		t_archivo * archivo = buffer;
+
+		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
+		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, pid);
+
+		//list_get()
+
 	}
 	case OC_FUNCION_MOVER_CURSOR: {
 		t_valor_variable valor_variable;

@@ -44,7 +44,7 @@ int main(void) {
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 	inicializarFuncionesParser();
-	pagesize = handshake(&server_socket_memoria,'C',0, logger);
+	pagesize = handshake(server_socket_memoria,'c',0, logger);
 
 	log_trace(logger, "Socket kernel: %i \n", server_socket_kernel);
 

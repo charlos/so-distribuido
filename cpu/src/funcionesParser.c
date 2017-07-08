@@ -267,7 +267,11 @@ void borrar(t_descriptor_archivo descriptor){
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
 
-    connect_send(server_socket_kernel, OC_FUNCION_CERRAR, &descriptor);
+    t_archivo * archivo;
+    archivo->pid = pcb->pid;
+    archivo->descriptor_archivo = descriptor;
+
+    connection_send(server_socket_kernel, OC_FUNCION_CERRAR, archivo);
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
