@@ -24,6 +24,7 @@ typedef struct {
 	uint32_t frame;
 	int32_t  pid;
 	uint32_t page;
+	char segment;
 } t_reg_invert_table;
 
 typedef struct {
