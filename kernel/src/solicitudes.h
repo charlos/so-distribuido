@@ -27,6 +27,8 @@ typedef struct{
 typedef struct {
 	int pid;
 	int socket;
+	int cantidad_syscalls;
+	int memoria_reservada;
 } t_par_socket_pid;
 
 t_list* tabla_paginas_heap;

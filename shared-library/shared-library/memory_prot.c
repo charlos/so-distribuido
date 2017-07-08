@@ -33,7 +33,7 @@ int recv_operation_code(int * client_socket, t_log * logger) {
 	║ MEMORY - HANDSHAKE ║
 	╚════════════════════╝ **/
 
-int handshake(int * server_socket, char type, int stack_size, t_log * logger) {
+int handshake(int server_socket, char type, int stack_size, t_log * logger) {
 
 	/**	╔═════════════════════════╦═══════════════╦═══════════════════════════════╗
 		║ operation_code (1 byte) ║ type (1 byte) ║ stack size (4 bytes optional) ║

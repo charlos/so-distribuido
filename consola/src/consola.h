@@ -28,8 +28,12 @@ typedef struct {
 	char * file_content;
 	int pid;
 	int terminate;
+	uint16_t port;
 } threadpid;
 
+uint16_t puerto_base;
+
+uint16_t obtener_puerto();
 void load_config(char * path);
 void enter_command();
 int read_command(char * command);

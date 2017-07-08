@@ -8,8 +8,8 @@
 #include "kernel_generales.h"
 
 
-void load_kernel_properties(void) {
-	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
+void load_kernel_properties(char* ruta_config) {
+	t_config * conf = config_create(ruta_config);
 	kernel_conf = malloc(sizeof(t_kernel_conf));
 	kernel_conf->program_port = config_get_int_value(conf, "PUERTO_PROG");
 	kernel_conf->cpu_port = config_get_int_value(conf, "PUERTO_CPU");
@@ -68,4 +68,11 @@ void crearSemaforos(){
 		dictionary_put(semaforos, semaforos_cfg[i], atoi(kernel_conf->sem_init[i]));
 		i++;
 	}
+}
+
+t_cpu* obtener_cpu(int file_descriptor){
+	bool _mismo_file_descriptor(t_cpu* cpu){
+		return cpu->file_descriptor == file_descriptor;
+	}
+	return list_find(lista_cpu, (void*)_mismo_file_descriptor);
 }
