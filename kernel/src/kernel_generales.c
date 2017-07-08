@@ -8,8 +8,12 @@
 #include "kernel_generales.h"
 
 
-void load_kernel_properties(void) {
-	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
+void load_kernel_properties(char * ruta) {
+	t_config * conf;
+	if(strcmp(ruta,"1") == 0)
+		conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
+	else conf = config_create(ruta);
+
 	kernel_conf = malloc(sizeof(t_kernel_conf));
 	kernel_conf->program_port = config_get_int_value(conf, "PUERTO_PROG");
 	kernel_conf->cpu_port = config_get_int_value(conf, "PUERTO_CPU");
@@ -54,10 +58,10 @@ void crearVariablesCompartidas(){
 		i++;
 	}
 }
-
+/*
 t_cpu* obtener_cpu(int socket){
 	return find_by_fd(socket);
-}
+}*/
 
 t_cpu* find_by_fd(int fd) {
 	int _is_fd(t_cpu *cpu) {

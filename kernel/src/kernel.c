@@ -20,7 +20,11 @@
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 256 )
 #define BUF_LEN ( 1 * EVENT_SIZE )
 
+sem_t* semColaNuevos;
+sem_t* semColaListos;
+sem_t* semCantidadProgramasPlanificados;
 
+sem_t* semColaFinalizados;
 
 int main(int argc, char* argv[]) {
 
@@ -36,6 +40,12 @@ int main(int argc, char* argv[]) {
 	tabla_paginas_heap = list_create();
 	tabla_paginas_por_proceso = list_create();
 	tabla_sockets_procesos = list_create();
+
+	sem_init(semColaBloqueados, 0, 0);
+	sem_init(semColaListos, 0, 0);
+	sem_init(semColaNuevos, 0, 0);
+	sem_init(semColaFinalizados, 0, 0);
+
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
 
