@@ -228,7 +228,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	case OC_FUNCION_LEER: {
 
-		t_pedido_archivo_leer * archivo_a_leer = buffer;
+	/*	t_pedido_archivo_leer * archivo_a_leer = buffer;
 
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
@@ -250,7 +250,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				//TODO error
 			}
 			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
-		}
+		}*/
 	}
 	break;
 	case OC_FUNCION_CERRAR: {

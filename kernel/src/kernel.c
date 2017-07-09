@@ -100,9 +100,6 @@ int main(int argc, char* argv[]) {
 	// Hilo planificador
 	kernel_planificacion();
 
-//	pthread_attr_destroy(&attr);
-	kernel_planificacion();
-
 	while(1){
 		char buffer[BUF_LEN];
 		int notificador =  inotify_init();
