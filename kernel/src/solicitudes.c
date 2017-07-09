@@ -254,10 +254,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	break;
 	case OC_FUNCION_CERRAR: {
-		t_archivo * archivo = buffer;
+		t_archivo * archivo = (t_archivo *)buffer;
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
-		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, pid);
+		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, archivo->pid);
 
 		descontarDeLaTablaGlobal(file->global_fd);
 
@@ -270,12 +270,18 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 	}
 	case OC_FUNCION_MOVER_CURSOR: {
+		int pid;
 		t_valor_variable valor_variable;
 		t_descriptor_archivo descriptor_archivo;
 
-		memcpy(&descriptor_archivo, buffer, sizeof(t_descriptor_archivo));
-		memcpy(&valor_variable, buffer+sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
+		memcpy(&pid, buffer, sizeof(int));
+		memcpy(&descriptor_archivo, buffer + sizeof(int), sizeof(t_descriptor_archivo));
+		memcpy(&valor_variable, buffer + sizeof(int) + sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
 
+		t_table_file* tabla_proceso = getTablaArchivo(pid);
+		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, pid);
+
+		file->offset_cursor+=valor_variable;
 	}
 	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
@@ -657,6 +663,7 @@ int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
 	file->global_fd = fd_global;
 	file->proceso_fd = nuevoFD_PID(pid);
 	file->flags = flags;
+	file->offset_cursor = 0;
 	return file->proceso_fd;
 }
 

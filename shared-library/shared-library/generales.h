@@ -113,6 +113,7 @@ typedef struct{
 	int proceso_fd;
 	int global_fd;
 	t_banderas flags;
+	uint8_t offset_cursor;
 } t_process_file;
 
 typedef struct{
@@ -124,6 +125,7 @@ typedef struct{
 typedef struct{
 	char* file;
 	int open;
+	int global_fd;
 } t_global_file;
 
 typedef struct{

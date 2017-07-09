@@ -174,7 +174,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = strlen((char *)message);
 			break;
 		case OC_FUNCION_MOVER_CURSOR:
-			message_size_value = sizeof(t_descriptor_archivo) + sizeof(t_valor_variable);
+			message_size_value = sizeof(t_descriptor_archivo) + sizeof(t_valor_variable) + sizeof(int);
 			break;
 //		DEFINIR COMPORTAMIENTO
 		default:

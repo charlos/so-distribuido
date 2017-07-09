@@ -277,10 +277,11 @@ void cerrar(t_descriptor_archivo descriptor){
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
     log_trace(logger, "Mover descriptor [%d] a [%d]", descriptor, posicion);
 
-    void * buffer = malloc(sizeof(t_descriptor_archivo)+sizeof(t_valor_variable));
-    memcpy(buffer, &descriptor, sizeof(t_descriptor_archivo));
-    memcpy(buffer + sizeof(t_descriptor_archivo), &posicion, sizeof(t_valor_variable));
-    connect_send(server_socket_kernel, OC_FUNCION_MOVER_CURSOR, buffer);
+    void * buffer = malloc(sizeof(t_descriptor_archivo)+sizeof(t_valor_variable)+sizeof(int));
+    memcpy(buffer, &(pcb->pid), sizeof(int));
+    memcpy(buffer + sizeof(int), &descriptor, sizeof(t_descriptor_archivo));
+    memcpy(buffer + sizeof(int) + sizeof(t_descriptor_archivo), &posicion, sizeof(t_valor_variable));
+    connection_send(server_socket_kernel, OC_FUNCION_MOVER_CURSOR, buffer);
 
     free(buffer);
 }
