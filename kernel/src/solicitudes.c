@@ -12,11 +12,11 @@
 extern t_list* tabla_archivos;
 
 void solve_request(t_info_socket_solicitud* info_solicitud){
-	uint8_t operation_code;
+	uint8_t operation_code = info_solicitud->oc_code;
+	char* buffer = info_solicitud->buffer;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
 	t_puntero bloque_heap_ptr;
 	int status, resp;
-	char* buffer;
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
 	t_pagina_heap* pagina;
@@ -39,12 +39,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
     char* direccion;
     t_banderas flags;
     char* nombre_variable;
-
-	status = connection_recv(info_solicitud->file_descriptor, &operation_code, &buffer);
-	if(status <= 0){
-		FD_CLR(info_solicitud->file_descriptor, (info_solicitud->set));
-		operation_code = 555;
-	}
 
 	switch(operation_code){
 	case OC_SOLICITUD_PROGRAMA_NUEVO: {
@@ -234,7 +228,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	case OC_FUNCION_LEER: {
 
-		t_pedido_archivo_leer * archivo_a_leer = buffer;
+	/*	t_pedido_archivo_leer * archivo_a_leer = buffer;
 
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
@@ -256,7 +250,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				//TODO error
 			}
 			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
-		}
+		}*/
 	}
 	break;
 	case OC_FUNCION_CERRAR: {
@@ -347,7 +341,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAReady(cpu);
-		//TODO eliminar cpu del kernel
+		//TODO sacar cpu correspondiente del la lista de cpu's
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		resp = -1; //por default no continua procesando
