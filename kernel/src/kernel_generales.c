@@ -38,6 +38,7 @@ t_PCB* crear_PCB(){
 	t_PCB* PCB = malloc(sizeof(t_PCB));
 	PCB->pid = registro_pid++;
 	PCB->cantidad_paginas = 0;
+	PCB->indice_stack = list_create();
 	return PCB;
 }
 

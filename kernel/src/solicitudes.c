@@ -267,8 +267,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		list_remove_by_condition(tabla_proceso, (void*) _porFD);
 
 		//list_get()
-
+		break;
 	}
+
 	case OC_FUNCION_MOVER_CURSOR: {
 		int pid;
 		t_valor_variable valor_variable;

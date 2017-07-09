@@ -53,14 +53,13 @@ int main(int argc, char* argv[]) {
 	semListaCpu = malloc(sizeof(sem_t));
 
 	sem_init(semColaBloqueados, 0, 1);
-	sem_init(semColaListos, 0, 0);
+	sem_init(semColaListos, 0, 1);
 	sem_init(semColaNuevos, 0, 1);
 	sem_init(semColaFinalizados, 0, 1);
 	sem_init(semPlanificarCortoPlazo, 0, 0);
 	sem_init(semPlanificarLargoPlazo, 0, 0);
 	sem_init(semCantidadProgramasPlanificados, 0, 0);
 	sem_init(semListaCpu, 0, 1);
-
 	lista_cpu = list_create();
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
