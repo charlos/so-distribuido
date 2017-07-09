@@ -40,9 +40,11 @@ typedef struct {
 	int terminate;
 	uint16_t port;
 	uint8_t cantidad_escrituras;
+	char * color;
 } threadpid;
 
 uint16_t puerto_base;
+t_list * paletaDeColores;
 
 uint16_t obtener_puerto();
 void load_config(char * path);
@@ -50,5 +52,6 @@ void enter_command();
 int read_command(char * command);
 char* read_file(char * path);
 void thread_subprograma(threadpid * recon);
+t_list * inicializarPaletaDeColores();
 
 #endif /* CONSOLA_H_ */

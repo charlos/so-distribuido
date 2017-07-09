@@ -22,6 +22,7 @@ int main(int argc, char* argv[]) {
 	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	load_config(argv[1]);
 	thread_list = list_create();
+	paletaDeColores = inicializarPaletaDeColores();
 
 	//char* timeStart = temporal_get_string_time(); //usando commons
 	//printf("Tiempo de Inicio del Proceso: %s\n", timeStart);
@@ -155,11 +156,12 @@ int read_command(char* command) {
 }
 void thread_subprograma(threadpid* thread_recon) {
 
+
+	thread_recon->terminate = 0;
+	thread_recon->cantidad_escrituras = 0;
 	uint8_t operation_code;
 	int sub_console_socket;
 	void * buffer;
-	thread_recon->terminate = 0;
-	thread_recon->cantidad_escrituras = 0;
 	char* tiempo_comienzo = temporal_get_string_time();
 	struct timeval t1, t2;
 	uint32_t elapsedTime;
@@ -173,16 +175,18 @@ void thread_subprograma(threadpid* thread_recon) {
 	if(result > 1 && operation_code == OC_NUEVA_CONSOLA_PID)
 		thread_recon->pid = *(uint8_t *) buffer;
 
+	thread_recon->color = list_get(paletaDeColores, thread_recon->pid % list_size(paletaDeColores));
 
-	log_trace(logger, "PID DEL PROGRAMA: %d", thread_recon->pid);
+	printf("%sPID DEL PROGRAMA: %d\n", thread_recon->color,  thread_recon->pid);
+	log_trace(logger, "%sPID DEL PROGRAMA: %d", thread_recon->color, thread_recon->pid);
 
 	while(!(thread_recon->terminate)) {
 
 		result = connection_recv(sub_console_socket, &operation_code, &buffer);
 		if(operation_code == OC_INSTRUCCION_CONSOLA)
-			printf("[%d] %s\n", thread_recon->pid, (char *) buffer);
+			printf("%s [%d] %s\n", thread_recon->color, thread_recon->pid, (char *) buffer);
 		else if(operation_code == OC_ESCRIBIR_EN_CONSOLA) {
-			printf("[Process: %d] %s \n", thread_recon->pid, (char *) buffer);
+			printf("%s [Process: %d] %s \n", thread_recon->color, thread_recon->pid, (char *) buffer);
 			log_trace(logger, "PID %d: %s", thread_recon->pid, (char *)buffer);
 			thread_recon->cantidad_escrituras++;
 		}
@@ -231,4 +235,17 @@ char * read_file(char * path) {
 }
 uint16_t obtener_puerto() {
 	return puerto_base + list_size(thread_list);
+}
+t_list * inicializarPaletaDeColores() {
+
+	t_list * paleta = list_create();
+
+	list_add(paleta, BLU);
+	list_add(paleta, YEL);
+	list_add(paleta, GRN);
+	list_add(paleta, MAG);
+	list_add(paleta, CYN);
+
+	return paleta;
+
 }
