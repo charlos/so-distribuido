@@ -250,7 +250,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		} else {
 
-			int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger)
+			int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
 
 			if(!resultado) {
 				//TODO error
@@ -265,6 +265,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
 		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, pid);
 
+		descontarDeLaTablaGlobal(file->global_fd);
+
+		bool _porFD(t_process_file* var){
+			return var->proceso_fd == file->proceso_fd;
+		}
+		list_remove_by_condition(tabla_proceso, (void*) _porFD);
 		//list_get()
 
 	}
@@ -617,10 +623,15 @@ char* getPath_Global(int fdGlobal){
 
 	return filereg->file;
 }
+void descontarDeLaTablaGlobal(int global_fd) {
+
+
+
+}
 
 char* getPathFrom_PID_FD(int pid, int fdProceso){
 	t_table_file* tabla_archivos_proceso = getTablaArchivo(pid);
-	t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, pid);
+	t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, fdProceso);
 
 	char* path = getPath_Global(file->global_fd);
 	return path;

@@ -8,6 +8,7 @@
 #ifndef SOLICITUDES_H_
 #define SOLICITUDES_H_
 
+#include <shared-library/file_system_prot.h>
 #include <shared-library/memory_prot.h>
 #include <shared-library/socket.h>
 #include <shared-library/generales.h>
@@ -63,5 +64,6 @@ void * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
 void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int cantidad_paginas_codigo);
 void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo);
 int calcular_paginas_necesarias(char* codigo);
+char* getPathFrom_PID_FD(int pid, int fdProceso);
 
 #endif /* SOLICITUDES_H_ */
