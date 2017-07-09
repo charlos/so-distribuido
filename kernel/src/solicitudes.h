@@ -65,5 +65,6 @@ void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int can
 void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo);
 int calcular_paginas_necesarias(char* codigo);
 char* getPathFrom_PID_FD(int pid, int fdProceso);
+t_global_file * getFileFromGlobal(int global_fd);
 
 #endif /* SOLICITUDES_H_ */

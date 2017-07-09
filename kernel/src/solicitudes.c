@@ -265,6 +265,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			return var->proceso_fd == file->proceso_fd;
 		}
 		list_remove_by_condition(tabla_proceso, (void*) _porFD);
+
 		//list_get()
 
 	}
@@ -609,17 +610,37 @@ t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, int fd_archivo){
 	return file;
 }
 char* getPath_Global(int fdGlobal){
-	t_global_file * filereg;
-	int i;
+
+	t_global_file * filereg = getFileFromGlobal(fdGlobal);
+
+	/*int i;
 	for (i=0;i<=fdGlobal;i++){
 		filereg = list_get(tabla_global_archivos,i);
-	}
+	}*/
 
 	return filereg->file;
 }
+t_global_file * getFileFromGlobal(int global_fd) {
+	t_global_file * filereg;
+
+	int _ByFDGlobal(t_global_file * gf) {
+		return gf->global_fd == global_fd;
+	}
+	filereg = list_find(tabla_global_archivos, (void*) _ByFDGlobal);
+}
 void descontarDeLaTablaGlobal(int global_fd) {
 
+	t_global_file * filereg = getFileFromGlobal(global_fd);
 
+	if(filereg->open > 1) {
+		filereg->open--;
+	}
+	else {
+		int _byFD(t_global_file * global_file) {
+			return global_file->global_fd == global_fd;
+		}
+		list_remove_by_condition(tabla_global_archivos, (void *) _byFD);
+	}
 
 }
 
