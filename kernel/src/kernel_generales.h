@@ -57,8 +57,11 @@ typedef struct{
 
 
 typedef struct{
-	int file_descriptor;
-	fd_set* set;
+  int file_descriptor;
+  fd_set* set;
+  fd_set* lectura;
+  void * buffer;
+  uint8_t oc_code;
 }t_info_socket_solicitud;
 
 typedef struct{

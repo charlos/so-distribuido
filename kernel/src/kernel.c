@@ -47,8 +47,8 @@ int main(int argc, char* argv[]) {
 	semColaFinalizados = malloc(sizeof(sem_t));
 	semColaListos = malloc(sizeof(sem_t));
 	semColaNuevos = malloc(sizeof(sem_t));
-	semPlanificarLargoPlazo = malloc(sizeof(sem_t));
 	semPlanificarCortoPlazo = malloc(sizeof(sem_t));
+	semPlanificarLargoPlazo = malloc(sizeof(sem_t));
 	semCantidadProgramasPlanificados = malloc(sizeof(sem_t));
 	semListaCpu = malloc(sizeof(sem_t));
 
@@ -56,9 +56,9 @@ int main(int argc, char* argv[]) {
 	sem_init(semColaListos, 0, 0);
 	sem_init(semColaNuevos, 0, 1);
 	sem_init(semColaFinalizados, 0, 1);
-	sem_init(semPlanificarLargoPlazo, 0, 0);
 	sem_init(semPlanificarCortoPlazo, 0, 0);
-	sem_init(semCantidadProgramasPlanificados, 0, 10);
+	sem_init(semPlanificarLargoPlazo, 0, 0);
+	sem_init(semCantidadProgramasPlanificados, 0, 0);
 	sem_init(semListaCpu, 0, 1);
 
 	lista_cpu = list_create();
@@ -67,8 +67,8 @@ int main(int argc, char* argv[]) {
 
 
 	TAMANIO_PAGINAS = handshake(memory_socket,'K', kernel_conf->stack_size, logger);
-	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
-	fs_handshake(&fs_socket, logger);
+//	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
+//	fs_handshake(&fs_socket, logger);
 
 
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
@@ -101,6 +101,7 @@ int main(int argc, char* argv[]) {
 	kernel_planificacion();
 
 //	pthread_attr_destroy(&attr);
+	kernel_planificacion();
 
 	while(1){
 		char buffer[BUF_LEN];
@@ -138,7 +139,8 @@ void manage_select(t_aux* estructura){
 	listening_socket = open_socket(20, estructura->port);
 	int nuevaConexion, fd_seleccionado, recibido, set_fd_max, i;
 	uint8_t* operation_code;
-	char buf[512];
+	char* buffer;
+	int status;
 	fd_set lectura;
 	pthread_attr_t attr;
 	t_info_socket_solicitud* info_solicitud = malloc(sizeof(t_info_socket_solicitud));
@@ -161,7 +163,10 @@ void manage_select(t_aux* estructura){
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 						if(estructura->port == kernel_conf->cpu_port){
 							t_cpu* cpu = cpu_create(fd_seleccionado);
+							sem_wait(semListaCpu);
 							list_add(lista_cpu, cpu);
+							sem_post(semListaCpu);
+							sem_post(semPlanificarCortoPlazo);
 						}
 					}
 				} else {
@@ -169,16 +174,30 @@ void manage_select(t_aux* estructura){
 
 					info_solicitud->file_descriptor = fd_seleccionado;
 					info_solicitud->set = estructura->master;
+					info_solicitud->lectura = &lectura;
 
-//					FD_CLR(fd_seleccionado, estructura->master);
-					pthread_attr_init(&attr);
-					solve_request(info_solicitud);
-					pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+					status = connection_recv(fd_seleccionado, &operation_code, &buffer);
 
-					pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
-//					solve_request(fd_seleccionado, &(estructura->master));
+					info_solicitud->oc_code = operation_code;
+					info_solicitud->buffer = buffer;
 
-					pthread_attr_destroy(&attr);
+					if(status <= 0 ){
+						//si es una desconexion ni si quiera creo los hilos
+						FD_CLR(fd_seleccionado, estructura->master);
+
+						if(estructura->port = kernel_conf->cpu_port){
+							//TODO sacar cpu correspondiente del la lista de cpu's
+						}
+
+					}else{
+						pthread_attr_init(&attr);
+
+						pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+						pthread_create(&hilo_solicitud, &attr, &solve_request, info_solicitud);
+
+						pthread_attr_destroy(&attr);
+					}
 				}
 			}
 		}
@@ -235,24 +254,30 @@ void planificador_corto_plazo(){
 }
 
 void pasarDeNewAReady(){
-	sem_wait(semCantidadProgramasPlanificados);
-	sem_wait(semColaListos);
-	while(cantidad_programas_planificados < grado_multiprogramacion && queue_size(cola_nuevos) > 0){
-		queue_push(cola_listos, queue_pop(cola_nuevos));
-		cantidad_programas_planificados++;
+	t_PCB* pcb;
+	int cantidadProgramasPlanificados;
+	sem_getvalue(semCantidadProgramasPlanificados, &cantidadProgramasPlanificados);
+	while(cantidadProgramasPlanificados < kernel_conf->grado_multiprog && queue_size(cola_nuevos) > 0){
+		sem_wait(semColaNuevos);
+		pcb = queue_pop(cola_nuevos);
+		sem_post(semColaNuevos);
+		sem_wait(semColaListos);
+		queue_push(cola_listos, pcb);
+		sem_post(semColaListos);
+
+		sem_post(semCantidadProgramasPlanificados);
 	}
-	sem_post(semColaListos);
-	sem_post(semCantidadProgramasPlanificados);
+	sem_post(semPlanificarCortoPlazo);
 }
 
 void pasarDeReadyAExecute(){
-	sem_wait(semColaListos);
-	t_PCB* pcb = queue_pop(cola_listos);
-	sem_post(semColaListos);
-
 	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
-
-	serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
+	if(cpu != NULL){
+		sem_wait(semColaListos);
+		t_PCB* pcb = queue_pop(cola_listos);
+		sem_post(semColaListos);
+		serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
+	}
 
 }
 
@@ -268,6 +293,7 @@ void pasarDeExecuteAExit(t_cpu* cpu){
 	queue_push(cola_finalizados, cpu->proceso_asignado);
 	sem_post(semColaFinalizados);
 	liberar_cpu(cpu);
+	sem_wait(semCantidadProgramasPlanificados);
 }
 
 void pasarDeExecuteABlocked(t_cpu* cpu){
