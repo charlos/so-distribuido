@@ -158,7 +158,7 @@ void manage_select(t_aux* estructura){
 						FD_SET(nuevaConexion, (estructura->master));
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 						if(estructura->port == kernel_conf->cpu_port){
-							t_cpu* cpu = cpu_create(fd_seleccionado);
+							t_cpu* cpu = cpu_create(nuevaConexion);
 							sem_wait(semListaCpu);
 							list_add(lista_cpu, cpu);
 							sem_post(semListaCpu);
