@@ -253,7 +253,8 @@ void pasarDeNewAReady(){
 	t_PCB* pcb;
 	int cantidadProgramasPlanificados;
 	sem_getvalue(semCantidadProgramasPlanificados, &cantidadProgramasPlanificados);
-	while(cantidadProgramasPlanificados < kernel_conf->grado_multiprog && queue_size(cola_nuevos) > 0){
+	//  no hace nada si el grado de multiprogramacion no se lo permite
+	if(cantidadProgramasPlanificados < kernel_conf->grado_multiprog && queue_size(cola_nuevos) > 0){
 		sem_wait(semColaNuevos);
 		pcb = queue_pop(cola_nuevos);
 		sem_post(semColaNuevos);
@@ -262,13 +263,13 @@ void pasarDeNewAReady(){
 		sem_post(semColaListos);
 
 		sem_post(semCantidadProgramasPlanificados);
+		sem_post(semPlanificarCortoPlazo);
 	}
-	sem_post(semPlanificarCortoPlazo);
 }
 
 void pasarDeReadyAExecute(){
 	t_cpu* cpu = cpu_obtener_libre(lista_cpu);
-	if(cpu != NULL){
+	if(cpu != NULL){ // si no tiene cpu libre no hace nada
 		sem_wait(semColaListos);
 		t_PCB* pcb = queue_pop(cola_listos);
 		sem_post(semColaListos);
