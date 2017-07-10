@@ -39,6 +39,7 @@ t_PCB* crear_PCB(){
 	PCB->pid = registro_pid++;
 	PCB->cantidad_paginas = 0;
 	PCB->exit_code = 0;
+	PCB->SP = 0;
 	PCB->indice_stack = list_create();
 	return PCB;
 }

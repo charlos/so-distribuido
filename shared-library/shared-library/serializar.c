@@ -131,6 +131,7 @@ t_PCB* deserializer_pcb(char* buffer){
 	memcpy(&pcb_result->pid, buffer+offset, valor=sizeof(uint16_t)); offset+=valor;
  	memcpy(&pcb_result->PC, buffer+offset, valor=sizeof(uint16_t)); offset+=valor;
  	memcpy(&pcb_result->cantidad_paginas, buffer+offset, valor=sizeof(uint16_t)); offset+=valor;
+ 	memcpy(&pcb_result->SP, buffer+offset, valor=sizeof(uint16_t)); offset+=valor;
  	memcpy(&pcb_result->exit_code, buffer+offset, valor=sizeof(int_least16_t)); offset+=valor;
 
  	uint16_t lengthIndiceCodigo;
@@ -218,6 +219,7 @@ t_stream* pcb_serializer(t_PCB* pcb){
 	memcpy(data+offset, &pcb->pid, valor = sizeof(uint16_t)); offset += valor;
 	memcpy(data+offset, &pcb->PC, valor = sizeof(uint16_t)); offset += valor;
 	memcpy(data+offset, &pcb->cantidad_paginas, valor = sizeof(uint16_t)); offset += valor;
+	memcpy(data+offset, &pcb->SP, valor = sizeof(uint16_t)); offset += valor;
 	memcpy(data+offset, &pcb->exit_code, valor = sizeof(uint16_t)); offset += valor;
 	//memcpy(data+offset, &pcb->cantidad_instrucciones, valor = sizeof(uint16_t)); offset += valor;
 	//memcpy(data+offset, &stream_indiceCodigo->length, valor = sizeof(int)); offset += valor;
