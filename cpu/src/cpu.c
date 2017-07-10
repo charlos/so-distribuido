@@ -55,7 +55,8 @@ int main(void) {
 		log_error(logger, "Problema con Handshake con Memoria.");
 	}
 
-	int pc, page, offset, pageend, size_to_read, operation_code;
+	int pc, page, offset, pageend, size_to_read;
+	uint8_t operation_code;
 	char* instruccion;
 	char* pcb_serializado;
 

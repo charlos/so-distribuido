@@ -134,7 +134,7 @@ void manage_select(t_aux* estructura){
 	int listening_socket;
 	listening_socket = open_socket(20, estructura->port);
 	int nuevaConexion, fd_seleccionado, recibido, set_fd_max, i;
-	uint8_t* operation_code;
+	uint8_t operation_code;
 	char* buffer;
 	int status;
 	fd_set lectura;

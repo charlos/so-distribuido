@@ -50,3 +50,4 @@ shared-library/Debug/shared-library/
 
 # Segun lo hablado, ignoramos makefile's hasta fin del proyecto
 makefile
+*.launch
