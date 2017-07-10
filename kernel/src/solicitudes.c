@@ -368,7 +368,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		pcb_destroy(auxPCB);
 		//enviar oc para continuar ejecutando el proceso o no
-		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, &resp);
+		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 
 		break;
 	default:

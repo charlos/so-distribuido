@@ -44,7 +44,7 @@ int serializar_y_enviar_PCB(t_PCB* pcb, int socket_destino, int OC){
 void element_stack_destroy(t_element_stack* contexto){
 	list_destroy_and_destroy_elements(contexto->args, (void*) free);
 	list_destroy_and_destroy_elements(contexto->vars, (void*) free);
-	free(contexto->retVar);
+//	if(contexto->retVar != NULL)free(contexto->retVar);
 	free(contexto);
 }
 
@@ -64,7 +64,8 @@ void pcb_destroy(t_PCB* pcb){
 	*/
 
 	list_destroy_and_destroy_elements(pcb->indice_stack, (void*) element_stack_destroy);
-	list_destroy_and_destroy_elements(pcb->indice_codigo, (void*) free);
+//	list_destroy_and_destroy_elements(pcb->indice_codigo, (void*) free);
+	free(pcb->indice_codigo);
 	dictionary_clean_and_destroy_elements(pcb->indice_etiquetas, (void*) free);
 	free(pcb);
 }
