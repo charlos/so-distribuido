@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
 
-	TAMANIO_PAGINAS = handshake(memory_socket,'K', kernel_conf->stack_size, logger);
+	TAMANIO_PAGINAS = handshake(memory_socket,'k', kernel_conf->stack_size, logger);
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
 //	fs_handshake(&fs_socket, logger);
 
@@ -272,6 +272,7 @@ void pasarDeReadyAExecute(){
 		sem_wait(semColaListos);
 		t_PCB* pcb = queue_pop(cola_listos);
 		sem_post(semColaListos);
+		cpu->proceso_asignado = pcb;
 		serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
 	}
 
