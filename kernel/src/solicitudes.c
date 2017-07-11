@@ -16,7 +16,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	char* buffer = info_solicitud->buffer;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
 	t_puntero bloque_heap_ptr;
-	int status, resp;
+	int status, *resp;
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
 	t_pagina_heap* pagina;
@@ -162,8 +162,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
 	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
 
-	    resp = abrir_archivo(pid, direccion, flags);
-	    if(resp == -1) {
+	    *resp = abrir_archivo(pid, direccion, flags);
+	    if(*resp == -1) {
 
 	    	int _mismoPid(t_par_socket_pid par){
 	    		 return par.pid == pid;
@@ -173,7 +173,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    	connect_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, "No existe archivo");
 	    }
 
-	    int fd_proceso = cargarArchivoTablaProceso(pid, resp, flags);
+	    int fd_proceso = cargarArchivoTablaProceso(pid, *resp, flags);
 	    fs_validate_file(fs_socket, direccion, logger);
 
 
@@ -183,7 +183,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    break;
 	case OC_FUNCION_ESCRIBIR: {
-		int resp;
+		int *resp2;
 		escritura = malloc(sizeof(t_archivo));
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
@@ -208,10 +208,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}else{
 				if(file->flags.escritura){
 					//TODO falta meter el valor del puntero del archivo como offset en lugar de ese feo 999
-					 resp = fs_write(fs_socket, escritura->descriptor_archivo, 999, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
-					 switch(resp){
+					 *resp2 = fs_write(fs_socket, escritura->descriptor_archivo, 999, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 switch(*resp2){
 					 	 case SUCCESS:
-					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, &resp);
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 case ENOSPC:
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_FS_LLENO);
@@ -315,8 +315,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			pcb_destroy(auxPCB);
 		}
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
-		resp = 1;
-		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, &resp);
+		*resp = 1;
+		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, resp);
 //		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
 //		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
 //		semaforoSignal(semaforo);
@@ -332,8 +332,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			pasarDeExecuteABlocked(cpu); //bloquea el programa
 		}
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb para ser encolado en bloqueados
-		resp = 1;
-		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, &resp);
+		*resp = 1;
+		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, resp);
 //		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
 //		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
 //		semaforoWait(semaforo);
@@ -352,7 +352,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		//TODO sacar cpu correspondiente del la lista de cpu's
 		break;
 	case OC_TERMINO_INSTRUCCION:
-		resp = -1; //por default no continua procesando
+		*resp = -1; //por default no continua procesando
 		pcb = deserializer_pcb(buffer);
 
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
@@ -361,7 +361,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		if( !proceso_bloqueado(pcb) ){ // se verifica si el proceso no está bloqueado
 			if(continuar_procesando(cpu)){
 				//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
-				resp = kernel_conf->quantum_sleep;
+				*resp = kernel_conf->quantum_sleep;
 			} else {
 				pasarDeExecuteAReady(cpu);
 			}

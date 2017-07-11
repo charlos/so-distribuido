@@ -32,7 +32,8 @@ void procesarMsg(char * msg);
 
 int main(void) {
 
-	int continuar = -1;
+	int *continuar;
+	*continuar  = -1;
 	uint16_t quantum_sleep = 0;
 
 	signal(SIGUSR1, &handlerDesconexion);
@@ -62,7 +63,7 @@ int main(void) {
 
 	while(1){
 
-		if(continuar==-1){
+		if(*continuar==-1){
 
 			connection_recv(server_socket_kernel, &operation_code, &pcb_serializado);
 			if(operation_code!=OC_PCB){
@@ -72,10 +73,10 @@ int main(void) {
 			pcb = deserializer_pcb(pcb_serializado);
 			free(pcb_serializado);
 		}else{
-			quantum_sleep = continuar;
+			quantum_sleep = *continuar;
 		}
 		sleep(quantum_sleep);
-		continuar = -1;
+		*continuar = -1;
 
 		nextPageOffsetInStack = malloc(sizeof(t_page_offset));
 		getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
@@ -151,7 +152,7 @@ int main(void) {
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
 
 			connection_recv(server_socket_kernel, &operation_code, &continuar);
-			if(operation_code==OC_RESP_TERMINO_INSTRUCCION && continuar==-1){
+			if(operation_code==OC_RESP_TERMINO_INSTRUCCION && *continuar==-1){
 				pcb_destroy(pcb);
 			}
 		}
