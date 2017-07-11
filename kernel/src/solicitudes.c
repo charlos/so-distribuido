@@ -16,7 +16,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	char* buffer = info_solicitud->buffer;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
 	t_puntero bloque_heap_ptr;
-	int status, *resp;
+	int status;
+	int *resp = malloc(sizeof(int));
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
 	t_pagina_heap* pagina;
@@ -62,12 +63,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 
 		mandar_codigo_a_memoria(buffer, pcb->pid);
-		pcb->cantidad_paginas += cant_paginas;
+		pcb->cantidad_paginas = cant_paginas-kernel_conf->stack_size;
 		pcb->PC = 0;
 
 		t_codigo_proceso* paginas_de_codigo = malloc(sizeof(t_codigo_proceso));
 		paginas_de_codigo->pid = pcb->pid;
-		paginas_de_codigo->paginas_codigo = cant_paginas;
+		paginas_de_codigo->paginas_codigo = pcb->cantidad_paginas;
 		list_add(tabla_paginas_por_proceso, paginas_de_codigo);
 
 		log_trace(logger, "Mandando PID");
@@ -187,7 +188,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		escritura = malloc(sizeof(t_archivo));
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
-		if(escritura->descriptor_archivo == 0){
+		if(escritura->descriptor_archivo == 1){
 			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
 
@@ -207,8 +208,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_ARCHIVO_NO_ABIERTO);
 			}else{
 				if(file->flags.escritura){
-					//TODO falta meter el valor del puntero del archivo como offset en lugar de ese feo 999
-					 *resp2 = fs_write(fs_socket, escritura->descriptor_archivo, 999, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 *resp2 = fs_write(fs_socket, escritura->descriptor_archivo, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
 					 switch(*resp2){
 					 	 case SUCCESS:
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
@@ -291,7 +291,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		variable_recibida->nombre = malloc( size_nombre*sizeof(char)+1);
 		memcpy(variable_recibida->nombre, (void*)buffer+sizeof(int), size_nombre*sizeof(char));
 		variable_recibida->nombre[size_nombre]='\0';
-		memcpy(&(variable_recibida->valor), (void*)buffer+sizeof(int)+size_nombre*sizeof(char),sizeof(int));
+		memcpy(&(variable_recibida->valor), ((void*)buffer)+sizeof(int)+size_nombre*sizeof(char),sizeof(int));
 
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
 		asignarValorVariable(variable_recibida);
@@ -378,6 +378,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		//TODO Ver que hacer con cada desconexion
 	}
 	FD_SET(info_solicitud->file_descriptor, info_solicitud->set);
+
+	free(resp);
 }
 
 int calcular_paginas_de_codigo(char* codigo){
