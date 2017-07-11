@@ -59,6 +59,8 @@ int main(int argc, char* argv[]) {
 	sem_init(semPlanificarCortoPlazo, 0, 0);
 	sem_init(semPlanificarLargoPlazo, 0, 0);
 	sem_init(semCantidadProgramasPlanificados, 0, 0);
+	sem_init(semCantidadElementosColaListos, 0, 0);
+	sem_init(semCantidadCpuLibres, 0, 0);
 	sem_init(semListaCpu, 0, 1);
 	lista_cpu = list_create();
 
@@ -162,7 +164,7 @@ void manage_select(t_aux* estructura){
 							sem_wait(semListaCpu);
 							list_add(lista_cpu, cpu);
 							sem_post(semListaCpu);
-							sem_post(semPlanificarCortoPlazo);
+							sem_post(semCantidadCpuLibres);
 						}
 					}
 				} else {
@@ -242,9 +244,16 @@ void planificador_largo_plazo(){
 	}
 }
 
+/**
+ * planifica sólo si tiene elementos en la cola de listos
+ * y si tiene al menos una cpu libre
+ */
 void planificador_corto_plazo(){
 	while(true){
-		sem_wait(semPlanificarCortoPlazo);
+		// se podria usar para habilitar/deshabilitar la planificacion
+		//sem_wait(semPlanificarCortoPlazo);
+		sem_wait(semCantidadElementosColaListos);
+		sem_wait(semCantidadCpuLibres);
 		pasarDeReadyAExecute();
 	}
 }
@@ -258,12 +267,10 @@ void pasarDeNewAReady(){
 		sem_wait(semColaNuevos);
 		pcb = queue_pop(cola_nuevos);
 		sem_post(semColaNuevos);
-		sem_wait(semColaListos);
-		queue_push(cola_listos, pcb);
-		sem_post(semColaListos);
+		cola_listos_push(pcb);
 
 		sem_post(semCantidadProgramasPlanificados);
-		sem_post(semPlanificarCortoPlazo);
+		sem_post(semCantidadElementosColaListos);
 	}
 }
 
@@ -273,17 +280,20 @@ void pasarDeReadyAExecute(){
 		sem_wait(semColaListos);
 		t_PCB* pcb = queue_pop(cola_listos);
 		sem_post(semColaListos);
-		cpu->proceso_asignado = pcb;
-		serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
+		// si no tiene procesos en la cola de listos no hace nada
+		if(pcb != NULL){
+			cpu->proceso_asignado = pcb;
+			serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
+		}
 	}
 
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){
-	sem_wait(semColaListos);
-	queue_push(cola_listos, cpu->proceso_asignado);
-	sem_post(semColaListos);
+	cola_listos_push(cpu->proceso_asignado);
+
 	liberar_cpu(cpu);
+	sem_post(semCantidadElementosColaListos);
 }
 
 void pasarDeExecuteAExit(t_cpu* cpu){
@@ -305,9 +315,7 @@ void pasarDeBlockedAReady(t_PCB* pcbASacar){
 	sem_wait(semColaBloqueados);
 	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
 	sem_post(semColaBloqueados);
-	sem_wait(semColaListos);
-	list_add(cola_listos, pcb);
-	sem_post(semColaListos);
+	cola_listos_push(pcb);
 }
 
 void enviar_a_ejecutar(t_cpu* cpu){
@@ -320,7 +328,7 @@ void liberar_cpu(t_cpu* cpu){
 	cpu->proceso_asignado = NULL;
 	sem_post(semListaCpu);
 
-	sem_post(semPlanificarCortoPlazo); //como se libera una cpu se habilita el planificador de corto plazo
+	sem_post(semCantidadCpuLibres);
 }
 
 t_cpu* cpu_obtener_libre(t_list* lista_cpu){
@@ -347,4 +355,11 @@ bool continuar_procesando(t_cpu* cpu){
 void actualizar_quantum_sleep(char* ruta){
 	t_config * conf = config_create(ruta);
 	kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
+}
+
+void cola_listos_push(void *element){
+	sem_wait(semColaListos);
+	queue_push(cola_listos, element);
+	sem_post(semColaListos);
+	sem_post(semCantidadElementosColaListos);
 }
