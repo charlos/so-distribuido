@@ -141,7 +141,7 @@ t_PCB* deserializer_pcb(char* buffer){
  	pcb_result->indice_codigo = malloc(tamElementos);
  	int i;
  	for (i = 0; i < lengthIndiceCodigo; i++) {
- 		memcpy(pcb_result->indice_codigo, buffer+offset, valor=sizeof(t_indice_codigo)); offset+=valor;
+ 		memcpy(pcb_result->indice_codigo + i, buffer+offset, valor=sizeof(t_indice_codigo)); offset+=valor;
  		/*memcpy(&((pcb->indice_codigo+i)->offset), buffer+offset, valor=sizeof(int)); offset+=valor;
  		memcpy(&((pcb->indice_codigo+i)->size), buffer+offset, valor=sizeof(int)); offset+=valor;*/
 	}
@@ -281,8 +281,10 @@ t_stream* indiceCodigo_serializer(t_PCB* pcb){
 	memcpy(data+offset, &cantElementos, valor=sizeof(uint16_t)); offset+=valor;
 	int i;
 	for (i = 0; i < cantElementos; i++) {
-		memcpy(data+offset, &indiceCodigo->offset, valor=sizeof(int)); offset+=valor;
-		memcpy(data+offset, &indiceCodigo->size, valor=sizeof(int)); offset+=valor;
+
+		memcpy(data+offset, (t_indice_codigo*)indiceCodigo + i, valor=sizeof(t_indice_codigo));offset+=valor;
+/*		memcpy(data+offset, &indiceCodigo->offset, valor=sizeof(int)); offset+=valor;
+		memcpy(data+offset, &indiceCodigo->size, valor=sizeof(int)); offset+=valor;*/
 	}
 
 	t_stream* stream = malloc(sizeof(t_stream));
