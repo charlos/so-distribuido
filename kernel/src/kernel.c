@@ -270,7 +270,6 @@ void pasarDeNewAReady(){
 		cola_listos_push(pcb);
 
 		sem_post(semCantidadProgramasPlanificados);
-		sem_post(semCantidadElementosColaListos);
 	}
 }
 
