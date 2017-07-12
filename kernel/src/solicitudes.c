@@ -68,7 +68,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		t_codigo_proceso* paginas_de_codigo = malloc(sizeof(t_codigo_proceso));
 		paginas_de_codigo->pid = pcb->pid;
-		paginas_de_codigo->paginas_codigo = pcb->cantidad_paginas;
+		paginas_de_codigo->paginas_codigo = cant_paginas;
 		list_add(tabla_paginas_por_proceso, paginas_de_codigo);
 
 		log_trace(logger, "Mandando PID");
@@ -117,7 +117,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
-		log_trace(logger, "primer puntero: %d", bloque_heap_ptr);
+		log_trace(logger, "puntero de bloque: %d", bloque_heap_ptr);
 		marcar_bloque_ocupado(bloque_heap_ptr, respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		// Mandamos la pagina de heap modificada
 		memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
@@ -138,7 +138,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		log_trace(logger, "pedido de liberar punter. Posicion: %d", liberar->posicion);
 		info_proceso = buscar_codigo_de_proceso(liberar->pid);
 
-		obtener_direccion_logica(liberar, info_proceso->paginas_codigo); //le saco las paginas de codigo y stack
+		obtener_direccion_de_bloque_verdadera(liberar, info_proceso->paginas_codigo); //le saco las paginas de codigo y stack
 
 		log_trace(logger, "Yendo a leer pagina de memoria: %d", (liberar->nro_pagina + info_proceso->paginas_codigo));
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
@@ -199,7 +199,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			int socket_proceso = parEncontrado->socket;
 			char * inf = malloc(strlen((char*)escritura->informacion));
 			strcpy(inf, (char*)escritura->informacion);
-
 			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
 		}else{
 			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
@@ -288,6 +287,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
 		size_nombre = (int)*buffer;
 
+		variable_recibida = malloc(sizeof(t_shared_var));
 		variable_recibida->nombre = malloc( size_nombre*sizeof(char)+1);
 		memcpy(variable_recibida->nombre, (void*)buffer+sizeof(int), size_nombre*sizeof(char));
 		variable_recibida->nombre[size_nombre]='\0';
@@ -295,6 +295,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		log_trace(logger, "pedido de asignar el valor %d a la variable %s", variable_recibida->valor,variable_recibida->nombre);
 		asignarValorVariable(variable_recibida);
+		free(variable_recibida->nombre);
+		free(variable_recibida);
 
 		break;
 	case OC_FUNCION_LEER_VARIABLE:
@@ -425,9 +427,10 @@ t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata){
 	t_dictionary* indice_etiquetas = dictionary_create();
 	char* key;
 	int *value, offset = 0;
-	value = malloc(sizeof(t_puntero_instruccion));
+
 	int i, cantidad_etiquetas_total = metadata->cantidad_de_etiquetas + metadata->cantidad_de_funciones;	// cantidad de tokens que espero sacar del bloque de bytes
 	for(i=0; i < cantidad_etiquetas_total; i++){
+		value = malloc(sizeof(t_puntero_instruccion));
 		int cant_letras_token = 0;
 		while(metadata->etiquetas[cant_letras_token + offset] != '\0')cant_letras_token++;
 		key = malloc(cant_letras_token + 1);
@@ -435,7 +438,7 @@ t_dictionary* obtener_indice_etiquetas(t_metadata_program* metadata){
 		offset += cant_letras_token + 1;										// el offset suma el largo de la palabra + '\0'
 		memcpy(value, metadata->etiquetas+offset,sizeof(t_puntero_instruccion));// copio el puntero de instruccion
 		offset += sizeof(t_puntero_instruccion);
-		dictionary_put(indice_etiquetas, key, *value);
+		dictionary_put(indice_etiquetas, key, value);
 	}
 	return indice_etiquetas;
 }
@@ -784,10 +787,11 @@ void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int can
 	*puntero += TAMANIO_PAGINAS * cantidad_paginas_codigo;
 }
 
-void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo){
+void obtener_direccion_de_bloque_verdadera(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo){
 
 	pedido_free->nro_pagina =(pedido_free->posicion / TAMANIO_PAGINAS) - cantidad_paginas_codigo;
 	pedido_free->posicion = pedido_free->posicion % TAMANIO_PAGINAS;
+	pedido_free->posicion -= sizeof(t_heapMetadata);
 
 }
 
