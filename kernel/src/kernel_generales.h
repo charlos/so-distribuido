@@ -19,7 +19,9 @@ sem_t *semPlanificarLargoPlazo;
 sem_t *semPlanificarCortoPlazo;
 sem_t *semColaNuevos;
 sem_t *semColaListos;
+sem_t *semCantidadCpuLibres;
 sem_t *semCantidadProgramasPlanificados;
+sem_t *semCantidadElementosColaListos;
 
 typedef struct{
 	int program_port;

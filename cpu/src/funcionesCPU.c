@@ -71,7 +71,7 @@ void eliminarContexto(t_element_stack* contexto){
 	list_destroy_and_destroy_elements(contexto->args, (void*) args_vars_destroy);
 	list_destroy_and_destroy_elements(contexto->vars, (void*) args_vars_destroy);
 
-	free(contexto->retVar);
+//	free(contexto->retVar);
 	free(contexto);
 }
 

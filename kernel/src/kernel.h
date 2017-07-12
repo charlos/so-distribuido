@@ -61,4 +61,17 @@ t_cpu* cpu_obtener_libre(t_list* lista_cpu);
 bool continuar_procesando(t_cpu* cpu);
 void liberar_cpu(t_cpu* cpu);
 
+/**
+* @NAME: cola_listos_push
+* @DESC: Agrega un elemento al final de la cola de listos
+*/
+void cola_listos_push(void *element);
+
+void pasarDeNewAReady();
+void pasarDeReadyAExecute();
+void pasarDeExecuteAReady(t_cpu* cpu);
+void pasarDeExecuteAExit(t_cpu* cpu);
+void pasarDeExecuteABlocked(t_cpu* cpu);
+void pasarDeBlockedAReady(t_PCB* pcbASacar);
+
 #endif /* KERNEL_H_ */
