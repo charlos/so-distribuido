@@ -241,12 +241,16 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
               boolToChar(banderas.lectura), boolToChar(banderas.escritura), boolToChar(banderas.creacion));
 //TODO revisar arreglo del calculo del tamaño de la direccion para tener en cuenta todos los caracteres de char* (t_nombre_variable)
 
-    int length_direccion = string_length(direccion);
-    void * buffer = malloc(sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable)+sizeof(t_banderas));
-    memcpy(buffer, &(pcb->pid), sizeof(int));
-    memcpy(buffer + sizeof(int), &length_direccion,sizeof(int));
-    memcpy(buffer + sizeof(int) + sizeof(int), &direccion, length_direccion * sizeof(t_nombre_variable));
-    memcpy(buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), &banderas, sizeof(t_banderas));
+    uint16_t p_pid = pcb->pid;
+    char * dir = malloc(strlen(direccion));
+    memcpy(dir, direccion, strlen(direccion));
+    int length_direccion = strlen(dir);
+    void * buffer = malloc(sizeof(int) + sizeof(uint16_t) + strlen(dir) +sizeof(t_banderas));
+
+    memcpy(buffer, &length_direccion, sizeof(int));
+    memcpy(buffer + sizeof(int), &p_pid, sizeof(uint16_t));
+    memcpy(buffer + sizeof(int) + sizeof(uint16_t), dir, length_direccion);
+    memcpy(buffer + sizeof(int) + sizeof(uint16_t) + length_direccion, &banderas, sizeof(t_banderas));
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
     free(buffer);

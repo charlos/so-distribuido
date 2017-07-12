@@ -78,7 +78,7 @@ t_queue* cola_listos;
 t_queue* cola_bloqueados;
 t_queue* cola_exit;
 t_queue* cola_cpu;
-t_list* tabla_archivos;
+t_list* listaDeTablasDeArchivosDeProcesos;
 t_queue* cola_finalizados;
 t_list* lista_cpu;
 t_queue* cola_ejecutando;

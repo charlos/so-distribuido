@@ -35,6 +35,7 @@ typedef struct {
 t_list* tabla_paginas_heap;
 t_list* tabla_global_archivos;
 t_list* tabla_variables_compartidas;
+uint8_t contador_fd_global;
 void solve_request(t_info_socket_solicitud* info_solicitud);
 void mandar_codigo_a_memoria(char* codigo, int pid);
 t_pagina_heap* obtener_pagina_con_suficiente_espacio(int pid, int espacio);
@@ -44,7 +45,7 @@ t_puntero buscar_bloque_disponible(void* pagina, int espacio_pedido);
 t_heapMetadata* crear_metadata_libre(uint32_t espacio);
 void cambiar_metadata(t_heapMetadata* metadata, int espacio_pedido);
 void juntar_bloques(t_heapMetadata* metadata1, t_heapMetadata* metadata2);
-int abrir_archivo(int, char*, t_banderas);
+int abrir_archivo(uint16_t, char*, t_banderas);
 void agregar_bloque_libre(char* pagina, int offset);
 int buscarArchivoTablaGlobal(char*);
 t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, int);

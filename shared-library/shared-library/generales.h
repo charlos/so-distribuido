@@ -119,6 +119,7 @@ typedef struct{
 typedef struct{
 	int pid;
 	t_list* tabla_archivos;
+	uint8_t contador_fd;
 } t_table_file;
 
 
