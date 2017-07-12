@@ -80,6 +80,8 @@ int read_command(char* command) {
 	while (command[caracter] != '\n') caracter++;
 	command[caracter] = '\0';
 
+	if(command[0] == '\0') return -3;
+
 	char** palabras = string_n_split(command, 2, " ");
 
 	int i=0;
