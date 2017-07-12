@@ -50,6 +50,8 @@ int main(int argc, char* argv[]) {
 	semPlanificarCortoPlazo = malloc(sizeof(sem_t));
 	semPlanificarLargoPlazo = malloc(sizeof(sem_t));
 	semCantidadProgramasPlanificados = malloc(sizeof(sem_t));
+	semCantidadElementosColaListos = malloc(sizeof(sem_t));
+	semCantidadCpuLibres = malloc(sizeof(sem_t));
 	semListaCpu = malloc(sizeof(sem_t));
 
 	sem_init(semColaBloqueados, 0, 1);
