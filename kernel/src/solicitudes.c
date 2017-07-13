@@ -152,7 +152,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		break;
 	case OC_FUNCION_ABRIR: {
-
+		char* msgerror;
 		int direccion_length = *(int*)buffer;
 		pid = *(uint16_t*)(buffer + sizeof(int));
 		direccion = malloc(direccion_length);
@@ -168,8 +168,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    		 return par->pid == pid;
 	    	}
 
+	    	msgerror= strdup("No existe archivo");
 	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
-	    	connect_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, "No existe archivo");
+	    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
+	    	free(msgerror);
 	    }
 
 	    fs_validate_file(fs_socket, direccion, logger);
@@ -206,22 +208,27 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
 			t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, escritura->descriptor_archivo);
 			if(file==NULL){
-				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_ARCHIVO_NO_ABIERTO);
+				*resp2=EC_ARCHIVO_NO_ABIERTO;
+				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 			}else{
 				if(file->flags.escritura){
-					 *resp2 = fs_write(fs_socket, escritura->descriptor_archivo, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 char* path = getPath_Global(file->global_fd);
+					 *resp2 = fs_write(fs_socket, path, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
 					 switch(*resp2){
 					 	 case SUCCESS:
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 case ENOSPC:
-					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_FS_LLENO);
+					 		*resp2=EC_FS_LLENO;
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 default:
-					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_DESCONOCIDO);
+					 		*resp2=OC_RESP_ESCRIBIR, EC_DESCONOCIDO;
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 }
 				}else{
-					connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_SIN_PERMISO_ESCRITURA);
+					*resp2=EC_SIN_PERMISO_ESCRITURA;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 				}
 			}
 		}
@@ -235,10 +242,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
 
-		t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
+		//t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
 
 		char * path = getPathFrom_PID_FD(archivo_a_leer->pid, archivo_a_leer->descriptor_archivo);
-		//TODO agregar campo offset en tabla de archivos local
 		t_fs_read_resp * read_response = fs_read(fs_socket, path, 0, archivo_a_leer->tamanio, logger);
 
 		if(read_response->exec_code != SUCCESS) {
@@ -565,9 +571,6 @@ void modificar_pagina(t_pagina_heap* pagina, int espacio_ocupado){
 }
 
 int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
-	//TODO busco direccion en la tabla global: si está tomo posición y incremento open, lo agrego a la tabla del proceso con los permisos indicados
-	//si no está en la global y hay permiso de creacion se agrega a la tabla global y a la del proceso
-	//si no está en la global y no hay permiso de creación, se devuelve mensaje de error
 	int fd_proceso;
 	int fd_global; //guarda la posición del archivo en la tabla global
 	fd_global = buscarArchivoTablaGlobal(direccion);
@@ -575,18 +578,19 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 
 	if(fd_global == -1) {
 		if(flags.lectura && result == ISREG) {
-
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
-		} else if(flags.creacion && result == ISNOTREG) {
 
+		} else if(flags.creacion && result == ISNOTREG) {
 			int res = fs_create_file(fs_socket, direccion, logger);
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
-		} else {
+		} else if(flags.creacion && result == ISREG) {
+			fd_global = crearArchivoTablaGlobal(direccion);
+			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
-			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo
+		} else {
 			fd_global = -1;
 			fd_proceso = -1;
 		}
@@ -597,16 +601,6 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 
 	return fd_proceso;
 
-	/*if(fd_global>=0){
-		fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
-	}else{
-		if(flags.creacion){
-			fd_global = crearArchivoTablaGlobal(direccion);
-		}else{
-
-		}
-	}
-	return fd_global;*/
 }
 
 int crearArchivoTablaGlobal(char* direccion){
@@ -616,7 +610,7 @@ int crearArchivoTablaGlobal(char* direccion){
 	memcpy(filereg->file, direccion,string_length(direccion));
 	filereg->global_fd = contador_fd_global++;
 	filereg->open=1;
-
+	//hablar con filesystem!!!!
 	//TODO semaforos!
 	list_add(tabla_global_archivos,filereg);
 
