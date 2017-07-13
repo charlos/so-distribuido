@@ -129,7 +129,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(uint8_t);
 			break;
 		case OC_FUNCION_ABRIR:
-			message_size_value = sizeof(int) + sizeof(int) + *(int*)(message+sizeof(int)) * sizeof(t_nombre_variable)+sizeof(t_banderas);
+			message_size_value = sizeof(int) + sizeof(uint16_t) + *(int*)message + sizeof(t_banderas);
 			break;
 		case OC_FUNCION_CERRAR:
 			message_size_value = sizeof(t_archivo);

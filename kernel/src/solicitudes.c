@@ -9,7 +9,7 @@
 #include <parser/metadata_program.h>
 #include <parser/parser.h>
 
-extern t_list* tabla_archivos;
+extern t_list* listaDeTablasDeArchivosDeProcesos;
 
 void solve_request(t_info_socket_solicitud* info_solicitud){
 	uint8_t operation_code = info_solicitud->oc_code;
@@ -88,7 +88,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		tabla_proceso = malloc(sizeof(t_table_file));
 		tabla_proceso->pid = pcb->pid;
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
-		list_add(tabla_archivos, tabla_proceso);
+		list_add(listaDeTablasDeArchivosDeProcesos, tabla_proceso);
 
 		sem_wait(semColaNuevos);
 		queue_push(cola_nuevos, pcb);
@@ -156,15 +156,17 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    sumar_syscall(info_solicitud->file_descriptor);
 
 		break;
-	case OC_FUNCION_ABRIR:
-	    memcpy(pid, buffer, sizeof(int));
-	    memcpy(length_direccion, buffer + sizeof(int),sizeof(int));
-	    direccion = malloc(length_direccion);
-	    memcpy(direccion, buffer + sizeof(int) + sizeof(int),length_direccion * sizeof(t_nombre_variable));
-	    memcpy(&flags, buffer + sizeof(int) + sizeof(int) + length_direccion * sizeof(t_nombre_variable), sizeof(t_banderas));
+	case OC_FUNCION_ABRIR: {
 
-	    *resp = abrir_archivo(pid, direccion, flags);
-	    if(*resp == -1) {
+		int direccion_length = *(int*)buffer;
+		pid = *(uint16_t*)(buffer + sizeof(int));
+		direccion = malloc(direccion_length);
+		strcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t));
+		flags = *(t_banderas*)(buffer + sizeof(int) + sizeof(uint16_t) + direccion_length);
+
+		int fd_proceso;
+		fd_proceso = abrir_archivo(pid, direccion, flags);
+	    if(fd_proceso == -1) {
 
 	    	int _mismoPid(t_par_socket_pid par){
 	    		 return par.pid == pid;
@@ -174,7 +176,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    	connect_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, "No existe archivo");
 	    }
 
-	    int fd_proceso = cargarArchivoTablaProceso(pid, *resp, flags);
 	    fs_validate_file(fs_socket, direccion, logger);
 
 
@@ -182,7 +183,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &fd_proceso);
 
 	    sumar_syscall(info_solicitud->file_descriptor);
-	    break;
+	}
+    break;
 	case OC_FUNCION_ESCRIBIR: {
 		uint8_t *resp2;
 		escritura = malloc(sizeof(t_archivo));
@@ -230,7 +232,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	case OC_FUNCION_LEER: {
 
-	/*	t_pedido_archivo_leer * archivo_a_leer = buffer;
+		t_pedido_archivo_leer * archivo_a_leer = (t_pedido_archivo_leer *)buffer;
 
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
@@ -252,7 +254,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				//TODO error
 			}
 			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
-		}*/
+		}
 	}
 	break;
 	case OC_FUNCION_CERRAR: {
@@ -559,7 +561,7 @@ void modificar_pagina(t_pagina_heap* pagina, int espacio_ocupado){
 	pagina->espacio_libre = pagina->espacio_libre - (espacio_ocupado + sizeof(t_heapMetadata));
 }
 
-int abrir_archivo(int pid, char* direccion, t_banderas flags){
+int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 	//TODO busco direccion en la tabla global: si está tomo posición y incremento open, lo agrego a la tabla del proceso con los permisos indicados
 	//si no está en la global y hay permiso de creacion se agrega a la tabla global y a la del proceso
 	//si no está en la global y no hay permiso de creación, se devuelve mensaje de error
@@ -567,51 +569,70 @@ int abrir_archivo(int pid, char* direccion, t_banderas flags){
 	int fd_global; //guarda la posición del archivo en la tabla global
 	fd_global = buscarArchivoTablaGlobal(direccion);
 
-	if(fd_global>=0){
+	if(fd_global == -1) {
+		if(flags.creacion) {
+			fd_global = crearArchivoTablaGlobal(direccion);
+			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+		} else {
+			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo
+			fd_global = -1;
+			fd_proceso = -1;
+		}
+
+	} else {
+		fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+	}
+
+	return fd_proceso;
+
+	/*if(fd_global>=0){
 		fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 	}else{
 		if(flags.creacion){
 			fd_global = crearArchivoTablaGlobal(direccion);
 		}else{
-			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo
-			fd_global = -1;
+
 		}
 	}
-	return fd_global;
+	return fd_global;*/
 }
 
 int crearArchivoTablaGlobal(char* direccion){
-	int fd_global;
 	t_global_file * filereg = malloc(sizeof(t_global_file));
 	filereg->file = malloc(string_length(direccion));
+
 	memcpy(filereg->file, direccion,string_length(direccion));
+	filereg->global_fd = contador_fd_global++;
 	filereg->open=1;
+
 	//TODO semaforos!
 	list_add(tabla_global_archivos,filereg);
-	fd_global = list_size(tabla_global_archivos)-1;
 
-	return fd_global;
+	return filereg->global_fd;
 }
 
 
 int buscarArchivoTablaGlobal(char* direccion){
 	//TODO semaforos!
 	t_global_file * filereg;
+	bool encontro = false;
 
-	int i, resp;
+	int i;
 	for (i=0;i<list_size(tabla_global_archivos);i++){
+
 		filereg = list_get(tabla_global_archivos,i);
+
 		if(strcmp(filereg->file, direccion)==0){
+			encontro = true;
+			filereg->open++;
 			break;
 		}
 	}
-
-	if (i>=0){
-		resp = i;
-	}else{
-		resp = -1;
+	if(!encontro) {
+		return -1;
+	} else {
+		return filereg->global_fd;
 	}
-	return resp;
 
 }
 
@@ -663,28 +684,25 @@ char* getPathFrom_PID_FD(int pid, int fdProceso){
 	t_table_file* tabla_archivos_proceso = getTablaArchivo(pid);
 	t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, fdProceso);
 
+	if(file == NULL) {
+		return -1;
+	}
 	char* path = getPath_Global(file->global_fd);
 	return path;
 }
 
 int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
 	t_process_file* file = malloc(sizeof(t_process_file));
+	t_table_file * tablaDeArchivosDeProceso = getTablaArchivo(pid);
+
 	file->global_fd = fd_global;
-	file->proceso_fd = nuevoFD_PID(pid);
+	file->proceso_fd = tablaDeArchivosDeProceso->contador_fd++;
 	file->flags = flags;
 	file->offset_cursor = 0;
-	return file->proceso_fd;
-}
 
-int nuevoFD_PID(pid){
-	t_table_file* tabla;
-	tabla = getTablaArchivo(pid);
-	int i;
-	t_process_file* file;
-	for(i=3;i<=list_size(tabla->tabla_archivos)+2;i++){
-		file = list_get(tabla->tabla_archivos,i);
-	}
-	return i;
+	list_add(tablaDeArchivosDeProceso, file);
+
+	return file->proceso_fd;
 }
 
 t_table_file* getTablaArchivo(int pid){
@@ -693,7 +711,17 @@ t_table_file* getTablaArchivo(int pid){
 		   return reg->pid==pid;
 	   }
 	   t_table_file* tabla;
-	   tabla = list_find(tabla_archivos, (void*) _findbyPID);
+	   tabla = list_find(listaDeTablasDeArchivosDeProcesos, (void*) _findbyPID);
+
+	   if(tabla == NULL) {
+		   tabla = malloc(sizeof(t_table_file));
+
+		   tabla->pid = pid;
+		   tabla->tabla_archivos = list_create();
+		   tabla->contador_fd = 0;
+
+		   list_add(listaDeTablasDeArchivosDeProcesos, tabla);
+	   }
 	   return tabla;
 }
 

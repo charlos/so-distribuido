@@ -28,9 +28,11 @@ int main(int argc, char* argv[]) {
 	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
+	contador_fd_global = 0;
+
 	tabla_variables_compartidas = list_create();
 	load_kernel_properties(argv[1]);
-	tabla_archivos = list_create();
+	listaDeTablasDeArchivosDeProcesos = list_create();
 	tabla_paginas_heap = list_create();
 	tabla_paginas_por_proceso = list_create();
 	tabla_sockets_procesos = list_create();
@@ -70,8 +72,8 @@ int main(int argc, char* argv[]) {
 
 
 	TAMANIO_PAGINAS = handshake(memory_socket,'k', kernel_conf->stack_size, logger);
-//	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
-//	fs_handshake(&fs_socket, logger);
+	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
+	fs_handshake(&fs_socket, logger);
 
 
 //	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
