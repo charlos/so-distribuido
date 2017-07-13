@@ -309,10 +309,10 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
 
     uint8_t * operation_code = malloc(sizeof(uint8_t));
-    int resp;
+    uint8_t *resp;
     connection_recv(server_socket_kernel, operation_code, &resp);
-    if(resp<0){
-    	pcb->exit_code=resp;
+    if(*resp<0){
+    	pcb->exit_code=*resp;
     }
 }
 
