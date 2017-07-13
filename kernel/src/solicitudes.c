@@ -184,6 +184,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			int socket_proceso = parEncontrado->socket;
 			char * inf = malloc(strlen((char*)escritura->informacion));
 			strcpy(inf, (char*)escritura->informacion);
+
 			resp2 = malloc(sizeof(uint8_t));
 			*resp2 = 1;
 			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
@@ -623,12 +624,6 @@ t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, int fd_archivo){
 char* getPath_Global(int fdGlobal){
 
 	t_global_file * filereg = getFileFromGlobal(fdGlobal);
-
-	/*int i;
-	for (i=0;i<=fdGlobal;i++){
-		filereg = list_get(tabla_global_archivos,i);
-	}*/
-
 	return filereg->file;
 }
 t_global_file * getFileFromGlobal(int global_fd) {

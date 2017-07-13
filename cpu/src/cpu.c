@@ -78,16 +78,16 @@ int main(void) {
 		sleep(quantum_sleep);
 		*continuar = -1;
 
-		nextPageOffsetInStack = malloc(sizeof(t_page_offset));
-		getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
-
-
 		if(list_size(pcb->indice_stack)==0){
 			//Si el indice del stack está vacio es porque estamos en la primera línea de código, creo la primera línea del scope
 			nuevoContexto();
 			pcb->SP--; //Al crear un nuevo contexto se incrementó el StackPointer, pero en este caso, cuando no había contexto alguno, corresponde que SP
 					   //quede en 0 al ser el primer contexto de ejecución.
 		}
+
+		nextPageOffsetInStack = malloc(sizeof(t_page_offset));
+		getNextPosStack();  // Actualizo la variable nextPageOffsetInStack guardando page/offset de la proxima ubicación a utilizar en el stack
+
 		t_indice_codigo* icodigo = malloc(sizeof(t_indice_codigo));
 		t_read_response * read_response;
 		t_read_response * read_response2;
