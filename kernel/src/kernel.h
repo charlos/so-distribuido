@@ -31,10 +31,7 @@ int grado_multiprogramacion, cantidad_programas_planificados;
 
 
 
-typedef struct{
-	t_cpu* cpu;
-	t_PCB* pcb;
-} t_cpu_pcb;
+
 
 /**
  * @NAME:  manage_select

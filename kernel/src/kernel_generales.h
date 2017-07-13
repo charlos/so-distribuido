@@ -22,6 +22,7 @@ sem_t *semColaListos;
 sem_t *semCantidadCpuLibres;
 sem_t *semCantidadProgramasPlanificados;
 sem_t *semCantidadElementosColaListos;
+pthread_mutex_t registro_pid_mutex;
 
 typedef struct{
 	int program_port;
@@ -57,6 +58,11 @@ typedef struct{
 	int paginas_codigo;
 }t_codigo_proceso;
 
+typedef struct{
+	t_PCB* pcb;
+	int cantidad_paginas;
+	char* codigo;
+} t_nuevo_proceso;
 
 typedef struct{
   int file_descriptor;
@@ -108,5 +114,6 @@ t_cpu* obtener_cpu(int socket);
 t_cpu* find_by_fd(int fd);
 bool proceso_bloqueado(t_PCB* pcb);
 t_PCB* sacar_pcb(t_list* list, t_PCB* pcb);
+void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso);
 
 #endif /* KERNEL_GENERALES_H_ */

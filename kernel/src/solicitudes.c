@@ -73,11 +73,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
 		list_add(listaDeTablasDeArchivosDeProcesos, tabla_proceso);
 
+		t_nuevo_proceso* nuevo_proceso = malloc(sizeof(t_nuevo_proceso));
+		nuevo_proceso->cantidad_paginas = cant_paginas;
+		nuevo_proceso->codigo = buffer;
+		nuevo_proceso->pcb = pcb;
+
 		sem_wait(semColaNuevos);
-		queue_push(cola_nuevos, pcb);
+		queue_push(cola_nuevos, nuevo_proceso);
 		sem_post(semColaNuevos);
 		sem_post(semPlanificarLargoPlazo);
-		notificar_memoria_inicio_programa(pcb->pid, cant_paginas, buffer);
 		break;
 	}
 	case OC_FUNCION_RESERVAR:

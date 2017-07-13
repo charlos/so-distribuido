@@ -263,16 +263,18 @@ void planificador_corto_plazo(){
 
 void pasarDeNewAReady(){
 	t_PCB* pcb;
+	t_nuevo_proceso* nuevo_proceso;
 	int cantidadProgramasPlanificados;
 	sem_getvalue(semCantidadProgramasPlanificados, &cantidadProgramasPlanificados);
 	//  no hace nada si el grado de multiprogramacion no se lo permite
 	if(cantidadProgramasPlanificados < kernel_conf->grado_multiprog && queue_size(cola_nuevos) > 0){
 		sem_wait(semColaNuevos);
-		pcb = queue_pop(cola_nuevos);
+		nuevo_proceso = queue_pop(cola_nuevos);
 		sem_post(semColaNuevos);
-		cola_listos_push(pcb);
-
+		notificar_memoria_inicio_programa(nuevo_proceso->pcb->pid, nuevo_proceso->cantidad_paginas, nuevo_proceso->codigo);
+		cola_listos_push(nuevo_proceso->pcb);
 		sem_post(semCantidadProgramasPlanificados);
+		liberar_nuevo_proceso(nuevo_proceso);
 	}
 }
 
