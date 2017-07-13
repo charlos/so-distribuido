@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
-	contador_fd_global = 0;
+	contador_fd_global = 10;
 
 	tabla_variables_compartidas = list_create();
 	load_kernel_properties(argv[1]);

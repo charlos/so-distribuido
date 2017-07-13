@@ -557,10 +557,11 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 	fd_global = buscarArchivoTablaGlobal(direccion);
 
 	if(fd_global == -1) {
-		if(flags.creacion) {
+		if(flags.lectura || flags.creacion) {
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 		} else {
+
 			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo
 			fd_global = -1;
 			fd_proceso = -1;
@@ -681,7 +682,7 @@ int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
 	file->flags = flags;
 	file->offset_cursor = 0;
 
-	list_add(tablaDeArchivosDeProceso, file);
+	list_add(tablaDeArchivosDeProceso->tabla_archivos, file);
 
 	return file->proceso_fd;
 }
@@ -699,7 +700,7 @@ t_table_file* getTablaArchivo(int pid){
 
 		   tabla->pid = pid;
 		   tabla->tabla_archivos = list_create();
-		   tabla->contador_fd = 0;
+		   tabla->contador_fd = 10;
 
 		   list_add(listaDeTablasDeArchivosDeProcesos, tabla);
 	   }
@@ -708,12 +709,6 @@ t_table_file* getTablaArchivo(int pid){
 
 t_list* crearTablaArchProceso(){
 	t_list* tabla_archivo_proceso = list_create();
-
-	t_process_file* file = malloc(sizeof(t_process_file));
-	file->global_fd = 0;
-	file->proceso_fd = 1;
-
-	list_add(tabla_archivo_proceso,file);
 
 	return tabla_archivo_proceso;
 }
