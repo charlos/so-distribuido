@@ -173,7 +173,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
     break;
 	case OC_FUNCION_ESCRIBIR: {
-		uint8_t *resp2;
+		uint8_t *resp2 = malloc(sizeof(uint8_t));
 		escritura = malloc(sizeof(t_archivo));
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
@@ -189,7 +189,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			char * inf = malloc(strlen((char*)escritura->informacion));
 			strcpy(inf, (char*)escritura->informacion);
 
-			resp2 = malloc(sizeof(uint8_t));
+
 			*resp2 = 1;
 			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
 			connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
@@ -216,6 +216,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				}
 			}
 		}
+		free(resp2);
 		break;
 	}
 	case OC_FUNCION_LEER: {
@@ -345,6 +346,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAReady(cpu);
 		//TODO sacar cpu correspondiente del la lista de cpu's
+		break;
+	case OC_ERROR_EJECUCION_CPU:
+		pcb = deserializer_pcb(buffer);
+		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		cpu->proceso_asignado = pcb;
+		pasarDeExecuteAExit(cpu);
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		*resp = -1; //por default no continua procesando
