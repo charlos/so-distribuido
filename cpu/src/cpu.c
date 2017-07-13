@@ -32,7 +32,7 @@ void procesarMsg(char * msg);
 
 int main(void) {
 
-	int *continuar;
+	int *continuar = malloc(sizeof(int));
 	*continuar  = -1;
 	uint16_t quantum_sleep = 0;
 
@@ -62,6 +62,10 @@ int main(void) {
 	char* pcb_serializado;
 
 	while(1){
+		pageend=0;
+		page=0;
+		offset=0;
+		size_to_read=0;
 
 		if(*continuar==-1){
 
@@ -95,7 +99,8 @@ int main(void) {
 
 		instruccion = malloc(icodigo->size);
 
-		page = calcularPaginaProxInstruccion();
+		page = icodigo->offset/pagesize;
+		//calcularPaginaProxInstruccion();
 		offset = icodigo->offset-(page*pagesize);
 		pageend = (icodigo->offset+icodigo->size)/pagesize;
 
@@ -109,7 +114,7 @@ int main(void) {
 		//pido leer la instruccion a la memoria
 		read_response = memory_read(server_socket_memoria, pcb->pid, page,offset , size_to_read, logger);
 		if (read_response->exec_code!=1){
-			log_error(logger, "Error al leer de memoria (Page [%d] |Offset [%d] |Size [%d])", page, icodigo->offset, size_to_read);
+			log_error(logger, "Error al leer código de memoria (Page [%d] |Offset [%d] |Size [%d])", page, icodigo->offset, size_to_read);
 		}
 
 		memcpy(instruccion,read_response->buffer,read_response->buffer_size);
@@ -126,7 +131,11 @@ int main(void) {
 
 		log_trace(logger, "Evaluando instruccion: %s",instruccion);
 
-		procesarMsg(instruccion);
+		if(instruccion[0]=='\t'){
+			procesarMsg(instruccion+1);
+		}else{
+			procesarMsg(instruccion);
+		}
 
 		free(instruccion);
 		free(read_response->buffer);
@@ -158,7 +167,7 @@ int main(void) {
 		}
 
 	}
-
+	free(continuar);
 	return EXIT_SUCCESS;
 
 }
