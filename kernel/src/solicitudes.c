@@ -16,7 +16,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	char* buffer = info_solicitud->buffer;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
 	t_puntero bloque_heap_ptr;
-	int status;
 	int *resp = malloc(sizeof(int));
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
@@ -25,7 +24,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	t_PCB* pcb;
 	t_PCB* auxPCB;
 	t_cpu* cpu;
-	char* nombre_semaforo;
+	char* nombre_semaforo, *nombre_variable, *informacion, * direccion;
 	t_semaphore* semaforo;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
@@ -33,13 +32,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	t_codigo_proceso* info_proceso;
 	t_shared_var* variable_recibida;
 	t_archivo * escritura;
-	int socket_consola;
-	char * informacion;
-
-    int length_direccion, pid, size_nombre;
-    char* direccion;
+    int length_direccion, pid, size_nombre, socket_consola, status;
     t_banderas flags;
-    char* nombre_variable;
 
 	switch(operation_code){
 	case OC_SOLICITUD_PROGRAMA_NUEVO: {
@@ -53,16 +47,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		parnuevo->socket = saved_socket;
 		list_add(tabla_sockets_procesos, parnuevo);
 
-		status = 0;
-		status = memory_init_process(memory_socket, pcb->pid, cant_paginas, logger);
-
 		log_trace(logger, "SOCKET DEL PID %d: %d", pcb->pid, saved_socket);
-		if(status == -1){
-			log_error(logger, "Se desconecto Memoria");
-			exit(1);
-		}
 
-		mandar_codigo_a_memoria(buffer, pcb->pid);
 		pcb->cantidad_paginas = cant_paginas-kernel_conf->stack_size;
 		pcb->PC = 0;
 
@@ -70,9 +56,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		paginas_de_codigo->pid = pcb->pid;
 		paginas_de_codigo->paginas_codigo = cant_paginas;
 		list_add(tabla_paginas_por_proceso, paginas_de_codigo);
-
-		log_trace(logger, "Mandando PID");
-		printf("Mandando PID\n");
 
 		connection_send(info_solicitud->file_descriptor, OC_NUEVA_CONSOLA_PID, &(pcb->pid));
 
@@ -94,7 +77,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		queue_push(cola_nuevos, pcb);
 		sem_post(semColaNuevos);
 		sem_post(semPlanificarLargoPlazo);
-
+		notificar_memoria_inicio_programa(pcb->pid, cant_paginas, buffer);
 		break;
 	}
 	case OC_FUNCION_RESERVAR:
@@ -381,11 +364,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	default:
 		fprintf(stderr, "Desconexion\n");
 		return;
-//		FD_CLR(info_solicitud->file_descriptor, (info_solicitud->set));
-		//TODO Ver que hacer con cada desconexion
 	}
-	FD_SET(info_solicitud->file_descriptor, info_solicitud->set);
-
 	free(resp);
 }
 
@@ -415,7 +394,6 @@ void mandar_codigo_a_memoria(char* codigo, int pid){
 		memory_write(memory_socket, pid, i, 0, cant_a_mandar, cant_a_mandar, codigo + offset, logger);
 	}
 }
-
 
 t_indice_codigo* obtener_indice_codigo(t_metadata_program* metadata){
 	int i = 0;
@@ -525,11 +503,8 @@ t_pagina_heap* buscar_pagina_heap(int pid, int nro_pagina){
 }
 
 void marcar_bloque_libre(t_heapMetadata* metadata, char* pagina){
-//	int offset = pedido_free->posicion % TAMANIO_PAGINAS;
-//	t_heapMetadata* metadata = leer_metadata(pagina + offset);
 	metadata->isFree = 1;
 	memcpy(pagina, metadata, sizeof(t_heapMetadata));
-
 }
 
 void tabla_heap_cambiar_espacio_libre(t_pedido_liberar_memoria* pedido_free, int espacio_liberado){
@@ -843,4 +818,14 @@ void sumar_espacio_reservado(int espacio_pedido, int socket){
 	}
 	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 	parEncontrado->memoria_reservada += espacio_pedido;
+}
+
+void notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
+	int status = 0;
+	status = memory_init_process(memory_socket, pid, cant_paginas, logger);
+	if(status == -1){
+		log_error(logger, "Se desconecto Memoria");
+		exit(1);
+	}
+	mandar_codigo_a_memoria(codigo_completo, pid);
 }
