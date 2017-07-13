@@ -23,35 +23,23 @@ extern t_PCB* pcb;
 
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
+	t_args_vars * newvar = malloc(sizeof(t_args_vars));
+
+	newvar->id = identificador_variable;
+
+	updatePageOffsetAvailable(sizeof(t_puntero));
+
+	newvar->pagina = nextPageOffsetInStack->page;
+	newvar->offset = nextPageOffsetInStack->offset;
+	newvar->size = sizeof(t_puntero);
+
 	if (identificador_variable >= '0' && identificador_variable <= '9') {
-		t_args_vars * newarg = malloc(sizeof(t_args_vars));
-		newarg->id = identificador_variable;
-
-		updatePageOffsetAvailable(sizeof(t_puntero)); //actualizo la pagina y offset que usaré revisando si hay espacio en la pagina actual para la nueva variable
-												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
-												//no hay que validar ahora, cuando mandemos a escribir en memoria ésta nos dará error
-
-		newarg->pagina = nextPageOffsetInStack->page;
-		newarg->offset = nextPageOffsetInStack->offset;
-		newarg->size = sizeof(t_puntero);
-		agregarAStack(newarg,ARG_STACK);
-
-
+		agregarAStack(newvar,ARG_STACK);
 	} else {
-		t_args_vars * newvar = malloc(sizeof(t_args_vars));
-		newvar->id = identificador_variable;
-
-		updatePageOffsetAvailable(sizeof(t_puntero)); //actualizo la pagina y offset que usaré revisando si hay espacio en pa pagina actual para la nueva variable
-												//si no lo hay incremento el nro de pagina para pasar a usar la siguiente
-												//no hay que validar ahora, cuando mandemos a escribir en memoria ésta nos dará error
-
-		newvar->pagina = nextPageOffsetInStack->page;
-		newvar->offset = nextPageOffsetInStack->offset;
-		newvar->size = sizeof(t_puntero);
 		agregarAStack(newvar,VAR_STACK);
-
 	}
-	return nextPageOffsetInStack->page*pagesize+nextPageOffsetInStack->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
+	nextPageOffsetInStack->offset+=newvar->size;
+	return newvar->pagina*pagesize+newvar->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
@@ -66,18 +54,16 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar){
 	log_trace(logger, "Llamar con Retorno a [%d] y id [%s]", donde_retornar,etiqueta);
 	t_element_stack* regIndicestack = nuevoContexto();
 
-	posicion_memoria* retVar = malloc(sizeof(posicion_memoria));
-	retVar->offset = getOffsetofPos(donde_retornar);
-	retVar->pagina = getPageofPos(donde_retornar);
-	retVar->size = sizeof(posicion_memoria);
+	regIndicestack->retVar->offset = getOffsetofPos(donde_retornar);
+	regIndicestack->retVar->pagina = getPageofPos(donde_retornar);
+	regIndicestack->retVar->size = sizeof(t_valor_variable);
 
-	regIndicestack->retVar = retVar;
 	regIndicestack->retPos = pcb->PC;
 
     int* posicion = (int*)dictionary_get(pcb->indice_etiquetas, etiqueta);
     pcb->PC = *posicion;
     pcb->PC--; //decremento porque al terminar de ejecutar se incrementará PC
-    log_trace(logger, "Ir a la linea [%d]", pcb->PC);
+    log_trace(logger, "Ir a la linea [%d]", pcb->PC+1);
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombre_variable){

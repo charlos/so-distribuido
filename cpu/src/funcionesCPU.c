@@ -23,14 +23,20 @@ t_element_stack* nuevoContexto(){
 	regIndicestack->args = list_create();
 	regIndicestack->vars = list_create();
 
+	regIndicestack->retPos=0;
+	regIndicestack->retVar = malloc(sizeof(posicion_memoria));
+	regIndicestack->retVar->offset = 0;
+	regIndicestack->retVar->pagina = 0;
+	regIndicestack->retVar->size = 0;
+
 	stack_push(pcb->indice_stack,regIndicestack);
 
 	return regIndicestack;
 }
 
-int agregarAStack(t_args_vars* new_arg_var,int tipo){
+void agregarAStack(t_args_vars* new_arg_var,int tipo){
 	t_element_stack* regContextStack = list_get(pcb->indice_stack,pcb->SP);
-	int resp;
+
 	switch (tipo) {
 	case VAR_STACK:
 		arg_var_push(regContextStack->vars, new_arg_var);
@@ -38,11 +44,7 @@ int agregarAStack(t_args_vars* new_arg_var,int tipo){
 	case ARG_STACK:
 		arg_var_push(regContextStack->args, new_arg_var);
 		break;
-	default:
-		resp = -1;
-		break;
 	}
-	return resp;
 }
 
 t_element_stack* stack_pop(t_stack* stack){
@@ -135,57 +137,75 @@ int calcularPaginaProxInstruccion(){
 	return page;
 }
 
+posicion_memoria buscoPos_recursiva(int sp){
+	posicion_memoria resp;
+	t_args_vars* lastPosStack;
+	if (list_size(pcb->indice_stack)!=0){
+		t_element_stack* lastcontext = list_get(pcb->indice_stack,sp);
 
-void getNextPosStack(){
-	t_args_vars* lastPosStack = malloc(sizeof(t_args_vars));
-	u_int32_t pagina,offset, size;
-	if (pcb->SP!=0){
-	t_element_stack* lastcontext = list_get(pcb->indice_stack,pcb->SP);
+		if (list_size(lastcontext->args)>0){
+			lastPosStack = list_get(lastcontext->args,list_size(lastcontext->args)-1);
+			resp.pagina = lastPosStack->pagina;
+			resp.offset = lastPosStack->offset;
+			resp.size = lastPosStack->size;
+		} else{
+			resp.pagina = pcb->cantidad_paginas;
+			resp.offset = 0;
+			resp.size = 0;
+		}
 
-	if (list_size(lastcontext->args)>0){
-		lastPosStack = list_get(lastcontext->args,list_size(lastcontext->args)-1);
-		pagina = lastPosStack->pagina;
-		offset = lastPosStack->offset;
-		size = lastPosStack->size;
-	} else{
-		pagina = pcb->cantidad_paginas;
-		offset = 0;
-		size = 0;
-	}
-
-	if (list_size(lastcontext->vars)>0){
-		lastPosStack = list_get(lastcontext->vars,list_size(lastcontext->vars)-1);
-		if(lastPosStack->pagina > pagina){
-			pagina = lastPosStack->pagina;
-			offset = lastPosStack->offset;
-			size = lastPosStack->size;
-		}else if(pagina == lastPosStack->pagina){
-			if(lastPosStack->offset > offset){
-				offset = lastPosStack->offset;
-				size = lastPosStack->size;
+		if (list_size(lastcontext->vars)>0){
+			lastPosStack = list_get(lastcontext->vars,list_size(lastcontext->vars)-1);
+			if(lastPosStack->pagina > resp.pagina){
+				resp.pagina = lastPosStack->pagina;
+				resp.offset = lastPosStack->offset;
+				resp.size = lastPosStack->size;
+			}else if(resp.pagina == lastPosStack->pagina){
+				if(lastPosStack->offset > resp.offset){
+					resp.offset = lastPosStack->offset;
+					resp.size = lastPosStack->size;
+				}else if(resp.size==0){
+					resp.offset+=lastPosStack->size;
+				}
 			}
 		}
-	}
+
+		if(resp.pagina==pcb->cantidad_paginas && resp.offset==0 && resp.size==0){
+			if (sp>0){
+				resp = buscoPos_recursiva(sp-1);
+			}else{
+				return resp;
+			}
+		}
+
 	} else {
-		pagina = pcb->cantidad_paginas;
-		offset = 0;
-		size = 0;
+		resp.pagina = pcb->cantidad_paginas;
+		resp.offset = 0;
+		resp.size = 0;
 	}
 
-	nextPageOffsetInStack->page=pagina;
-	nextPageOffsetInStack->offset=offset;
-	updatePageOffsetAvailable(size);
+	return resp;
+}
 
-	free(lastPosStack);
+void getNextPosStack(){
+
+	posicion_memoria resp = buscoPos_recursiva(pcb->SP);
+
+	nextPageOffsetInStack->page=resp.pagina;
+	nextPageOffsetInStack->offset=resp.offset;
+	if (nextPageOffsetInStack->offset+resp.size > pagesize){
+		nextPageOffsetInStack->page++;
+		nextPageOffsetInStack->offset=0;
+	}else{
+		nextPageOffsetInStack->offset+=resp.size;
+	}
 
 }
 
 void updatePageOffsetAvailable(u_int32_t size){
 	if (nextPageOffsetInStack->offset+size > pagesize){
-		nextPageOffsetInStack->page=nextPageOffsetInStack->page+1;
+		nextPageOffsetInStack->page++;
 		nextPageOffsetInStack->offset=0;
-	}else{
-		nextPageOffsetInStack->offset=nextPageOffsetInStack->offset+size;
 	}
 }
 

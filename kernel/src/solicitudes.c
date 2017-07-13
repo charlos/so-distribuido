@@ -201,7 +201,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			int socket_proceso = parEncontrado->socket;
 			char * inf = malloc(strlen((char*)escritura->informacion));
 			strcpy(inf, (char*)escritura->informacion);
-			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+			*resp2 = connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+			connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 		}else{
 			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
 			t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, escritura->descriptor_archivo);
