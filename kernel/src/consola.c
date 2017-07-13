@@ -8,7 +8,9 @@
 #include "kernel_generales.h"
 #include "solicitudes.h"
 
-int iniciar_consola(){
+int leer_comando(char* command);
+
+void iniciar_consola(){
 	char* command = malloc(sizeof(char)*256);
 
 	printf("/*******************************************************\\ \n");
@@ -22,10 +24,10 @@ int iniciar_consola(){
 
 	fgets(command, 256, stdin);
 
-	int ret = read_command(command);
+	int ret = leer_comando(command);
 }
 
-int read_command(char* command) {
+int leer_comando(char* command) {
 
 	int caracter = 0;
 	while (command[caracter] != '\n') caracter++;
@@ -67,7 +69,7 @@ void listar_procesos_de_cola(t_queue* cola_de_estado){
 	void _imprimir_proceso(t_PCB* pcb){
 		printf("Proceso id: %d\n", pcb->pid);
 	}
-	list_iterate(cola_de_estado, (void*) _imprimir_proceso);
+	list_iterate(cola_de_estado->elements, (void*) _imprimir_proceso);
 }
 
 void imprimir_tabla_global_de_archivos(){

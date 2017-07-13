@@ -22,6 +22,7 @@
 
 int main(int argc, char* argv[]) {
 
+	fd_set master_cpu, master_prog;
 	cola_listos = queue_create();
 	registro_pid = 1;
 
@@ -81,6 +82,7 @@ int main(int argc, char* argv[]) {
 
 	pthread_t hilo_cpu;
 	pthread_t hilo_consola;
+	pthread_t hilo_pantalla;
 
 
 	t_aux *estruc_cpu, *estruc_prog;
@@ -153,7 +155,6 @@ void manage_select(t_aux* estructura){
 		lectura = *(estructura->master);
 		select(set_fd_max +1, &lectura, NULL, NULL, NULL);
 		for(fd_seleccionado = 0 ; fd_seleccionado <= set_fd_max ; fd_seleccionado++){
-			if(fd_seleccionado == 1)continue;
 			if(FD_ISSET(fd_seleccionado, &lectura)){
 				if(fd_seleccionado == listening_socket){
 					if((nuevaConexion = accept_connection(listening_socket)) == -1){
@@ -186,7 +187,7 @@ void manage_select(t_aux* estructura){
 						//si es una desconexion ni si quiera creo los hilos
 						FD_CLR(fd_seleccionado, estructura->master);
 
-						if(estructura->port = kernel_conf->cpu_port){
+						if(estructura->port == kernel_conf->cpu_port){
 							//TODO sacar cpu correspondiente del la lista de cpu's
 						}
 

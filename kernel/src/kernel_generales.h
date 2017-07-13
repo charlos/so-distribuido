@@ -72,7 +72,7 @@ typedef struct{
 }t_semaphore;
 
 
-fd_set master_cpu, master_prog;
+
 int registro_pid;
 t_log* logger;
 t_queue* cola_nuevos;
@@ -108,5 +108,7 @@ t_cpu* obtener_cpu(int socket);
 t_cpu* find_by_fd(int fd);
 bool proceso_bloqueado(t_PCB* pcb);
 t_PCB* sacar_pcb(t_list* list, t_PCB* pcb);
+void iniciar_consola();
+
 
 #endif /* KERNEL_GENERALES_H_ */
