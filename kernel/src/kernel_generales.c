@@ -36,7 +36,9 @@ void load_kernel_properties(char * ruta) {
 
 t_PCB* crear_PCB(){
 	t_PCB* PCB = malloc(sizeof(t_PCB));
+	pthread_mutex_lock(&registro_pid_mutex);
 	PCB->pid = registro_pid++;
+	pthread_mutex_unlock(&registro_pid_mutex);
 	PCB->cantidad_paginas = 0;
 	PCB->exit_code = 0;
 	PCB->SP = 0;
@@ -133,4 +135,9 @@ t_cpu* obtener_cpu(int file_descriptor){
 		return cpu->file_descriptor == file_descriptor;
 	}
 	return list_find(lista_cpu, (void*)_mismo_file_descriptor);
+}
+
+void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso){
+	free(nuevo_proceso->codigo);
+	free(nuevo_proceso);
 }

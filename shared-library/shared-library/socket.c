@@ -103,6 +103,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 	switch ((int)operation_code) {
 		case OC_PCB:
 		case OC_DESCONEX_CPU:
+		case OC_ERROR_EJECUCION_CPU:
 		case OC_TERMINA_PROGRAMA:
 		case OC_TERMINO_INSTRUCCION:
 			message_size_value = ((t_stream*) message)->length;
@@ -226,6 +227,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_PCB:
 			case OC_DESCONEX_CPU:
 			case OC_TERMINA_PROGRAMA:
+			case OC_ERROR_EJECUCION_CPU:
 			case OC_TERMINO_INSTRUCCION:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer,message_size, 0);
