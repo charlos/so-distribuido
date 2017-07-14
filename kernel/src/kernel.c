@@ -264,6 +264,7 @@ void planificador_corto_plazo(){
 
 void pasarDeNewAReady(){
 	t_PCB* pcb;
+	int respuesta;
 	t_nuevo_proceso* nuevo_proceso;
 	int cantidadProgramasPlanificados;
 	sem_getvalue(semCantidadProgramasPlanificados, &cantidadProgramasPlanificados);
@@ -272,10 +273,15 @@ void pasarDeNewAReady(){
 		sem_wait(semColaNuevos);
 		nuevo_proceso = queue_pop(cola_nuevos);
 		sem_post(semColaNuevos);
-		notificar_memoria_inicio_programa(nuevo_proceso->pcb->pid, nuevo_proceso->cantidad_paginas, nuevo_proceso->codigo);
-		cola_listos_push(nuevo_proceso->pcb);
-		sem_post(semCantidadProgramasPlanificados);
-		liberar_nuevo_proceso(nuevo_proceso);
+		respuesta = notificar_memoria_inicio_programa(nuevo_proceso->pcb->pid, nuevo_proceso->cantidad_paginas, nuevo_proceso->codigo);
+		if(respuesta == -203){
+			nuevo_proceso->pcb->exit_code = -1;
+			queue_push(cola_exit, nuevo_proceso->pcb);
+		} else {
+			cola_listos_push(nuevo_proceso->pcb);
+			sem_post(semCantidadProgramasPlanificados);
+			liberar_nuevo_proceso(nuevo_proceso);
+		}
 	}
 }
 

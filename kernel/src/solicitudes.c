@@ -347,6 +347,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		pcb = deserializer_pcb(buffer);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
+		memory_finalize_process(memory_socket, pcb->pid, logger);
 		pasarDeExecuteAExit(cpu);
 		break;
 	case OC_DESCONEX_CPU:
@@ -358,6 +359,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_ERROR_EJECUCION_CPU:
 		pcb = deserializer_pcb(buffer);
+		memory_finalize_process(memory_socket, pcb->pid, logger);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAExit(cpu);
@@ -838,12 +840,13 @@ void sumar_espacio_reservado(int espacio_pedido, int socket){
 	parEncontrado->memoria_reservada += espacio_pedido;
 }
 
-void notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
+int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
 	int status = 0;
 	status = memory_init_process(memory_socket, pid, cant_paginas, logger);
-	if(status == -1){
-		log_error(logger, "Se desconecto Memoria");
-		exit(1);
+	if(status == -203){
+		log_error(logger, "No hay espacio suficiente para nuevo programa");
+		return status;
 	}
 	mandar_codigo_a_memoria(codigo_completo, pid);
+	return status;
 }
