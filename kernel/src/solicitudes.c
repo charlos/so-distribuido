@@ -164,8 +164,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		fd_proceso = abrir_archivo(pid, direccion, flags);
 	    if(fd_proceso == -1) {
 
-	    	int _mismoPid(t_par_socket_pid par){
-	    		 return par.pid == pid;
+	    	int _mismoPid(t_par_socket_pid *par){
+	    		 return par->pid == pid;
 	    	}
 
 	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
@@ -206,7 +206,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
 			t_process_file* file = buscarArchivoTablaProceso(tabla_archivos_proceso, escritura->descriptor_archivo);
 			if(file==NULL){
-				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_ARCHIVO_NO_ABIERTO);
+				resp2=EC_ARCHIVO_NO_ABIERTO;
+				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 			}else{
 				if(file->flags.escritura){
 					 *resp2 = fs_write(fs_socket, escritura->descriptor_archivo, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
@@ -215,13 +216,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 case ENOSPC:
-					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_FS_LLENO);
+					 		resp2=EC_FS_LLENO;
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 default:
-					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_DESCONOCIDO);
+					 		resp2=OC_RESP_ESCRIBIR, EC_DESCONOCIDO;
+					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 }
 				}else{
-					connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, EC_SIN_PERMISO_ESCRITURA);
+					resp2=EC_SIN_PERMISO_ESCRITURA;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 				}
 			}
 		}
@@ -609,7 +613,7 @@ int crearArchivoTablaGlobal(char* direccion){
 	memcpy(filereg->file, direccion,string_length(direccion));
 	filereg->global_fd = contador_fd_global++;
 	filereg->open=1;
-
+	//hablar con filesystem!!!!
 	//TODO semaforos!
 	list_add(tabla_global_archivos,filereg);
 
