@@ -148,7 +148,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int direccion_length = *(int*)buffer;
 		pid = *(uint16_t*)(buffer + sizeof(int));
 		direccion = malloc(direccion_length);
-		strcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t));
+		memcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t), direccion_length);
+//		strcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t));
 		flags = *(t_banderas*)(buffer + sizeof(int) + sizeof(uint16_t) + direccion_length);
 
 		int fd_proceso;
@@ -555,11 +556,19 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 	int fd_proceso;
 	int fd_global; //guarda la posición del archivo en la tabla global
 	fd_global = buscarArchivoTablaGlobal(direccion);
+	int result = fs_validate_file(fs_socket, direccion, logger);
 
 	if(fd_global == -1) {
-		if(flags.lectura || flags.creacion) {
+		if(flags.lectura && result == ISREG) {
+
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+		} else if(flags.creacion && result == ISNOTREG) {
+
+			int res = fs_create_file(fs_socket, direccion, logger);
+			fd_global = crearArchivoTablaGlobal(direccion);
+			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+
 		} else {
 
 			//TODO enviar mensaje a consola: "No existe archivo" + el nombre del archivo

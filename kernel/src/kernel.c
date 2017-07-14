@@ -73,8 +73,8 @@ int main(int argc, char* argv[]) {
 
 
 	TAMANIO_PAGINAS = handshake(memory_socket,'k', kernel_conf->stack_size, logger);
-	//fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
-	//fs_handshake(&fs_socket, logger);
+	fs_socket = connect_to_socket(kernel_conf->filesystem_ip, kernel_conf->filesystem_port);
+	fs_handshake(&fs_socket, logger);
 
 
 	tabla_global_archivos = list_create();
