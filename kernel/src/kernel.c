@@ -187,7 +187,9 @@ void manage_select(t_aux* estructura){
 						FD_CLR(fd_seleccionado, estructura->master);
 
 						if(estructura->port == kernel_conf->cpu_port){
-							//TODO sacar cpu correspondiente del la lista de cpu's
+							t_cpu* cpu = obtener_cpu(fd_seleccionado);
+							pasarDeExecuteAReady(cpu);
+							eliminar_cpu(fd_seleccionado);
 						}
 
 					}else{
@@ -376,4 +378,12 @@ void cola_listos_push(void *element){
 	queue_push(cola_listos, element);
 	sem_post(semColaListos);
 	sem_post(semCantidadElementosColaListos);
+}
+
+void eliminar_cpu(int file_descriptor){
+	bool _is_cpu(t_cpu* cpu){
+		return (cpu->file_descriptor == file_descriptor);
+	}
+
+	list_remove_and_destroy_by_condition(lista_cpu, _is_cpu, free);
 }
