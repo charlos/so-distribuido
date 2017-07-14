@@ -90,7 +90,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		info_proceso = buscar_codigo_de_proceso(pedido->pid);
 		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
-			memory_assign_pages(memory_socket, pedido->pid, 1, logger);
+			status = memory_assign_pages(memory_socket, pedido->pid, 1, logger);
+			if(status < 0){
+				if(status == -203){
+					bloque_heap_ptr = 0;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+					log_trace(logger, "No se pudo asignar pagina de heap para proceso con pid: %d", pedido->pid);
+				} else log_trace(logger, "Se desconecto la memoria");
+				break;
+			}
 
 			tabla_heap_agregar_pagina(pedido->pid);
 			pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);

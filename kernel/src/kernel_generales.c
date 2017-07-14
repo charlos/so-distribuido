@@ -126,7 +126,7 @@ t_PCB* sacar_pcb(t_list* list, t_PCB* pcb){
 	bool _is_pcb(t_PCB* p) {
 		return (p->pid == pcb->pid);
 	}
-	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
+	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados->elements, (void*) _is_pcb);
 	return pcbEncontrado;
 }
 

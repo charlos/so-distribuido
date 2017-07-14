@@ -204,6 +204,10 @@ t_puntero alocar(t_valor_variable espacio){
     uint8_t operation_code;
     connection_recv(server_socket_kernel, &operation_code, &buffer);
 
+    if((t_puntero)*buffer == 0 ){
+    	pcb->exit_code = EC_SIN_PAGINAS_PROCESO;
+    	return 0;
+    }
     return *buffer;
 
 }
