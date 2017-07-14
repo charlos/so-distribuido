@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
 	cola_bloqueados = queue_create();
 	cola_cpu = queue_create();
 	cola_ejecutando = queue_create();
-	cola_exit = queue_create();
 	cola_finalizados = queue_create();
 	cola_listos = queue_create();
 
@@ -243,8 +242,10 @@ void kernel_planificacion() {
 
 void planificador_largo_plazo(){
 	while(true){
+		pthread_mutex_lock(&mutex_planificar_largo_plazo);
 		sem_wait(semPlanificarLargoPlazo);
 		pasarDeNewAReady();
+		pthread_mutex_unlock(&mutex_planificar_largo_plazo);
 	}
 }
 
@@ -255,10 +256,11 @@ void planificador_largo_plazo(){
 void planificador_corto_plazo(){
 	while(true){
 		// se podria usar para habilitar/deshabilitar la planificacion
-		//sem_wait(semPlanificarCortoPlazo);
+		pthread_mutex_lock(&mutex_planificar_corto_plazo);
 		sem_wait(semCantidadElementosColaListos);
 		sem_wait(semCantidadCpuLibres);
 		pasarDeReadyAExecute();
+		pthread_mutex_lock(&mutex_planificar_corto_plazo);
 	}
 }
 
@@ -276,7 +278,8 @@ void pasarDeNewAReady(){
 		respuesta = notificar_memoria_inicio_programa(nuevo_proceso->pcb->pid, nuevo_proceso->cantidad_paginas, nuevo_proceso->codigo);
 		if(respuesta == -203){
 			nuevo_proceso->pcb->exit_code = -1;
-			queue_push(cola_exit, nuevo_proceso->pcb);
+			// la funcion pasarDeNewAReady() termina pasando a finalizados!? (que asco...)
+			queue_push(cola_finalizados, nuevo_proceso->pcb);
 		} else {
 			cola_listos_push(nuevo_proceso->pcb);
 			sem_post(semCantidadProgramasPlanificados);

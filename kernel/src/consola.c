@@ -59,9 +59,15 @@ int leer_comando(char* command) {
 		kernel_conf->grado_multiprog = atoi(palabras[1]);
 		sem_post(semPlanificarLargoPlazo);
 	}
-	else if(strcmp(palabras[0], "stop")==0) {
-
+	else if(strcmp(palabras[0], "play")==0) {
+		pthread_mutex_unlock(&mutex_planificar_corto_plazo);
+		pthread_mutex_unlock(&mutex_planificar_largo_plazo);
 	}
+	else if(strcmp(palabras[0], "stop")==0) {
+		pthread_mutex_lock(&mutex_planificar_corto_plazo);
+		pthread_mutex_lock(&mutex_planificar_largo_plazo);
+	}
+
 	else return -2;
 }
 
