@@ -331,7 +331,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 //		semaforoSignal(semaforo);
 		break;
 	case OC_FUNCION_WAIT:
-		//TODO nombre_semaforo deberia venir en "buffer"
 		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
@@ -351,6 +350,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		pcb = deserializer_pcb(buffer);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
+		memory_finalize_process(memory_socket, pcb->pid, logger);
 		pasarDeExecuteAExit(cpu);
 		break;
 	case OC_DESCONEX_CPU:
@@ -358,13 +358,20 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAReady(cpu);
-		//TODO sacar cpu correspondiente del la lista de cpu's
+		eliminar_cpu(info_solicitud->file_descriptor);
 		break;
 	case OC_ERROR_EJECUCION_CPU:
 		pcb = deserializer_pcb(buffer);
+		memory_finalize_process(memory_socket, pcb->pid, logger);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAExit(cpu);
+		status = 1;
+		int * _mismopid(t_par_socket_pid * target) {
+			return pcb->pid == target->pid;
+		}
+		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		*resp = -1; //por default no continua procesando
@@ -842,12 +849,13 @@ void sumar_espacio_reservado(int espacio_pedido, int socket){
 	parEncontrado->memoria_reservada += espacio_pedido;
 }
 
-void notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
+int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
 	int status = 0;
 	status = memory_init_process(memory_socket, pid, cant_paginas, logger);
-	if(status == -1){
-		log_error(logger, "Se desconecto Memoria");
-		exit(1);
+	if(status == -203){
+		log_error(logger, "No hay espacio suficiente para nuevo programa");
+		return status;
 	}
 	mandar_codigo_a_memoria(codigo_completo, pid);
+	return status;
 }
