@@ -164,8 +164,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		fd_proceso = abrir_archivo(pid, direccion, flags);
 	    if(fd_proceso == -1) {
 
-	    	int _mismoPid(t_par_socket_pid par){
-	    		 return par.pid == pid;
+	    	int _mismoPid(t_par_socket_pid *par){
+	    		 return par->pid == pid;
 	    	}
 
 	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
@@ -363,6 +363,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAExit(cpu);
+		status = 1;
+		int * _mismopid(t_par_socket_pid * target) {
+			return pcb->pid == target->pid;
+		}
+		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		*resp = -1; //por default no continua procesando
