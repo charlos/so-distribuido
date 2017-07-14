@@ -327,7 +327,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 //		semaforoSignal(semaforo);
 		break;
 	case OC_FUNCION_WAIT:
-		//TODO nombre_semaforo deberia venir en "buffer"
 		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
@@ -355,7 +354,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAReady(cpu);
-		//TODO sacar cpu correspondiente del la lista de cpu's
+		eliminar_cpu(info_solicitud->file_descriptor);
 		break;
 	case OC_ERROR_EJECUCION_CPU:
 		pcb = deserializer_pcb(buffer);

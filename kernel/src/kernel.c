@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
 	cola_bloqueados = queue_create();
 	cola_cpu = queue_create();
 	cola_ejecutando = queue_create();
-	cola_exit = queue_create();
 	cola_finalizados = queue_create();
 	cola_listos = queue_create();
 
@@ -188,7 +187,9 @@ void manage_select(t_aux* estructura){
 						FD_CLR(fd_seleccionado, estructura->master);
 
 						if(estructura->port == kernel_conf->cpu_port){
-							//TODO sacar cpu correspondiente del la lista de cpu's
+							t_cpu* cpu = obtener_cpu(fd_seleccionado);
+							pasarDeExecuteAReady(cpu);
+							eliminar_cpu(fd_seleccionado);
 						}
 
 					}else{
@@ -243,8 +244,10 @@ void kernel_planificacion() {
 
 void planificador_largo_plazo(){
 	while(true){
+		pthread_mutex_lock(&mutex_planificar_largo_plazo);
 		sem_wait(semPlanificarLargoPlazo);
 		pasarDeNewAReady();
+		pthread_mutex_unlock(&mutex_planificar_largo_plazo);
 	}
 }
 
@@ -255,10 +258,11 @@ void planificador_largo_plazo(){
 void planificador_corto_plazo(){
 	while(true){
 		// se podria usar para habilitar/deshabilitar la planificacion
-		//sem_wait(semPlanificarCortoPlazo);
+		pthread_mutex_lock(&mutex_planificar_corto_plazo);
 		sem_wait(semCantidadElementosColaListos);
 		sem_wait(semCantidadCpuLibres);
 		pasarDeReadyAExecute();
+		pthread_mutex_lock(&mutex_planificar_corto_plazo);
 	}
 }
 
@@ -276,7 +280,8 @@ void pasarDeNewAReady(){
 		respuesta = notificar_memoria_inicio_programa(nuevo_proceso->pcb->pid, nuevo_proceso->cantidad_paginas, nuevo_proceso->codigo);
 		if(respuesta == -203){
 			nuevo_proceso->pcb->exit_code = -1;
-			queue_push(cola_exit, nuevo_proceso->pcb);
+			// la funcion pasarDeNewAReady() termina pasando a finalizados!? (que asco...)
+			queue_push(cola_finalizados, nuevo_proceso->pcb);
 		} else {
 			cola_listos_push(nuevo_proceso->pcb);
 			sem_post(semCantidadProgramasPlanificados);
@@ -373,4 +378,12 @@ void cola_listos_push(void *element){
 	queue_push(cola_listos, element);
 	sem_post(semColaListos);
 	sem_post(semCantidadElementosColaListos);
+}
+
+void eliminar_cpu(int file_descriptor){
+	bool _is_cpu(t_cpu* cpu){
+		return (cpu->file_descriptor == file_descriptor);
+	}
+
+	list_remove_and_destroy_by_condition(lista_cpu, _is_cpu, free);
 }

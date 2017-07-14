@@ -23,6 +23,8 @@ sem_t *semCantidadCpuLibres;
 sem_t *semCantidadProgramasPlanificados;
 sem_t *semCantidadElementosColaListos;
 pthread_mutex_t registro_pid_mutex;
+pthread_mutex_t mutex_planificar_corto_plazo;
+pthread_mutex_t mutex_planificar_largo_plazo;
 
 typedef struct{
 	int program_port;
@@ -84,7 +86,6 @@ t_log* logger;
 t_queue* cola_nuevos;
 t_queue* cola_listos;
 t_queue* cola_bloqueados;
-t_queue* cola_exit;
 t_queue* cola_cpu;
 t_list* listaDeTablasDeArchivosDeProcesos;
 t_queue* cola_finalizados;
