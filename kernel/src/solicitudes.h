@@ -67,6 +67,7 @@ void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantida
 int calcular_paginas_necesarias(char* codigo);
 char* getPathFrom_PID_FD(int pid, int fdProceso);
 t_global_file * getFileFromGlobal(int global_fd);
+char* getPath_Global(int fdGlobal);
 int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo);
 
 #endif /* SOLICITUDES_H_ */
