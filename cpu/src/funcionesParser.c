@@ -243,7 +243,6 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     memcpy(buffer + sizeof(int) + sizeof(uint16_t) + length_direccion, &banderas, sizeof(t_banderas));
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
-    free(buffer);
     int* fd_proceso = malloc(sizeof(int));
     uint8_t operation_code;
     connection_recv(server_socket_kernel, &operation_code, &fd_proceso);
@@ -258,7 +257,7 @@ void borrar(t_descriptor_archivo descriptor){
 
     t_archivo * archivo = malloc(sizeof(t_archivo));
     archivo->descriptor_archivo = descriptor;
-    archivo->pid = pcb->pid
+    archivo->pid = pcb->pid;
 
     connection_send(server_socket_kernel, OC_FUNCION_BORRAR, archivo);
 
