@@ -24,8 +24,6 @@
 
 
 
-sem_t* semColaFinalizados;
-sem_t* semListaCpu;
 int grado_multiprogramacion, cantidad_programas_planificados;
 
 

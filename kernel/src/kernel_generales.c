@@ -141,3 +141,14 @@ void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso){
 	free(nuevo_proceso->codigo);
 	free(nuevo_proceso);
 }
+
+t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar){
+	bool _is_cpu_con_pcb_a_buscar(t_cpu* cpu){
+		return cpu->proceso_asignado->pid == pcbABuscar->pid;
+	}
+	sem_wait(semListaCpu);
+	t_cpu* cpu = list_find(cola_cpu, (void*) _is_cpu_con_pcb_a_buscar);
+	sem_post(semListaCpu);
+
+	return cpu;
+}

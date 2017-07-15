@@ -19,6 +19,8 @@ sem_t *semPlanificarLargoPlazo;
 sem_t *semPlanificarCortoPlazo;
 sem_t *semColaNuevos;
 sem_t *semColaListos;
+sem_t* semColaFinalizados;
+sem_t* semListaCpu;
 sem_t *semCantidadCpuLibres;
 sem_t *semCantidadProgramasPlanificados;
 sem_t *semCantidadElementosColaListos;
@@ -47,6 +49,7 @@ typedef struct{
 	int file_descriptor;
 	t_PCB* proceso_asignado;
 	int quantum;
+	int matar_proceso; // si es true se debe pasar el pcb a la cola finalizados
 }t_cpu;
 
 typedef struct{
@@ -117,5 +120,6 @@ bool proceso_bloqueado(t_PCB* pcb);
 t_PCB* sacar_pcb(t_list* list, t_PCB* pcb);
 void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso);
 void iniciar_consola();
+t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar);
 
 #endif /* KERNEL_GENERALES_H_ */

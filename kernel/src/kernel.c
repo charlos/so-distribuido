@@ -324,14 +324,13 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
-	liberar_cpu(cpu);
 }
 
 void pasarDeBlockedAReady(t_PCB* pcbASacar){
 	sem_wait(semColaBloqueados);
 	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
 	sem_post(semColaBloqueados);
-	cola_listos_push(pcb);
+	if(pcb != NULL) cola_listos_push(pcb);
 }
 
 void enviar_a_ejecutar(t_cpu* cpu){
@@ -342,6 +341,7 @@ void liberar_cpu(t_cpu* cpu){
 	sem_wait(semListaCpu);
 	cpu->quantum = 0;
 	cpu->proceso_asignado = NULL;
+	cpu->matar_proceso = 0;
 	sem_post(semListaCpu);
 
 	sem_post(semCantidadCpuLibres);
