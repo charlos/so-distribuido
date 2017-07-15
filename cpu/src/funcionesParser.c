@@ -248,6 +248,11 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     connection_recv(server_socket_kernel, &operation_code, &fd_proceso);
     free(buffer);
 
+    log_trace(logger, "Descriptor del archivo: [%d]", *fd_proceso);
+
+    if(*fd_proceso < 0) {
+    	pcb->exit_code = *fd_proceso;
+    }
     return *fd_proceso;
     free(fd_proceso);
 }
@@ -309,11 +314,15 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
 
     uint8_t * operation_code = malloc(sizeof(uint8_t));
-    uint8_t *resp;
+    int16_t *resp = malloc(sizeof(int16_t));
     connection_recv(server_socket_kernel, operation_code, &resp);
+
+    log_trace(logger, "RESULTADO DE OPERACION ESCRIBIR: %d", *resp);
     if(*resp<0){
+    	log_error(logger, "ERROR AL ESCRIBIR. CODIGO: %d", *resp);
     	pcb->exit_code=*resp;
     }
+    free(resp);
 }
 
 void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variable tamanio){
@@ -328,9 +337,13 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
     connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 
-    void * buffer = malloc(tamanio);
+    int16_t * resultado = malloc(tamanio);
     uint8_t * operation_code = malloc(sizeof(uint8_t));
-    connection_recv(server_socket_kernel, operation_code, &buffer);
+    connection_recv(server_socket_kernel, operation_code, &resultado);
+
+    if(*resultado < 0) {
+    	pcb->exit_code = *resultado;
+    }
 
     //TODO: ver como retornar la informacion devuelta por kernel
 }

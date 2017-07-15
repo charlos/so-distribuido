@@ -179,6 +179,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
 	    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 	    	free(msgerror);
+
+
 	    }
 
 
@@ -232,7 +234,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 default:
-					 		*resp2=OC_RESP_ESCRIBIR, EC_DESCONOCIDO;
+					 		*resp2= EC_DESCONOCIDO;
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 }
 				}else{
@@ -252,22 +254,28 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
 
 		t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
+		t_process_file * process_file = buscarArchivoTablaProceso(tabla_encontrada, archivo_a_leer->descriptor_archivo);
+
 		rw_lock_unlock(LOCK_READ);
 		char * path = getPathFrom_PID_FD(archivo_a_leer->pid, archivo_a_leer->descriptor_archivo);
-		t_fs_read_resp * read_response = fs_read(fs_socket, path, 0, archivo_a_leer->tamanio, logger);
+		t_fs_read_resp * read_response = fs_read(fs_socket, path, process_file->offset_cursor, archivo_a_leer->tamanio, logger);
 		rw_lock_unlock(UNLOCK);
 
+
 		if(read_response->exec_code != SUCCESS) {
+			int _mismoPid(t_par_socket_pid *par) {
+				return par->pid == pid;
+			}
+			char* msgerror= strdup("No se pudo leer el archivo");
+			t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
+			connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 
-
+			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER_ERROR, &(read_response->exec_code));
 		} else {
 
-			//int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
+			int resultado = memory_write(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
 
-			//if(!resultado) {
-				//TODO error
-			//}
-			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, read_response);
+			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
 		}
 	}
 	break;
@@ -386,6 +394,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu->proceso_asignado = pcb;
 		memory_finalize_process(memory_socket, pcb->pid, logger);
 		pasarDeExecuteAExit(cpu);
+		status = 1;
+		int * _mismopid2(t_par_socket_pid * target) {
+			return pcb->pid == target->pid;
+		}
+		t_par_socket_pid * parEncontrado2 = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid2);
+		connection_send(parEncontrado2->socket, OC_MUERE_PROGRAMA, &status);
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
