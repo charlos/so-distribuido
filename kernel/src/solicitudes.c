@@ -456,6 +456,17 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 
 		break;
+	case OC_KILL_CONSOLA: {
+		pid = *(int*)buffer;
+		status = 1;
+		int * _mismopid(t_par_socket_pid * target) {
+			return pid == target->pid;
+		}
+		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+
+		break;
+	}
 	default:
 		fprintf(stderr, "Desconexion\n");
 		return;
