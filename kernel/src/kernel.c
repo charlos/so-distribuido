@@ -13,7 +13,6 @@
 #include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include <pthread.h>
-#include <thread_db.h>
 #include <sys/inotify.h>
 #include "kernel.h"
 #include "solicitudes.h"
