@@ -264,7 +264,8 @@ void cerrar(t_descriptor_archivo descriptor){
     t_archivo * archivo;
     archivo->pid = pcb->pid;
     archivo->descriptor_archivo = descriptor;
-
+    archivo->informacion = NULL;
+    archivo->tamanio = 0;
     connection_send(server_socket_kernel, OC_FUNCION_CERRAR, archivo);
 }
 

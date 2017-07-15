@@ -132,6 +132,8 @@ t_cpu* cpu_create(int file_descriptor){
 	t_cpu* cpu = malloc(sizeof(t_cpu));
 	cpu->file_descriptor = file_descriptor;
 	cpu->proceso_asignado = NULL;
+	cpu->matar_proceso=0;
+	cpu->quantum=0;
 	return cpu;
 }
 
@@ -207,20 +209,6 @@ void manage_select(t_aux* estructura){
 	}
 }
 
-uint8_t handshake_memory(int socket){
-	uint8_t op_code, *buffer;
-	uint32_t* msg = malloc(sizeof(uint32_t));
-	*msg = 1;
-	connection_send(socket, HANDSHAKE_OC, msg); //OC_HANDSHAKE_MEMORY
-	connection_recv(socket, &op_code, &buffer);
-	return *buffer;
-}
-
-void handshake_filsesystem(int socket){
-	uint8_t op_code;
-	char* buffer;
-	// TODO Definir handshake en filsesysyem
-}
 
 void kernel_planificacion() {
 

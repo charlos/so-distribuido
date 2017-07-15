@@ -265,7 +265,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_archivo * archivo = (t_archivo *)buffer;
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
-		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, archivo->pid);
+		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
 
 		descontarDeLaTablaGlobal(file->global_fd);
 
@@ -288,9 +288,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		memcpy(&valor_variable, buffer + sizeof(int) + sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
 
 		t_table_file* tabla_proceso = getTablaArchivo(pid);
-		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, pid);
+		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, descriptor_archivo);
 
-		file->offset_cursor+=valor_variable;
+		file->offset_cursor=valor_variable;
 	}
 	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
@@ -620,7 +620,6 @@ int crearArchivoTablaGlobal(char* direccion){
 	memcpy(filereg->file, direccion,string_length(direccion));
 	filereg->global_fd = contador_fd_global++;
 	filereg->open=1;
-	//hablar con filesystem!!!!
 	//TODO semaforos!
 	list_add(tabla_global_archivos,filereg);
 
@@ -673,7 +672,9 @@ t_global_file * getFileFromGlobal(int global_fd) {
 		return gf->global_fd == global_fd;
 	}
 	filereg = list_find(tabla_global_archivos, (void*) _ByFDGlobal);
+	return filereg;
 }
+
 void descontarDeLaTablaGlobal(int global_fd) {
 
 	t_global_file * filereg = getFileFromGlobal(global_fd);
