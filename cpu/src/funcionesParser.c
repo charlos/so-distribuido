@@ -256,7 +256,12 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
 
-    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, &descriptor);
+    t_archivo * archivo = malloc(sizeof(t_archivo));
+    archivo->descriptor_archivo = descriptor;
+    archivo->pid = pcb->pid
+
+    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, archivo);
+
 }
 
 void cerrar(t_descriptor_archivo descriptor){

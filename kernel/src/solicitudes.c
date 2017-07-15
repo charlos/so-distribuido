@@ -281,7 +281,28 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		//list_get()
 		break;
 	}
+	case OC_FUNCION_BORRAR: {
+		t_archivo * archivo = (t_archivo *)buffer;
+		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
+		t_process_file * file = buscarArchivoTablaProceso(tabla_proceso, archivo->pid);
 
+		t_global_file * global = getFileFromGlobal(file->global_fd);
+
+		if(global->open > 1) {
+
+		} else {
+			fs_delete_file(fs_socket, global->file, logger);
+			descontarDeLaTablaGlobal(file->global_fd);
+
+			bool _porFD(t_process_file* var){
+				return var->proceso_fd == file->proceso_fd;
+			}
+			list_remove_by_condition(tabla_proceso, (void*) _porFD);
+
+		}
+
+		break;
+	}
 	case OC_FUNCION_MOVER_CURSOR: {
 		int pid;
 		t_valor_variable valor_variable;
