@@ -370,15 +370,25 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		auxPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
-		if( !proceso_bloqueado(pcb) ){ // se verifica si el proceso no está bloqueado
-			if(continuar_procesando(cpu)){
-				//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
-				*resp = kernel_conf->quantum_sleep;
+		if(cpu->matar_proceso){
+			pcb->exit_code = -77;
+			pasarDeExecuteAExit(cpu);
+			liberar_cpu(cpu);
+		} else {
+			if( proceso_bloqueado(pcb) ){
+				// si el proceso está bloqueado libera cpu
+				liberar_cpu(cpu);
 			} else {
-				pasarDeExecuteAReady(cpu);
+				if(continuar_procesando(cpu)){
+					//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
+					*resp = kernel_conf->quantum_sleep;
+				} else {
+					pasarDeExecuteAReady(cpu);
+				}
 			}
 		}
 		pcb_destroy(auxPCB);
+
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 
