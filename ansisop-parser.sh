@@ -7,6 +7,3 @@ cd ./ansisop-parser/parser
 make all
 sudo make install
 
-cd ..
-cd ..
-rm -Rf ansisop-parser;
