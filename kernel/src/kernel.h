@@ -27,10 +27,6 @@
 int grado_multiprogramacion, cantidad_programas_planificados;
 
 
-
-
-
-
 /**
  * @NAME:  manage_select
  * @DESC:  Permite monitoriar sets de file descriptors. Acepta conexiones nuevas y responde a pedidos de los fd que esta escuchando
@@ -47,8 +43,6 @@ void manage_select(t_aux* estructura);
  */
 
 void solicitar_progama_nuevo(int file_descriptor, char* codigo);
-uint8_t handshake_memory(int socket);
-void handshake_filsesystem(int socket);
 void planificador_largo_plazo();
 void planificador_corto_plazo();
 void enviar_a_ejecutar(t_cpu* cpu);
