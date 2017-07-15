@@ -14,6 +14,11 @@
 #include <shared-library/generales.h>
 #include <semaphore.h>
 
+
+#define	LOCK_READ 				0
+#define	LOCK_WRITE 				1
+#define	UNLOCK 					2
+
 sem_t *semColaBloqueados;
 sem_t *semPlanificarLargoPlazo;
 sem_t *semPlanificarCortoPlazo;
@@ -27,6 +32,7 @@ sem_t *semCantidadElementosColaListos;
 pthread_mutex_t registro_pid_mutex;
 pthread_mutex_t mutex_planificar_corto_plazo;
 pthread_mutex_t mutex_planificar_largo_plazo;
+pthread_rwlock_t* lock_tabla_global_archivos;
 
 typedef struct{
 	int program_port;

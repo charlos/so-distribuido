@@ -38,10 +38,11 @@ int main(void) {
 
 	signal(SIGUSR1, &handlerDesconexion);
 
-	crear_logger("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/cpu", &logger, true, LOG_LEVEL_TRACE);
+	crear_logger("./cpu", &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
 	load_properties();
+
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 	inicializarFuncionesParser();

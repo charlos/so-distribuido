@@ -179,6 +179,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
 	    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 	    	free(msgerror);
+
+
 	    }
 
 
@@ -189,7 +191,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
     break;
 	case OC_FUNCION_ESCRIBIR: {
-		uint8_t *resp2 = malloc(sizeof(uint8_t));
+		int16_t *resp2 = malloc(sizeof(int16_t));
 		escritura = malloc(sizeof(t_archivo));
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
@@ -217,8 +219,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 			}else{
 				if(file->flags.escritura){
-					 char* path = getPath_Global(file->global_fd);
+					 //char* path = getPath_Global(file->global_fd);
+					rw_lock_unlock(LOCK_WRITE);
+					t_global_file * global_file = getFileFromGlobal(file->global_fd);
+					 char* path = global_file->file;
 					 *resp2 = fs_write(fs_socket, path, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 rw_lock_unlock(UNLOCK);
 					 switch(*resp2){
 					 	 case SUCCESS:
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
@@ -228,7 +234,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 		break;
 					 	 default:
-					 		*resp2=OC_RESP_ESCRIBIR, EC_DESCONOCIDO;
+					 		*resp2= EC_DESCONOCIDO;
 					 		connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 					 }
 				}else{
@@ -248,21 +254,28 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
 
 		t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
+		t_process_file * process_file = buscarArchivoTablaProceso(tabla_encontrada, archivo_a_leer->descriptor_archivo);
 
+		rw_lock_unlock(LOCK_READ);
 		char * path = getPathFrom_PID_FD(archivo_a_leer->pid, archivo_a_leer->descriptor_archivo);
-		t_fs_read_resp * read_response = fs_read(fs_socket, path, 0, archivo_a_leer->tamanio, logger);
+		t_fs_read_resp * read_response = fs_read(fs_socket, path, process_file->offset_cursor, archivo_a_leer->tamanio, logger);
+		rw_lock_unlock(UNLOCK);
+
 
 		if(read_response->exec_code != SUCCESS) {
+			int _mismoPid(t_par_socket_pid *par) {
+				return par->pid == pid;
+			}
+			char* msgerror= strdup("No se pudo leer el archivo");
+			t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
+			connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 
-
+			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER_ERROR, &(read_response->exec_code));
 		} else {
 
-			//int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
+			int resultado = memory_write(memory_socket, archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
 
-			//if(!resultado) {
-				//TODO error
-			//}
-			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, read_response);
+			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
 		}
 	}
 	break;
@@ -271,8 +284,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
 		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
-
+		rw_lock_unlock(LOCK_WRITE);
 		descontarDeLaTablaGlobal(file->global_fd);
+		rw_lock_unlock(UNLOCK);
 
 		bool _porFD(t_process_file* var){
 			return var->proceso_fd == file->proceso_fd;
@@ -615,17 +629,23 @@ void modificar_pagina(t_pagina_heap* pagina, int espacio_ocupado){
 int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 	int fd_proceso;
 	int fd_global; //guarda la posición del archivo en la tabla global
+	rw_lock_unlock(LOCK_READ);
 	fd_global = buscarArchivoTablaGlobal(direccion);
+	rw_lock_unlock(UNLOCK);
 	int result = fs_validate_file(fs_socket, direccion, logger);
 
 	if(fd_global == -1) {
 		if((flags.lectura || flags.escritura) && result == ISREG ) {
+			rw_lock_unlock(LOCK_WRITE);
 			fd_global = crearArchivoTablaGlobal(direccion);
+			rw_lock_unlock(UNLOCK);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
 		} else if(flags.creacion && result == ISNOTREG) {
 			int res = fs_create_file(fs_socket, direccion, logger);
+			rw_lock_unlock(LOCK_WRITE);
 			fd_global = crearArchivoTablaGlobal(direccion);
+			rw_lock_unlock(UNLOCK);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
 		} else {
@@ -648,7 +668,7 @@ int crearArchivoTablaGlobal(char* direccion){
 	memcpy(filereg->file, direccion,string_length(direccion)+1);
 	filereg->global_fd = contador_fd_global++;
 	filereg->open=1;
-	//TODO semaforos!
+
 	list_add(tabla_global_archivos,filereg);
 
 	return filereg->global_fd;
@@ -656,7 +676,7 @@ int crearArchivoTablaGlobal(char* direccion){
 
 
 int buscarArchivoTablaGlobal(char* direccion){
-	//TODO semaforos!
+
 	t_global_file * filereg;
 	bool encontro = false;
 
@@ -688,11 +708,11 @@ t_process_file* buscarArchivoTablaProceso(t_table_file* tabla, int fd_archivo){
 	file = list_find(tabla->tabla_archivos,(void*) _porPID);
 	return file;
 }
-char* getPath_Global(int fdGlobal){
+//char* getPath_Global(int fdGlobal){
+//	t_global_file * filereg = getFileFromGlobal(fdGlobal);
+//	return filereg->file;
+//}
 
-	t_global_file * filereg = getFileFromGlobal(fdGlobal);
-	return filereg->file;
-}
 t_global_file * getFileFromGlobal(int global_fd) {
 	t_global_file * filereg;
 
@@ -726,7 +746,8 @@ char* getPathFrom_PID_FD(int pid, int fdProceso){
 	if(file == NULL) {
 		return -1;
 	}
-	char* path = getPath_Global(file->global_fd);
+	t_global_file * global_file = getFileFromGlobal(file->global_fd);
+	char* path = global_file->file;
 	return path;
 }
 

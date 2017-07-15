@@ -113,7 +113,7 @@ void procesarMsg(char * msg) {
 }
 
 void load_properties(void) {
-	t_config * conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/cpu/Debug/cpu.cfg");
+	t_config * conf = config_create("./cpu.cfg");
 	cpu_conf = malloc(sizeof(t_cpu_conf));
 	cpu_conf->kernel_ip = config_get_string_value(conf, "IP_KERNEL");
 	cpu_conf->kernel_port = config_get_string_value(conf, "PUERTO_KERNEL");
