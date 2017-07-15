@@ -191,7 +191,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
     break;
 	case OC_FUNCION_ESCRIBIR: {
-		uint8_t *resp2 = malloc(sizeof(uint8_t));
+		int16_t *resp2 = malloc(sizeof(int16_t));
 		escritura = malloc(sizeof(t_archivo));
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
