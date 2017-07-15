@@ -243,10 +243,10 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     memcpy(buffer + sizeof(int) + sizeof(uint16_t) + length_direccion, &banderas, sizeof(t_banderas));
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
-    free(buffer);
     int* fd_proceso = malloc(sizeof(int));
     uint8_t operation_code;
     connection_recv(server_socket_kernel, &operation_code, &fd_proceso);
+    free(buffer);
 
     return *fd_proceso;
     free(fd_proceso);
@@ -255,7 +255,12 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 void borrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Borrar [%d]", descriptor);
 
-    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, &descriptor);
+    t_archivo * archivo = malloc(sizeof(t_archivo));
+    archivo->descriptor_archivo = descriptor;
+    archivo->pid = pcb->pid;
+
+    connection_send(server_socket_kernel, OC_FUNCION_BORRAR, archivo);
+
 }
 
 void cerrar(t_descriptor_archivo descriptor){
@@ -344,7 +349,7 @@ void signalParser(t_nombre_semaforo identificador_semaforo) {
 
 void waitParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
-	connection_send(server_socket_kernel, OC_FUNCION_WAIT, &identificador_semaforo);
+	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
 	// agregar recv para que quede bloquedado OC_RESP_WAIT
 	uint8_t * buffer = malloc(sizeof(int));
     uint8_t * operation_code = malloc(sizeof(uint8_t));

@@ -51,8 +51,8 @@ void write_file(int *);
 int main(int argc, char * argv[]) {
 
 	load_file_system_properties();
-	print_file_system_properties();
 	load();
+	print_file_system_properties();
 
 	// socket thread
 	int * new_sock;
@@ -71,7 +71,7 @@ int main(int argc, char * argv[]) {
  * @NAME load_file_system_properties
  */
 void load_file_system_properties(void) {
-	t_config * conf = config_create("/home/utnso/file-system.cfg"); // TODO : Ver porque no lo toma del workspace
+	t_config * conf = config_create("./file-system.cfg");
 	file_system_conf = malloc(sizeof(t_file_system_conf));
 	file_system_conf->port = config_get_int_value(conf, "PUERTO");
 	file_system_conf->mount_point = config_get_string_value(conf, "PUNTO_MONTAJE");
@@ -82,9 +82,9 @@ void load_file_system_properties(void) {
  * @NAME print_file_system_properties
  */
 void print_file_system_properties(void) {
-	printf(" >> SADICA file-system" );
-	printf(" >> port ---------------> %u" , (file_system_conf->port));
-	printf(" >> mount_point --------> %s" , (file_system_conf->mount_point));
+	log_info(logger, " >> SADICA file-system" );
+	log_info(logger, " >> port ---------------> %u" , (file_system_conf->port));
+	log_info(logger, " >> mount_point --------> %s" , (file_system_conf->mount_point));
 }
 
 /**

@@ -132,8 +132,10 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_FUNCION_ABRIR:
 			message_size_value = sizeof(int) + sizeof(uint16_t) + *(int*)message + sizeof(t_banderas);
 			break;
+		case OC_FUNCION_BORRAR:
 		case OC_FUNCION_CERRAR:
 			message_size_value = sizeof(t_archivo);
+			break;
 		case OC_RESP_ABRIR:
 		case OC_MUERE_PROGRAMA:
 		case OC_RESP_TERMINO_INSTRUCCION:
@@ -329,7 +331,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_ESCRIBIR_EN_CONSOLA:
 			case OC_FUNCION_SIGNAL:
 			case OC_FUNCION_WAIT:
-				buffer = (char*)*message;
+				buffer = malloc(message_size+1);
 				status = recv(file_descriptor, buffer, message_size, 0);
 				buffer[message_size] = '\0';
 				*message = buffer;
@@ -358,6 +360,18 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = buffer;
 				break;
 			case OC_FUNCION_MOVER_CURSOR:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = buffer;
+				break;
+			case OC_RESP_SIGNAL:
+			case OC_RESP_WAIT:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = buffer;
+				break;
+			case OC_FUNCION_BORRAR:
+			case OC_FUNCION_CERRAR:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = buffer;

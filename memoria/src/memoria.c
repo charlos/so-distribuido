@@ -139,7 +139,7 @@ int main(int argc, char * argv[]) {
  * @NAME load_memory_properties
  */
 void load_memory_properties(void) {
-	t_config * conf = config_create("/home/utnso/memoria.cfg"); // TODO : Ver porque no lo toma del workspace
+	t_config * conf = config_create("./memoria.cfg");
 	memory_conf = malloc(sizeof(t_memory_conf));
 	memory_conf->port = config_get_int_value(conf, "PUERTO");
 	memory_conf->frames = config_get_int_value(conf, "MARCOS");

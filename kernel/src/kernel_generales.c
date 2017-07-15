@@ -109,7 +109,7 @@ bool proceso_bloqueado(t_PCB* pcb){
 	sem_wait(semColaBloqueados);
 	// esto es un asco, pero bueno... elimino el viejo pcb de la cola de bloqueados y pongo el nuevo
 	if(queue_size(cola_bloqueados)){
-		aux = list_remove_by_condition(cola_bloqueados, (void*) _is_pcb);
+		aux = list_remove_by_condition(cola_bloqueados->elements, (void*) _is_pcb);
 	}
 	if(encontroPCB){
 		list_add(cola_bloqueados, pcb);

@@ -312,6 +312,7 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+	//liberar_cpu(cpu);
 }
 
 void pasarDeBlockedAReady(t_PCB* pcbASacar){
