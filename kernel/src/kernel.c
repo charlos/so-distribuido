@@ -13,6 +13,7 @@
 #include <shared-library/generales.h>
 #include <shared-library/memory_prot.h>
 #include <pthread.h>
+#include <thread_db.h>
 #include <sys/inotify.h>
 #include "kernel.h"
 #include "solicitudes.h"
@@ -69,7 +70,7 @@ int main(int argc, char* argv[]) {
 	sem_init(semListaCpu, 0, 1);
 	pthread_mutex_init(lock_tabla_global_archivos, NULL);
 	lista_cpu = list_create();
-
+	rw_lock_unlock(UNLOCK);
 
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);

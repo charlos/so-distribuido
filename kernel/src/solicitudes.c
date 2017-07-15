@@ -10,6 +10,7 @@
 #include <parser/parser.h>
 
 extern t_list* listaDeTablasDeArchivosDeProcesos;
+extern pthread_rwlock_t* lock_tabla_global_archivos;
 
 void solve_request(t_info_socket_solicitud* info_solicitud){
 	uint8_t operation_code = info_solicitud->oc_code;
