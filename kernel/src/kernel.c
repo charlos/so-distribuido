@@ -55,6 +55,7 @@ int main(int argc, char* argv[]) {
 	semCantidadElementosColaListos = malloc(sizeof(sem_t));
 	semCantidadCpuLibres = malloc(sizeof(sem_t));
 	semListaCpu = malloc(sizeof(sem_t));
+	lock_tabla_global_archivos = malloc(sizeof(pthread_rwlock_t));
 
 	sem_init(semColaBloqueados, 0, 1);
 	sem_init(semColaListos, 0, 1);
@@ -66,7 +67,10 @@ int main(int argc, char* argv[]) {
 	sem_init(semCantidadElementosColaListos, 0, 0);
 	sem_init(semCantidadCpuLibres, 0, 0);
 	sem_init(semListaCpu, 0, 1);
+	pthread_mutex_init(lock_tabla_global_archivos, NULL);
 	lista_cpu = list_create();
+
+
 
 	memory_socket = connect_to_socket(kernel_conf->memory_ip, kernel_conf->memory_port);
 
