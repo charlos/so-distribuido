@@ -314,7 +314,7 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     connection_send(server_socket_kernel, OC_FUNCION_ESCRIBIR, buffer);
 
     uint8_t * operation_code = malloc(sizeof(uint8_t));
-    int16_t *resp = malloc(sizeof(int16_t));
+    int8_t *resp = malloc(sizeof(int8_t));
     connection_recv(server_socket_kernel, operation_code, &resp);
 
     log_trace(logger, "RESULTADO DE OPERACION ESCRIBIR: %d", *resp);
