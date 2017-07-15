@@ -355,7 +355,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
     connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 
-    int16_t * resultado = malloc(tamanio);
+    int * resultado = malloc(sizeof(int));
     uint8_t * operation_code = malloc(sizeof(uint8_t));
     connection_recv(server_socket_kernel, operation_code, &resultado);
 
@@ -363,7 +363,6 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
     	pcb->exit_code = *resultado;
     }
 
-    //TODO: ver como retornar la informacion devuelta por kernel
 }
 void signalParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);

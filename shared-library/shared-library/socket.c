@@ -170,8 +170,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(t_pedido_archivo_leer);
 			break;
 		case OC_RESP_LEER:
-			message_size_value = ((t_read_response *)message)->buffer_size;
-			message = ((t_read_response *)message)->buffer;
+			//message_size_value = ((t_read_response *)message)->buffer_size;
+			//message = ((t_read_response *)message)->buffer;
+			message_size_value = sizeof(int);
 			break;
 		case OC_FUNCION_ESCRIBIR_VARIABLE:
 			message_size_value = *(int*) message;
