@@ -306,8 +306,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		if(global->open > 1) {
 
 		} else {
+			rw_lock_unlock(LOCK_WRITE);
 			fs_delete_file(fs_socket, global->file, logger);
 			descontarDeLaTablaGlobal(file->global_fd);
+			rw_lock_unlock(UNLOCK);
 
 			bool _porFD(t_process_file* var){
 				return var->proceso_fd == file->proceso_fd;
