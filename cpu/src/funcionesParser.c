@@ -244,12 +244,12 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
     connection_send(server_socket_kernel, OC_FUNCION_ABRIR, buffer);
 
     free(buffer);
-    int fd_proceso;
+    int* fd_proceso = malloc(sizeof(int));
     uint8_t operation_code;
     connection_recv(server_socket_kernel, &operation_code, &fd_proceso);
 
-    return fd_proceso;
-
+    return *fd_proceso;
+    free(fd_proceso);
 }
 
 void borrar(t_descriptor_archivo descriptor){

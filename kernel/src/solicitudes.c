@@ -586,7 +586,7 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
-		} else if(flags.creacion && result == ISREG) {
+		} else if(flags.escritura && result == ISREG) {
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
