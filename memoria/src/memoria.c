@@ -634,7 +634,7 @@ int writing_memory(t_write_request * w_req, int client) {
 
 	t_reg_invert_table * invert_table_ptr = (t_reg_invert_table *) invert_table;
 	invert_table_ptr += frame;
-	if (kernel_client != client && (invert_table_ptr->segment) != STACK_SEGMENT) {
+	if (kernel_client != client && (invert_table_ptr->segment) == CODE_SEGMENT) {
 		return SEGMENTATION_FAULT;
 	}
 

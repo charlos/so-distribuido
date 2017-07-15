@@ -191,7 +191,7 @@ void thread_subprograma(threadpid* thread_recon) {
 			printf("%s [Process: %d] %s \n", thread_recon->color, thread_recon->pid, (char *) buffer);
 			log_trace(logger, "PID %d: %s", thread_recon->pid, (char *)buffer);
 			thread_recon->cantidad_escrituras++;
-		}
+		}else if(operation_code == OC_MUERE_PROGRAMA) result = 0;
 
 		if(!result)
 			thread_recon->terminate = 1;
@@ -201,10 +201,10 @@ void thread_subprograma(threadpid* thread_recon) {
 	gettimeofday(&t2, NULL);
 	elapsedTime = (t2.tv_usec - t1.tv_usec) / 1000.0;
 
-	log_trace("[PID: %d] Momento de inicio: %s", thread_recon->pid, tiempo_comienzo);
-	log_trace("[PID: %d] Momento de finalizacion: %s", thread_recon->pid, tiempo_finalizacion);
-	log_trace("[PID: %d] Cantidad de impresiones: %d", thread_recon->pid, thread_recon->cantidad_escrituras);
-	log_trace("[PID: %d] Tiempo de ejecucion: %d", thread_recon->pid, elapsedTime);
+	log_trace(logger, "[PID: %d] Momento de inicio: %s", thread_recon->pid, tiempo_comienzo);
+	log_trace(logger, "[PID: %d] Momento de finalizacion: %s", thread_recon->pid, tiempo_finalizacion);
+	log_trace(logger, "[PID: %d] Cantidad de impresiones: %d", thread_recon->pid, thread_recon->cantidad_escrituras);
+	log_trace(logger, "[PID: %d] Tiempo de ejecucion: %d", thread_recon->pid, elapsedTime);
 
 	pthread_exit(NULL);
 
