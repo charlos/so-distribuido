@@ -69,7 +69,7 @@
 #define OC_TERMINO_INSTRUCCION 7
 #define OC_DESCONEX_CPU 60
 #define OC_ERROR_EJECUCION_CPU 61
-
+#define HANDSHAKE_CPU 100
 	/**
 	 * @NAME   open_socket
 	 * @DESC   Permite crear un socket "servidor" o "de escucha" El mismo abre un puerto en la red y después espera a que un cliente se conecte a ese puerto
