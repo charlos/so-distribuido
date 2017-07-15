@@ -250,7 +250,7 @@ void planificador_corto_plazo(){
 		sem_wait(semCantidadElementosColaListos);
 		sem_wait(semCantidadCpuLibres);
 		pasarDeReadyAExecute();
-		pthread_mutex_lock(&mutex_planificar_corto_plazo);
+		pthread_mutex_unlock(&mutex_planificar_corto_plazo);
 	}
 }
 
