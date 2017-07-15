@@ -145,7 +145,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
 		if(pagina_vacia(liberar->pid, liberar->nro_pagina)){
 			tabla_heap_sacar_pagina(liberar);
-			liberar_pagina(liberar);
+			liberar_pagina(liberar, info_proceso->paginas_codigo);
 			break;
 		}
 		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
@@ -803,8 +803,8 @@ void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free){		// TODO PR
 	list_remove_by_condition(tabla_paginas_heap, (void*) _pagina_de_programa);
 }
 
-void liberar_pagina(t_pedido_liberar_memoria* pedido_free){
-	memory_delete_page(memory_socket, pedido_free->pid, pedido_free->nro_pagina, logger);
+void liberar_pagina(t_pedido_liberar_memoria* pedido_free, int offset_de_paginas){
+	memory_delete_page(memory_socket, pedido_free->pid, pedido_free->nro_pagina + offset_de_paginas, logger);
 }
 
 bool pagina_vacia(int pid, int nro_pagina){

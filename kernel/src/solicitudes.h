@@ -58,7 +58,7 @@ t_table_file* getTablaArchivo(int pid);
 t_heapMetadata* leer_metadata(void* pagina);
 bool pagina_vacia(int pid, int nro_pagina);
 void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free);
-void liberar_pagina(t_pedido_liberar_memoria* pedido_free);
+void liberar_pagina(t_pedido_liberar_memoria* pedido_free, int offset_de_paginas);
 t_codigo_proceso* buscar_codigo_de_proceso(int pid);
 void asignarValorVariable(t_shared_var*);
 t_valor_variable leerValorVariable(char*);
