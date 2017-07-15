@@ -46,7 +46,7 @@ kernel/Debug/kernel
 kernel/Debug/src/
 shared-library/Debug/shared-library/
 *.log
-*.cfg
+*cfg
 
 # Segun lo hablado, ignoramos makefile's hasta fin del proyecto
 makefile
