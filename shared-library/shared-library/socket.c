@@ -119,6 +119,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(uint8_t);
 			break;
 		case OC_RESP_ESCRIBIR:
+		case OC_RESP_CERRAR:
 			message_size_value = sizeof(int8_t);
 			break;
 		case OC_QUANTUM_SLEEP:

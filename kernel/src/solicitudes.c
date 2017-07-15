@@ -280,6 +280,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	break;
 	case OC_FUNCION_CERRAR: {
+		//int8_t *resp2 = malloc(sizeof(int8_t));
 		t_archivo * archivo = (t_archivo *)buffer;
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
@@ -293,7 +294,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 
 		list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
-
+//		*resp2 = 0;
+//		connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp2);
+//		free(resp2);
 		break;
 	}
 	case OC_FUNCION_BORRAR: {

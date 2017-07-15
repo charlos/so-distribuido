@@ -271,12 +271,24 @@ void borrar(t_descriptor_archivo descriptor){
 void cerrar(t_descriptor_archivo descriptor){
     log_trace(logger, "Cerrar [%d]", descriptor);
 
-    t_archivo * archivo;
+    t_archivo * archivo= malloc(sizeof(t_archivo));
     archivo->pid = pcb->pid;
     archivo->descriptor_archivo = descriptor;
     archivo->informacion = NULL;
     archivo->tamanio = 0;
     connection_send(server_socket_kernel, OC_FUNCION_CERRAR, archivo);
+/*
+    int8_t *resp = malloc(sizeof(int8_t));
+    uint8_t operation_code;
+    connection_recv(server_socket_kernel, &operation_code, resp);
+
+    log_trace(logger, "Hecho recv de Cerrar [%d]", resp);
+
+    if(*resp < 0) {
+    	pcb->exit_code = *resp;
+    }
+    free(resp);
+*/
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
