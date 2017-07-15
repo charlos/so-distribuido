@@ -152,3 +152,10 @@ t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar){
 
 	return cpu;
 }
+
+t_cpu* obtener_cpu_por_proceso(int pid){
+	bool _mismo_file_descriptor(t_cpu* cpu){
+		return cpu->proceso_asignado->pid == pid;
+	}
+	return list_find(lista_cpu, (void*)_mismo_file_descriptor);
+}

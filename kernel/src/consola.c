@@ -9,6 +9,8 @@
 #include "solicitudes.h"
 
 int leer_comando(char* command);
+char* obtener_estado(int pid);
+t_par_socket_pid* buscar_info_proceso(int pid);
 
 void iniciar_consola(){
 	while(true){
@@ -48,7 +50,12 @@ int leer_comando(char* command) {
 		}
 	}
 	else if(strcmp(palabras[0], "process")==0) {
-//	TODO mostrar informacion de proceso
+		int pid = atoi(palabras[1]);
+		t_par_socket_pid* info_proceso = buscar_info_proceso(pid);
+		printf("Proceso pid: %d\n", pid);
+		printf("Cantidad de Syscalls: %d\n", info_proceso->cantidad_syscalls);
+		printf("Cantidad de memoria alocada: %d\n", info_proceso->memoria_reservada);
+		printf("Cantidad de memoria liberada: %d\n", info_proceso->memoria_liberada);
 	}
 	else if(strcmp(palabras[0], "global_file_table") ==0 ) {
 		printf("Tabla global de Archivos:\n");
@@ -107,11 +114,15 @@ int leer_comando(char* command) {
 
 	else return -2;
 }
-
+void _imprimir_proceso(t_PCB* pcb){
+	char *estado;
+	printf("Proceso id: %d\n", pcb->pid);
+	estado = obtener_estado(pcb->pid);
+	printf("Estado: %s\n", estado);
+	printf("\n\n");
+}
 void listar_procesos_de_cola(t_queue* cola_de_estado){
-	void _imprimir_proceso(t_PCB* pcb){
-		printf("Proceso id: %d\n", pcb->pid);
-	}
+
 	list_iterate(cola_de_estado->elements, (void*) _imprimir_proceso);
 }
 
@@ -120,4 +131,30 @@ void imprimir_tabla_global_de_archivos(){
 		printf("%s	|	%d", f->file, f->open);
 	}
 	list_iterate(tabla_global_archivos, (void*) _imprimir_entrada);
+}
+
+
+char* obtener_estado(int pid){
+	bool tiene_mismo_pid(t_PCB* pcb){
+		return pcb->pid == pid;
+	}
+
+	if(list_any_satisfy(cola_nuevos->elements, tiene_mismo_pid)){
+		return string_duplicate("Nuevo");
+	}else if(list_any_satisfy(cola_listos->elements, tiene_mismo_pid)){
+		return string_duplicate("Listo");
+	}else if (list_any_satisfy(cola_ejecutando->elements, tiene_mismo_pid)){
+		return string_duplicate("Ejecutando");
+	}else if (list_any_satisfy(cola_bloqueados->elements, tiene_mismo_pid)){
+		return string_duplicate("Bloqueado");
+	}else if (list_any_satisfy(cola_ejecutando->elements, tiene_mismo_pid)){
+		return string_duplicate("Ejecutando");
+	}else return string_duplicate("Finalizado");
+}
+
+t_par_socket_pid* buscar_info_proceso(int pid){
+	bool tiene_mismo_pid(t_par_socket_pid* p){
+		return p->pid == pid;
+	}
+	return list_find(tabla_sockets_procesos, (void*) tiene_mismo_pid);
 }

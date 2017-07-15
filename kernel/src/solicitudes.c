@@ -139,6 +139,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		log_trace(logger, "Yendo a leer pagina de memoria: %d", (liberar->nro_pagina + info_proceso->paginas_codigo));
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
+	    sumar_espacio_liberado(liberar->pid, metadata_bloque->size);
 		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
 		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
@@ -775,6 +776,7 @@ void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 			juntar_bloques(metadata, metadata2);
 			memcpy(pagina + offset - sizeof(t_heapMetadata) - metadata->size, metadata2, sizeof(t_heapMetadata));
 			tabla_heap_cambiar_espacio_libre(pedido_free, sizeof(t_heapMetadata));
+		    sumar_espacio_liberado(pedido_free->pid, sizeof(t_heapMetadata));
 			break;
 		}
 		metadata = metadata2;
@@ -868,6 +870,15 @@ void sumar_espacio_reservado(int espacio_pedido, int socket){
 	}
 	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 	parEncontrado->memoria_reservada += espacio_pedido;
+}
+
+void	sumar_espacio_liberado(int pid, int espacio_liberado){
+	t_cpu* cpu = obtener_cpu_por_proceso(pid);
+	int * _mismopid(t_par_socket_pid * target) {
+		return cpu->proceso_asignado->pid == target->pid;
+	}
+	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+	parEncontrado->memoria_liberada += espacio_liberado;
 }
 
 int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){

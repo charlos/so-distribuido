@@ -30,6 +30,7 @@ typedef struct {
 	int socket;
 	int cantidad_syscalls;
 	int memoria_reservada;
+	int memoria_liberada;
 } t_par_socket_pid;
 
 t_list* tabla_paginas_heap;
