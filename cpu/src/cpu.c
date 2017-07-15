@@ -128,6 +128,7 @@ int main(void) {
 		}
 
 		instruccion[(icodigo->size) - 1] = '\0';
+		string_trim(&instruccion);
 
 		log_trace(logger, "Evaluando instruccion: %s",instruccion);
 

@@ -70,5 +70,5 @@ char* getPathFrom_PID_FD(int pid, int fdProceso);
 t_global_file * getFileFromGlobal(int global_fd);
 char* getPath_Global(int fdGlobal);
 int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo);
-
+void descontarDeLaTablaGlobal(int global_fd);
 #endif /* SOLICITUDES_H_ */
