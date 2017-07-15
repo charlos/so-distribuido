@@ -380,6 +380,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu->proceso_asignado = pcb;
 		memory_finalize_process(memory_socket, pcb->pid, logger);
 		pasarDeExecuteAExit(cpu);
+		status = 1;
+		int * _mismopid2(t_par_socket_pid * target) {
+			return pcb->pid == target->pid;
+		}
+		t_par_socket_pid * parEncontrado2 = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid2);
+		connection_send(parEncontrado2->socket, OC_MUERE_PROGRAMA, &status);
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
