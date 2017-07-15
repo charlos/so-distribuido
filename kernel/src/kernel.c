@@ -132,6 +132,7 @@ t_cpu* cpu_create(int file_descriptor){
 	t_cpu* cpu = malloc(sizeof(t_cpu));
 	cpu->file_descriptor = file_descriptor;
 	cpu->proceso_asignado = NULL;
+	cpu->matar_proceso = 0;
 	return cpu;
 }
 
@@ -324,6 +325,7 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+	//liberar_cpu(cpu);
 }
 
 void pasarDeBlockedAReady(t_PCB* pcbASacar){

@@ -329,7 +329,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_ESCRIBIR_EN_CONSOLA:
 			case OC_FUNCION_SIGNAL:
 			case OC_FUNCION_WAIT:
-				buffer = (char*)*message;
+				buffer = malloc(message_size+1);
 				status = recv(file_descriptor, buffer, message_size, 0);
 				buffer[message_size] = '\0';
 				*message = buffer;
@@ -358,6 +358,12 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = buffer;
 				break;
 			case OC_FUNCION_MOVER_CURSOR:
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = buffer;
+				break;
+			case OC_RESP_SIGNAL:
+			case OC_RESP_WAIT:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = buffer;

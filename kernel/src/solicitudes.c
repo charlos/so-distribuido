@@ -71,6 +71,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		tabla_proceso = malloc(sizeof(t_table_file));
 		tabla_proceso->pid = pcb->pid;
 		tabla_proceso->tabla_archivos = crearTablaArchProceso();
+		tabla_proceso->contador_fd = 10;
 		list_add(listaDeTablasDeArchivosDeProcesos, tabla_proceso);
 
 		t_nuevo_proceso* nuevo_proceso = malloc(sizeof(t_nuevo_proceso));
@@ -155,10 +156,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		char* msgerror;
 		int direccion_length = *(int*)buffer;
 		pid = *(uint16_t*)(buffer + sizeof(int));
-		direccion = malloc(direccion_length);
-		memcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t), direccion_length);
-//		strcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t));
+		direccion = malloc(direccion_length+1);
+//		memcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t), direccion_length);
+		strcpy(direccion, buffer + sizeof(int) + sizeof(uint16_t));
 		flags = *(t_banderas*)(buffer + sizeof(int) + sizeof(uint16_t) + direccion_length);
+
+		direccion[direccion_length] = '\0';
+
+		printf("RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
+		log_trace(logger, "RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
 
 		int fd_proceso;
 		fd_proceso = abrir_archivo(pid, direccion, flags);
@@ -173,8 +179,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 	    	free(msgerror);
 	    }
-
-	    fs_validate_file(fs_socket, direccion, logger);
 
 
 	    //TODO respuesta al pedido de abrir archivo
@@ -242,7 +246,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
 		int leer_offset = (archivo_a_leer->informacion) % TAMANIO_PAGINAS;
 
-		//t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
+		t_table_file * tabla_encontrada = getTablaArchivo(archivo_a_leer->pid);
 
 		char * path = getPathFrom_PID_FD(archivo_a_leer->pid, archivo_a_leer->descriptor_archivo);
 		t_fs_read_resp * read_response = fs_read(fs_socket, path, 0, archivo_a_leer->tamanio, logger);
@@ -252,12 +256,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		} else {
 
-			int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
+			//int resultado = memory_write(memory_socket,  archivo_a_leer->pid, leer_pagina, leer_offset, archivo_a_leer->tamanio, read_response->buffer_size, read_response->buffer, logger);
 
-			if(!resultado) {
+			//if(!resultado) {
 				//TODO error
-			}
-			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, &resultado);
+			//}
+			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER, read_response);
 		}
 	}
 	break;
@@ -587,16 +591,12 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 	int result = fs_validate_file(fs_socket, direccion, logger);
 
 	if(fd_global == -1) {
-		if(flags.lectura && result == ISREG) {
+		if((flags.lectura || flags.escritura) && result == ISREG ) {
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
 		} else if(flags.creacion && result == ISNOTREG) {
 			int res = fs_create_file(fs_socket, direccion, logger);
-			fd_global = crearArchivoTablaGlobal(direccion);
-			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
-
-		} else if(flags.creacion && result == ISREG) {
 			fd_global = crearArchivoTablaGlobal(direccion);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
@@ -615,9 +615,9 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 
 int crearArchivoTablaGlobal(char* direccion){
 	t_global_file * filereg = malloc(sizeof(t_global_file));
-	filereg->file = malloc(string_length(direccion));
+	filereg->file = malloc(string_length(direccion)+1);
 
-	memcpy(filereg->file, direccion,string_length(direccion));
+	memcpy(filereg->file, direccion,string_length(direccion)+1);
 	filereg->global_fd = contador_fd_global++;
 	filereg->open=1;
 	//hablar con filesystem!!!!
