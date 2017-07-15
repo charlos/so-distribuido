@@ -158,13 +158,13 @@ t_cpu* obtener_cpu_por_proceso(int pid){
 void rw_lock_unlock(int action) {
 	switch (action) {
 	case LOCK_READ :
-		pthread_rwlock_rdlock(lock_tabla_global_archivos);
+	//	pthread_rwlock_rdlock(lock_tabla_global_archivos);
 		break;
 	case LOCK_WRITE :
-		pthread_rwlock_wrlock(lock_tabla_global_archivos);
+	//	pthread_rwlock_wrlock(lock_tabla_global_archivos);
 		break;
 	case UNLOCK :
-		pthread_rwlock_unlock(lock_tabla_global_archivos);
+	//	pthread_rwlock_unlock(lock_tabla_global_archivos);
 		break;
 	}
 	//return EXIT_SUCCESS;
