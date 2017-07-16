@@ -10,8 +10,8 @@
 
 void load_kernel_properties(char * ruta) {
 	t_config * conf;
-	if(strcmp(ruta,"1") == 0)
-		conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
+	if(ruta == NULL)
+		conf = config_create("./kernel.cfg");
 	else conf = config_create(ruta);
 
 	kernel_conf = malloc(sizeof(t_kernel_conf));

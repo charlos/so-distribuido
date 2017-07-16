@@ -43,8 +43,8 @@ void load_config(char * path) {
 
 	t_config * cfg = malloc(sizeof(t_config));
 
-	if(strcmp(path, "1") == 0) {
-		cfg = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/consola/Debug/consola.cfg");
+	if(path == NULL) {
+		cfg = config_create("./consola.cfg");
 	}
 	else {
 		cfg = config_create(path);
