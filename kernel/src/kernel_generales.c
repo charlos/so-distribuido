@@ -117,11 +117,11 @@ bool proceso_bloqueado(t_PCB* pcb){
 	return response;
 }
 
-t_PCB* sacar_pcb(t_list* list, t_PCB* pcb){
+t_PCB* sacar_pcb(t_queue* cola, t_PCB* pcb){
 	bool _is_pcb(t_PCB* p) {
 		return (p->pid == pcb->pid);
 	}
-	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados->elements, (void*) _is_pcb);
+	t_PCB* pcbEncontrado = list_remove_by_condition(cola->elements, (void*) _is_pcb);
 	return pcbEncontrado;
 }
 
@@ -142,7 +142,7 @@ t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar){
 		return cpu->proceso_asignado->pid == pcbABuscar->pid;
 	}
 	sem_wait(semListaCpu);
-	t_cpu* cpu = list_find(cola_cpu, (void*) _is_cpu_con_pcb_a_buscar);
+	t_cpu* cpu = list_find(lista_cpu, (void*) _is_cpu_con_pcb_a_buscar);
 	sem_post(semListaCpu);
 
 	return cpu;
