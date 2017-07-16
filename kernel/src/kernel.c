@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
 
 	cola_nuevos = queue_create();
 	cola_bloqueados = queue_create();
-	cola_cpu = queue_create();
 	cola_ejecutando = queue_create();
 	cola_finalizados = queue_create();
 	cola_listos = queue_create();
@@ -203,7 +202,7 @@ void manage_select(t_aux* estructura){
 
 							t_par_socket_pid* par = buscar_proceso_por_socket(fd_seleccionado);
 							while(par!= NULL){
-								memory_finalize_process(fd_seleccionado, par->pid, logger);
+								memory_finalize_process(memory_socket, par->pid, logger);
 								pasar_proceso_a_exit(par->pid);
 								par = buscar_proceso_por_socket(fd_seleccionado);
 							}
