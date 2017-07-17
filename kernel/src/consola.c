@@ -139,15 +139,15 @@ char* obtener_estado(int pid){
 		return pcb->pid == pid;
 	}
 
-	if(list_any_satisfy(cola_nuevos->elements, tiene_mismo_pid)){
+	if(list_any_satisfy(cola_nuevos->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Nuevo");
-	}else if(list_any_satisfy(cola_listos->elements, tiene_mismo_pid)){
+	}else if(list_any_satisfy(cola_listos->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Listo");
-	}else if (list_any_satisfy(cola_ejecutando->elements, tiene_mismo_pid)){
+	}else if (list_any_satisfy(cola_ejecutando->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Ejecutando");
-	}else if (list_any_satisfy(cola_bloqueados->elements, tiene_mismo_pid)){
+	}else if (list_any_satisfy(cola_bloqueados->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Bloqueado");
-	}else if (list_any_satisfy(cola_ejecutando->elements, tiene_mismo_pid)){
+	}else if (list_any_satisfy(cola_ejecutando->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Ejecutando");
 	}else return string_duplicate("Finalizado");
 }
