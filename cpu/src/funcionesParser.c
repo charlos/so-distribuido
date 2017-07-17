@@ -19,7 +19,7 @@ extern int pagesize;
 extern t_page_offset* nextPageOffsetInStack;
 extern int server_socket_kernel, server_socket_memoria;
 extern t_PCB* pcb;
-
+extern int stack_size;
 
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 	log_trace(logger, "Definir Variable [%c]", identificador_variable);
@@ -39,7 +39,14 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		agregarAStack(newvar,VAR_STACK);
 	}
 	nextPageOffsetInStack->offset+=newvar->size;
-	return newvar->pagina*pagesize+newvar->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
+
+    if(newvar->pagina > stack_size+pcb->cantidad_paginas){
+    	pcb->exit_code=EC_STACKOVERFLOW;
+    	log_error(logger, "(Page [%p] | Offset [%d] ) STACKOVERFLOW", newvar->pagina, newvar->offset);
+    	return 0;
+    }else{
+    	return newvar->pagina*pagesize+newvar->offset; //valor de la posicion de la variable en memoria respecto del comienzo del stack
+    }
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
@@ -112,8 +119,7 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
     page = getPageofPos(puntero);
     offset =  getOffsetofPos(puntero);
     size = sizeof(t_valor_variable);
-
-    resp = memory_write(server_socket_memoria,  pcb->pid, page, offset, size, size, &valor_variable, logger);
+   	resp = memory_write(server_socket_memoria,  pcb->pid, page, offset, size, size, &valor_variable, logger);
 
     if (resp==DISCONNECTED_SERVER){
     	pcb->exit_code=EC_ERROR_CONEXION;
@@ -349,7 +355,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
     connection_send(server_socket_kernel, OC_FUNCION_LEER, arch);
 
-    int16_t * resultado = malloc(tamanio);
+    int * resultado = malloc(sizeof(int));
     uint8_t * operation_code = malloc(sizeof(uint8_t));
     connection_recv(server_socket_kernel, operation_code, &resultado);
 
@@ -357,7 +363,6 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
     	pcb->exit_code = *resultado;
     }
 
-    //TODO: ver como retornar la informacion devuelta por kernel
 }
 void signalParser(t_nombre_semaforo identificador_semaforo) {
 	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);

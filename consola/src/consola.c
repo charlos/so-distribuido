@@ -43,8 +43,8 @@ void load_config(char * path) {
 
 	t_config * cfg = malloc(sizeof(t_config));
 
-	if(strcmp(path, "1") == 0) {
-		cfg = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/consola/Debug/consola.cfg");
+	if(path == NULL) {
+		cfg = config_create("./consola.cfg");
 	}
 	else {
 		cfg = config_create(path);
@@ -130,10 +130,10 @@ int read_command(char* command) {
 				return (recon->pid == pid);
 			}
 			threadpid* hilo_a_matar = list_find(thread_list, (void *) _coincidePid);
-			hilo_a_matar->terminate = 1;
+			//hilo_a_matar->terminate = 1;
 			//pthread_kill(hilo_a_matar->thread, SIGKILL);
 			//pthread_join(hilo_a_matar->thread, NULL);
-			connection_send(main_console_socket, OC_KILL_CONSOLA, hilo_a_matar->pid);
+			connection_send(main_console_socket, OC_KILL_CONSOLA, &(hilo_a_matar->pid));
 
 			void _destroy(threadpid* deon){
 				free(deon->file_content);

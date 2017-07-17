@@ -20,6 +20,8 @@
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 256 )
 #define BUF_LEN ( 1 * EVENT_SIZE )
 
+t_par_socket_pid* buscar_proceso_por_socket(int socket);
+
 int main(int argc, char* argv[]) {
 
 	fd_set master_cpu, master_prog;
@@ -40,7 +42,6 @@ int main(int argc, char* argv[]) {
 
 	cola_nuevos = queue_create();
 	cola_bloqueados = queue_create();
-	cola_cpu = queue_create();
 	cola_ejecutando = queue_create();
 	cola_finalizados = queue_create();
 	cola_listos = queue_create();
@@ -117,7 +118,7 @@ int main(int argc, char* argv[]) {
 		if (length < 0) {
 			perror("read");
 		}
-		actualizar_quantum_sleep();
+		actualizar_quantum_sleep(argv[1]);
 	}
 
 	pthread_join(hilo_consola, NULL);
@@ -170,6 +171,7 @@ void manage_select(t_aux* estructura){
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 						if(estructura->port == kernel_conf->cpu_port){
 							t_cpu* cpu = cpu_create(nuevaConexion);
+							connection_send(nuevaConexion, HANDSHAKE_OC, &(kernel_conf->stack_size));
 							sem_wait(semListaCpu);
 							list_add(lista_cpu, cpu);
 							sem_post(semListaCpu);
@@ -196,6 +198,14 @@ void manage_select(t_aux* estructura){
 							t_cpu* cpu = obtener_cpu(fd_seleccionado);
 							pasarDeExecuteAReady(cpu);
 							eliminar_cpu(fd_seleccionado);
+						} else if(estructura->port == kernel_conf->program_port){
+
+							t_par_socket_pid* par = buscar_proceso_por_socket(fd_seleccionado);
+							while(par!= NULL){
+								memory_finalize_process(memory_socket, par->pid, logger);
+								pasar_proceso_a_exit(par->pid);
+								par = buscar_proceso_por_socket(fd_seleccionado);
+							}
 						}
 
 					}else{
@@ -379,4 +389,48 @@ void eliminar_cpu(int file_descriptor){
 	}
 
 	list_remove_and_destroy_by_condition(lista_cpu, _is_cpu, free);
+}
+
+void pasar_proceso_a_exit(int pid){
+	t_PCB* pcbEncontrado = NULL;
+	t_PCB* pcbASacar = malloc(sizeof(t_PCB));
+	pcbASacar->pid = pid;
+	sem_wait(semColaNuevos);
+	// lo busco en la cola new
+	pcbEncontrado = sacar_pcb(cola_nuevos, pcbASacar);
+	sem_post(semColaNuevos);
+	if(pcbEncontrado == NULL){
+		sem_wait(semColaListos);
+		// lo busco en la cola ready
+		pcbEncontrado = sacar_pcb(cola_listos, pcbASacar);
+		sem_post(semColaListos);
+		if(pcbEncontrado == NULL){
+			// lo busco en la cola blocked
+			sem_wait(semColaBloqueados);
+			pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);
+			sem_post(semColaBloqueados);
+			if(pcbEncontrado == NULL){
+				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
+				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
+				if(cpu == NULL){
+					printf("No existe programa con el PID (%d)\n", &pid);
+					return;
+				} else {
+					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
+					cpu->matar_proceso = 1;
+				}
+			}
+		}
+	}
+	// se settea mensaje de error cuando se mata un proceso desde consola de kernel
+	pcbEncontrado->exit_code = -77;
+	// se agrega a la cola de finalizados
+	queue_push(cola_finalizados, pcbEncontrado);
+}
+
+t_par_socket_pid* buscar_proceso_por_socket(int socket){
+	bool tiene_mismo_socket(t_par_socket_pid* p){
+		return p->socket == socket;
+	}
+	return list_remove_by_condition(tabla_sockets_procesos, (void*) tiene_mismo_socket);
 }

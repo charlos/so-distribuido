@@ -30,6 +30,7 @@ int server_socket_kernel, server_socket_memoria;
 
 void procesarMsg(char * msg);
 
+int stack_size;
 int main(void) {
 
 	int *continuar = malloc(sizeof(int));
@@ -43,7 +44,11 @@ int main(void) {
 
 	load_properties();
 
+	int op_code;
+	void * buffer;
 	server_socket_kernel = connect_to_socket(cpu_conf->kernel_ip, cpu_conf->kernel_port);
+	connection_recv(server_socket_kernel, &op_code, &buffer);
+	stack_size = *(int*)buffer;
 	server_socket_memoria = connect_to_socket(cpu_conf->memory_ip, cpu_conf->memory_port);
 	inicializarFuncionesParser();
 

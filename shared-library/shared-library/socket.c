@@ -143,6 +143,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_MUERE_PROGRAMA:
 		case OC_RESP_TERMINO_INSTRUCCION:
 		case OC_RESP_LEER_ERROR:
+		case HANDSHAKE_CPU:
 			message_size_value = sizeof(int);
 			break;
 		case OC_FUNCION_RESERVAR:
@@ -169,8 +170,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(t_pedido_archivo_leer);
 			break;
 		case OC_RESP_LEER:
-			message_size_value = ((t_read_response *)message)->buffer_size;
-			message = ((t_read_response *)message)->buffer;
+			//message_size_value = ((t_read_response *)message)->buffer_size;
+			//message = ((t_read_response *)message)->buffer;
+			message_size_value = sizeof(int);
 			break;
 		case OC_FUNCION_ESCRIBIR_VARIABLE:
 			message_size_value = *(int*) message;
@@ -185,6 +187,9 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_FUNCION_MOVER_CURSOR:
 			message_size_value = sizeof(t_descriptor_archivo) + sizeof(t_valor_variable) + sizeof(int);
 			break;
+		case OC_KILL_CONSOLA: {
+			message_size_value = sizeof(int);
+		}
 //		DEFINIR COMPORTAMIENTO
 		default:
 			printf("ERROR: Socket %d, Invalid operation code...\n", file_descriptor);
@@ -254,6 +259,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_RESP_ABRIR:
 			case OC_MUERE_PROGRAMA:
 			case OC_RESP_LEER_ERROR:
+			case HANDSHAKE_CPU:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = (int*)buffer;
@@ -385,6 +391,12 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				recv(file_descriptor, buffer, message_size, 0);
 				*message = buffer;
 				break;
+			case OC_KILL_CONSOLA: {
+				buffer = malloc(message_size);
+				recv(file_descriptor, buffer, message_size, 0);
+				*message = buffer;
+				break;
+			}
 			default:
 				printf("ERROR: Socket %d, Invalid operation code(%d)...\n", file_descriptor, (int)*operation_code_value);
 				break;

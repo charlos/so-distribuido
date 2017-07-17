@@ -10,8 +10,8 @@
 
 void load_kernel_properties(char * ruta) {
 	t_config * conf;
-	if(strcmp(ruta,"1") == 0)
-		conf = config_create("/home/utnso/workspace/tp-2017-1c-Stranger-Code/kernel/Debug/kernel.cfg");
+	if(ruta == NULL)
+		conf = config_create("./kernel.cfg");
 	else conf = config_create(ruta);
 
 	kernel_conf = malloc(sizeof(t_kernel_conf));
@@ -117,11 +117,11 @@ bool proceso_bloqueado(t_PCB* pcb){
 	return response;
 }
 
-t_PCB* sacar_pcb(t_list* list, t_PCB* pcb){
+t_PCB* sacar_pcb(t_queue* cola, t_PCB* pcb){
 	bool _is_pcb(t_PCB* p) {
 		return (p->pid == pcb->pid);
 	}
-	t_PCB* pcbEncontrado = list_remove_by_condition(cola_bloqueados->elements, (void*) _is_pcb);
+	t_PCB* pcbEncontrado = list_remove_by_condition(cola->elements, (void*) _is_pcb);
 	return pcbEncontrado;
 }
 
@@ -139,12 +139,13 @@ void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso){
 
 t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar){
 	bool _is_cpu_con_pcb_a_buscar(t_cpu* cpu){
-		return cpu->proceso_asignado->pid == pcbABuscar->pid;
+		if(cpu->proceso_asignado != NULL){
+			return cpu->proceso_asignado->pid == pcbABuscar->pid;
+		} else return 0;
 	}
 	sem_wait(semListaCpu);
-	t_cpu* cpu = list_find(cola_cpu, (void*) _is_cpu_con_pcb_a_buscar);
+	t_cpu* cpu = list_find(lista_cpu, (void*) _is_cpu_con_pcb_a_buscar);
 	sem_post(semListaCpu);
-
 	return cpu;
 }
 
