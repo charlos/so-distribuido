@@ -18,6 +18,8 @@
 #include <signal.h>
 #include <stdio_ext.h>
 #include <sys/time.h>
+#include <sys/types.h>
+
 
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
@@ -28,18 +30,25 @@
 #define WHT   "\x1B[37m"
 #define RESET "\x1B[0m"
 
+#define CON_ERROR_COMANDO -1
+#define CON_ERROR_ARG -2
+#define CON_ERROR_ARCH -3
+#define CON_ERROR_PID -4
+#define CON_ERROR_VACIO -5
+#define CON_OK 1
+
 typedef struct {
 	char* ipAddress;
 	char* port;
 } console_cfg;
 
 typedef struct {
-	pthread_t thread;
 	char * file_content;
 	int pid;
 	int terminate;
 	uint16_t port;
 	uint8_t cantidad_escrituras;
+	pid_t tid;
 	char * color;
 } threadpid;
 

@@ -58,21 +58,24 @@ void load_config(char * path) {
 	free(cfg);
 }
 void enter_command() {
-	char* command = malloc(sizeof(char)*256);
 
-	printf("/***************************************\\ \n");
-	printf("| init path     : Iniciar Programa      |\n");
-	printf("| kill pid      : Finalizar Programa    |\n");
-	printf("| disconnect    : Desconectar Consola   |\n");
-	printf("| clean         : Limpiar Mensajes      |\n");
-	printf("\\***************************************/\n");
+	for(;;) {
+		char* command = malloc(sizeof(char)*256);
 
-	fgets(command, 256, stdin);
+		printf("/***************************************\\ \n");
+		printf("| init path     : Iniciar Programa      |\n");
+		printf("| kill pid      : Finalizar Programa    |\n");
+		printf("| disconnect    : Desconectar Consola   |\n");
+		printf("| clean         : Limpiar Mensajes      |\n");
+		printf("\\***************************************/\n");
 
-	int ret = read_command(command);
-	printf("\n%d \n", ret);
-	free(command);
-	enter_command();
+		fgets(command, 256, stdin);
+
+		int ret = read_command(command);
+		printf("\n%d \n", ret);
+		free(command);
+
+	}
 }
 int read_command(char* command) {
 
@@ -80,7 +83,7 @@ int read_command(char* command) {
 	while (command[caracter] != '\n') caracter++;
 	command[caracter] = '\0';
 
-	if(command[0] == '\0') return -3;
+	if(command[0] == '\0') return CON_ERROR_VACIO;
 
 	char** palabras = string_n_split(command, 2, " ");
 
@@ -93,19 +96,20 @@ int read_command(char* command) {
 
 		if(i != 2) {
 			printf("Cantidad de parametros erronea\n");
-			return -1;
+			return CON_ERROR_ARG;
 		}
 		else {
 			char * path = palabras[1];
+
+
 			char * file_content = read_file(path);
 
-			if(*file_content != NULL) {
+			if(file_content != NULL) {
 
 				pthread_t thread_program;
 				pthread_attr_t attr;
 
 				threadpid* thread_recon = malloc(sizeof(threadpid));
-				thread_recon->thread = thread_program;
 				thread_recon->file_content = file_content;
 
 				pthread_attr_init(&attr);
@@ -114,14 +118,16 @@ int read_command(char* command) {
 
 				list_add(thread_list, thread_recon);
 
-				return 1;
+				return CON_OK;
+			} else {
+				return CON_ERROR_ARCH;
 			}
 		}
 	}
 	else if(strcmp(palabras[0], "kill")==0) {
 		if(i != 2) {
 			printf("Cantidad de parametros erronea\n");
-				return -1;
+				return CON_ERROR_ARG;
 		}
 		else {
 			int pid = strtol(palabras[1], NULL, 10);
@@ -130,9 +136,13 @@ int read_command(char* command) {
 				return (recon->pid == pid);
 			}
 			threadpid* hilo_a_matar = list_find(thread_list, (void *) _coincidePid);
+
+			if(hilo_a_matar == NULL) {
+				return CON_ERROR_PID;
+			}
 			//hilo_a_matar->terminate = 1;
 			//pthread_kill(hilo_a_matar->thread, SIGKILL);
-			//pthread_join(hilo_a_matar->thread, NULL);
+			//pthread_join(hilo_a_matar->tid, NULL);
 			connection_send(main_console_socket, OC_KILL_CONSOLA, &(hilo_a_matar->pid));
 
 			void _destroy(threadpid* deon){
@@ -140,21 +150,25 @@ int read_command(char* command) {
 				free(deon);
 			}
 			list_remove_and_destroy_by_condition(thread_list, (void *) _coincidePid, (void *)_destroy);
+
+			return CON_OK;
 		}
 	}
 	else if(strcmp(palabras[0], "disconnect") ==0 ) {
 
 		void _killThread(threadpid * recon) {
-			pthread_kill(recon->thread, SIGKILL);
+			pthread_kill(recon->tid, SIGKILL);
 		}
 		list_iterate(thread_list, (void*) _killThread);
-		exit(0);
+
+		printf("Hasta Luego");
+		//exit(0);
 	}
 	else if(strcmp(palabras[0], "clean")==0) {
 		printf("\e[1;1H\e[2J");
-		enter_command();
+		return CON_OK;
 	}
-	else return -2;
+	else return CON_ERROR_COMANDO;
 }
 void thread_subprograma(threadpid* thread_recon) {
 
@@ -167,6 +181,7 @@ void thread_subprograma(threadpid* thread_recon) {
 	char* tiempo_comienzo = temporal_get_string_time();
 	struct timeval t1, t2;
 	uint32_t elapsedTime;
+	thread_recon->tid = pthread_self();
 
 	gettimeofday(&t1, NULL);
 
@@ -217,6 +232,7 @@ char * read_file(char * path) {
 	if(strcmp(path, "1") == 0) {
 		file = fopen("/home/utnso/eje.ansisop", "r");
 	}
+
 	else file = fopen(path, "r");
 
 	if(file) {

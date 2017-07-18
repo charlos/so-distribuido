@@ -435,12 +435,14 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		auxPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
+		bool esta_bloqueado = false;
 		if(cpu->matar_proceso){
 			pcb->exit_code = -77;
 			pasarDeExecuteAExit(cpu);
 			liberar_cpu(cpu);
 		} else {
-			if( proceso_bloqueado(pcb) ){
+			esta_bloqueado = proceso_bloqueado(pcb);
+			if( esta_bloqueado ){
 				// si el proceso está bloqueado libera cpu
 				liberar_cpu(cpu);
 			} else {
@@ -452,8 +454,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				}
 			}
 		}
-		pcb_destroy(auxPCB);
-
+		if(!esta_bloqueado){
+			pcb_destroy(auxPCB);
+		}
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 
