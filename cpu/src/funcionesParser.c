@@ -310,7 +310,7 @@ void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
 }
 
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
-    log_trace(logger, "Escribir [%.*s]:%d a [%d]", tamanio, informacion, tamanio, desc);
+    log_trace(logger, "Escribir [%d]:%d a [%d]", tamanio, informacion, tamanio, desc);
 
     log_trace(logger, "VALOR DE INFORMACION: %s", (char *)informacion);
 
@@ -365,7 +365,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero informacion, t_valor_variab
 
 }
 void signalParser(t_nombre_semaforo identificador_semaforo) {
-	log_trace(logger, "Signal del semaforo %s", identificador_semaforo);
+	log_trace(logger, "PID %d - Signal del semaforo %s", pcb->pid, identificador_semaforo);
 
 	connection_send(server_socket_kernel, OC_FUNCION_SIGNAL, identificador_semaforo);
 	// agregar recv para que quede bloquedado OC_RESP_WAIT
@@ -378,7 +378,7 @@ void signalParser(t_nombre_semaforo identificador_semaforo) {
 }
 
 void waitParser(t_nombre_semaforo identificador_semaforo) {
-	log_trace(logger, "Wait del semaforo %s", identificador_semaforo);
+	log_trace(logger, "PID %d - Wait del semaforo %s", pcb->pid, identificador_semaforo);
 	connection_send(server_socket_kernel, OC_FUNCION_WAIT, identificador_semaforo);
 	// agregar recv para que quede bloquedado OC_RESP_WAIT
 	uint8_t * buffer = malloc(sizeof(int));

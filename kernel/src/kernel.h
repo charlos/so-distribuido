@@ -54,7 +54,7 @@ void liberar_cpu(t_cpu* cpu);
 * @NAME: cola_listos_push
 * @DESC: Agrega un elemento al final de la cola de listos
 */
-void cola_listos_push(void *element);
+void cola_listos_push(t_PCB *element);
 
 void pasarDeNewAReady();
 void pasarDeReadyAExecute();

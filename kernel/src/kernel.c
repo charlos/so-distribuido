@@ -323,16 +323,20 @@ void pasarDeExecuteAExit(t_cpu* cpu){
 }
 
 void pasarDeExecuteABlocked(t_cpu* cpu){
+	log_trace(logger, "PID %d - pasarDeExecuteABlocked antes de sem_wait ", cpu->proceso_asignado->pid);
 	sem_wait(semColaBloqueados);
 	queue_push(cola_bloqueados, cpu->proceso_asignado);
 	sem_post(semColaBloqueados);
+	log_trace(logger, "PID %d - pasarDeExecuteABlocked despues del sem_post ", cpu->proceso_asignado->pid);
 	//liberar_cpu(cpu);
 }
 
 void pasarDeBlockedAReady(t_PCB* pcbASacar){
+	log_trace(logger, "PID %d - pasarDeBlockedAReady antes de sem_wait ", pcbASacar->pid);
 	sem_wait(semColaBloqueados);
 	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
 	sem_post(semColaBloqueados);
+	log_trace(logger, "PID %d - pasarDeBlockedAReady despues del sem_post ", pcbASacar->pid);
 	if(pcb != NULL) cola_listos_push(pcb);
 }
 
@@ -346,8 +350,6 @@ void liberar_cpu(t_cpu* cpu){
 	cpu->proceso_asignado = NULL;
 	cpu->matar_proceso = 0;
 	sem_post(semListaCpu);
-
-	sem_post(semCantidadCpuLibres);
 }
 
 t_cpu* cpu_obtener_libre(t_list* lista_cpu){
@@ -376,7 +378,8 @@ void actualizar_quantum_sleep(char* ruta){
 	kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
 }
 
-void cola_listos_push(void *element){
+void cola_listos_push(t_PCB *element){
+	log_trace(logger, "PID %d - cola_listos_push antes de sem_wait semColaListos ", element->pid);
 	sem_wait(semColaListos);
 	queue_push(cola_listos, element);
 	sem_post(semColaListos);
@@ -406,9 +409,11 @@ void pasar_proceso_a_exit(int pid){
 		sem_post(semColaListos);
 		if(pcbEncontrado == NULL){
 			// lo busco en la cola blocked
+			log_trace(logger, "PID %d - pasar_proceso_a_exit antes de sem_wait ", pcbASacar->pid);
 			sem_wait(semColaBloqueados);
 			pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);
 			sem_post(semColaBloqueados);
+			log_trace(logger, "PID %d - pasar_proceso_a_exit despues del sem_post ", pcbASacar->pid);
 			if(pcbEncontrado == NULL){
 				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
 				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);

@@ -407,6 +407,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		t_par_socket_pid * parEncontrado2 = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid2);
 		connection_send(parEncontrado2->socket, OC_MUERE_PROGRAMA, &status);
+		sem_post(semCantidadCpuLibres);
 		break;
 	case OC_DESCONEX_CPU:
 		pcb = deserializer_pcb(buffer);
@@ -427,6 +428,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+		sem_post(semCantidadCpuLibres);
 		break;
 	case OC_TERMINO_INSTRUCCION:
 		*resp = -1; //por default no continua procesando
@@ -436,15 +438,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		auxPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
 		bool esta_bloqueado = false;
+		bool cpu_liberado = false;
 		if(cpu->matar_proceso){
 			pcb->exit_code = -77;
 			pasarDeExecuteAExit(cpu);
-			liberar_cpu(cpu);
+			cpu_liberado = true;
 		} else {
 			esta_bloqueado = proceso_bloqueado(pcb);
 			if( esta_bloqueado ){
 				// si el proceso está bloqueado libera cpu
-				liberar_cpu(cpu);
+				cpu_liberado = true;
 			} else {
 				if(continuar_procesando(cpu)){
 					//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
@@ -460,6 +463,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 
+		if (cpu_liberado) {
+			liberar_cpu(cpu);
+			sem_post(semCantidadCpuLibres);
+		}
 		break;
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;

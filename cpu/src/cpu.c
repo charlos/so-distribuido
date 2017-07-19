@@ -166,8 +166,9 @@ int main(void) {
 			pcb_destroy(pcb);
 		}else {
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
-
+			log_trace(logger, "------------PID %d Antes de recv de OC_TERMINO_INSTRUCCION",pcb->pid);
 			connection_recv(server_socket_kernel, &operation_code, &continuar);
+			log_trace(logger, "------------PID %d Despues de recv de OC_TERMINO_INSTRUCCION: Respuesta %d",pcb->pid,*continuar);
 			if(operation_code==OC_RESP_TERMINO_INSTRUCCION && *continuar==-1){
 				pcb_destroy(pcb);
 			}

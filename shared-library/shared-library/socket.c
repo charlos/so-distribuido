@@ -224,12 +224,12 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 	int stream_length;
 	char* buffer;
 
-	status = recv(file_descriptor, operation_code_value, prot_ope_code_size, 0);
+	status = recv(file_descriptor, operation_code_value, prot_ope_code_size, MSG_WAITALL);
 	if (status <= 0) {
 		printf("ERROR: Socket %d, disconnected...\n", file_descriptor);
 	} else {
 		ret = ret + status;
-		status = recv(file_descriptor, &message_size, prot_message_size, 0);
+		status = recv(file_descriptor, &message_size, prot_message_size, MSG_WAITALL);
 		if (status <= 0) {
 			printf("ERROR: Socket %d, no message size...\n", file_descriptor);
 		} else {
@@ -242,13 +242,13 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_ERROR_EJECUCION_CPU:
 			case OC_TERMINO_INSTRUCCION:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer,message_size, 0);
+				recv(file_descriptor, buffer,message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_SOLICITUD_PROGRAMA_NUEVO:
 				*message = malloc(message_size +1);
 				buffer = (char*)*message;
-				status = recv(file_descriptor, buffer, message_size, 0);
+				status = recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				buffer[message_size] = '\0';
 				if(status > 0) {
 
@@ -261,22 +261,22 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_RESP_LEER_ERROR:
 			case HANDSHAKE_CPU:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (int*)buffer;
 				break;
 			case OC_FUNCION_ABRIR:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_RESP_ESCRIBIR:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (int8_t *)buffer;
 				break;
 			case OC_NUEVA_CONSOLA_PID:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (uint8_t *)buffer;
 				break;
 			case OC_FUNCION_LEER_VARIABLE:
@@ -285,7 +285,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_LIBERAR_MEMORIA:
 				buffer = malloc(message_size + 1);
 				if(message_size > 0){
-					status = recv(file_descriptor, buffer, message_size, 0);
+					status = recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				}
 				if(status > 0){
 					buffer[message_size] = '\0';
@@ -295,47 +295,47 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				break;
 			case OC_FUNCION_LIBERAR:
 				buffer = malloc(sizeof(t_pedido_liberar_memoria));
-				status = recv(file_descriptor, buffer, message_size, 0);
+				status = recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (t_pedido_liberar_memoria*) buffer;
 				break;
 			case OC_HANDSHAKE_MEMORY:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (uint8_t *)buffer;
 				break;
 			case OC_FUNCION_RESERVAR:
 				buffer = malloc(sizeof(t_pedido_reservar_memoria));
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (t_pedido_reservar_memoria*) buffer;
 				break;
 			case OC_RESP_RESERVAR:
-				recv(file_descriptor, &respuesta, message_size, 0);
+				recv(file_descriptor, &respuesta, message_size,MSG_WAITALL);
 				*message = &respuesta;
 				break;
 			case OC_FUNCION_ESCRIBIR:
 				buffer = malloc(sizeof(t_size));
-				recv(file_descriptor, buffer, sizeof(size_t), 0);
+				recv(file_descriptor, buffer, sizeof(size_t), MSG_WAITALL);
 				free(buffer);
 
 				buffer = malloc(sizeof(t_descriptor_archivo));
-				recv(file_descriptor, buffer, sizeof(t_descriptor_archivo), 0);
+				recv(file_descriptor, buffer, sizeof(t_descriptor_archivo), MSG_WAITALL);
 				t_archivo * arch = malloc(sizeof(t_archivo));
 				arch->descriptor_archivo = *(t_descriptor_archivo*)buffer;
 
 				free(buffer);
 				buffer = malloc(sizeof(int));
-				recv(file_descriptor, buffer, sizeof(int), 0);
+				recv(file_descriptor, buffer, sizeof(int), MSG_WAITALL);
 				arch->pid = *(int*)buffer;
 
 				free(buffer);
 				buffer = malloc(sizeof(size_t));
-				recv(file_descriptor, buffer, sizeof(size_t), 0);
+				recv(file_descriptor, buffer, sizeof(size_t), MSG_WAITALL);
 				arch->tamanio = *(t_valor_variable*)buffer;
 
 				free(buffer);
 				buffer = malloc(arch->tamanio);
 				arch->informacion = malloc(arch->tamanio);
-				recv(file_descriptor, buffer, arch->tamanio, 0);
+				recv(file_descriptor, buffer, arch->tamanio, MSG_WAITALL);
 
 				memcpy(arch->informacion, buffer, arch->tamanio);
 				free(buffer);
@@ -347,18 +347,18 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_FUNCION_SIGNAL:
 			case OC_FUNCION_WAIT:
 				buffer = malloc(message_size+1);
-				status = recv(file_descriptor, buffer, message_size, 0);
+				status = recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				buffer[message_size] = '\0';
 				*message = buffer;
 				break;
 			case OC_RESP_LEER_VARIABLE:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (t_valor_variable *)buffer;
 				break;
 			case OC_FUNCION_LEER:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_RESP_LEER:
@@ -366,34 +366,34 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				recv(file_descriptor, *message, buffer, 0);
 				*message = buffer;*/
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size,MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_FUNCION_ESCRIBIR_VARIABLE:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_FUNCION_MOVER_CURSOR:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_RESP_SIGNAL:
 			case OC_RESP_WAIT:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_FUNCION_BORRAR:
 			case OC_FUNCION_CERRAR:
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			case OC_KILL_CONSOLA: {
 				buffer = malloc(message_size);
-				recv(file_descriptor, buffer, message_size, 0);
+				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = buffer;
 				break;
 			}
