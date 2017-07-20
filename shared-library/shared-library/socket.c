@@ -144,6 +144,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_RESP_TERMINO_INSTRUCCION:
 		case OC_RESP_LEER_ERROR:
 		case HANDSHAKE_CPU:
+		case OC_RESP_LIBERAR:
 			message_size_value = sizeof(int);
 			break;
 		case OC_FUNCION_RESERVAR:
@@ -260,6 +261,7 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 			case OC_MUERE_PROGRAMA:
 			case OC_RESP_LEER_ERROR:
 			case HANDSHAKE_CPU:
+			case OC_RESP_LIBERAR:
 				buffer = malloc(message_size);
 				recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				*message = (int*)buffer;

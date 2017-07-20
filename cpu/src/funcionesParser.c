@@ -220,11 +220,13 @@ t_puntero alocar(t_valor_variable espacio){
 
 void liberar(t_puntero puntero){
     log_trace(logger, "Libera el espacio alocado en [%d] ", puntero);
-
+    uint8_t oc_code;
+    void *buffer;
     t_pedido_liberar_memoria* liberar = malloc(sizeof(t_pedido_liberar_memoria));
     liberar->pid = pcb->pid;
     liberar->posicion = puntero;
     connection_send(server_socket_kernel, OC_FUNCION_LIBERAR, liberar);
+    connection_recv(server_socket_kernel, &oc_code, &buffer);
 
 }
 

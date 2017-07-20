@@ -46,6 +46,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_par_socket_pid * parnuevo = malloc(sizeof(t_par_socket_pid));
 		parnuevo->pid = pcb->pid;
 		parnuevo->socket = saved_socket;
+		parnuevo->cantidad_syscalls = 0;
+		parnuevo->memoria_liberada = 0;
+		parnuevo->memoria_reservada = 0;
 		list_add(tabla_sockets_procesos, parnuevo);
 
 		log_trace(logger, "SOCKET DEL PID %d: %d", pcb->pid, saved_socket);
@@ -151,8 +154,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			break;
 		}
 		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
-
+		status = 1;
 	    sumar_syscall(info_solicitud->file_descriptor);
+	    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 
 		break;
 	case OC_FUNCION_ABRIR: {
