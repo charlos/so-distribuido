@@ -88,7 +88,6 @@ int main(int argc, char* argv[]) {
 	pthread_t hilo_consola;
 	pthread_t hilo_pantalla;
 
-
 	t_aux *estruc_cpu, *estruc_prog;
 	estruc_cpu = malloc(sizeof(t_aux));
 	estruc_prog = malloc(sizeof(t_aux));
@@ -97,9 +96,16 @@ int main(int argc, char* argv[]) {
 	estruc_prog->port = kernel_conf->program_port;
 	estruc_prog->master = &master_prog;
 
+	pthread_attr_t attr;
 
+	pthread_attr_init(&attr);
 
-//	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+	// Se crea hilo planificador corto plazo
+	pthread_create(&hilo_pantalla, &attr, &iniciar_consola, NULL);
+
+	pthread_attr_destroy(&attr);
 
 	// Se crea hilo de cpu's
 	pthread_create(&hilo_cpu, NULL, &manage_select, estruc_cpu);

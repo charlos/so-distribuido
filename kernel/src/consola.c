@@ -46,7 +46,23 @@ int leer_comando(char* command) {
 
 	if(strcmp(palabras[0], "process_list") == 0) {
 		if(i > 1){
-			// TODO Listar procesos de una cola
+			if(strcmp(palabras[1], "nuevos") == 0){
+				listar_procesos_de_cola(cola_nuevos);
+			}else if(strcmp(palabras[1], "listos") == 0){
+				listar_procesos_de_cola(cola_listos);
+			}else if(strcmp(palabras[1], "bloqueados") == 0){
+				listar_procesos_de_cola(cola_bloqueados);
+			}else if(strcmp(palabras[1], "ejecutando") == 0){
+				listar_procesos_de_cola(cola_ejecutando);
+			}else if(strcmp(palabras[1], "finalizados") == 0){
+				listar_procesos_de_cola(cola_finalizados);
+			}
+		}else{
+			listar_procesos_de_cola(cola_nuevos);
+			listar_procesos_de_cola(cola_listos);
+			listar_procesos_de_cola(cola_bloqueados);
+			listar_procesos_de_cola(cola_ejecutando);
+			listar_procesos_de_cola(cola_finalizados);
 		}
 	}
 	else if(strcmp(palabras[0], "process")==0) {
@@ -90,6 +106,7 @@ int leer_comando(char* command) {
 					} else {
 						// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
 						cpu->matar_proceso = 1;
+						return -1;
 					}
 				}
 			}
@@ -122,8 +139,12 @@ void _imprimir_proceso(t_PCB* pcb){
 	printf("\n\n");
 }
 void listar_procesos_de_cola(t_queue* cola_de_estado){
-
-	list_iterate(cola_de_estado->elements, (void*) _imprimir_proceso);
+	if(cola_de_estado == cola_nuevos){
+		void _imprimir_nuevo_proceso(t_nuevo_proceso* p){
+			_imprimir_proceso(p->pcb);
+		}
+		list_iterate(cola_nuevos->elements, (void*)_imprimir_nuevo_proceso);
+	}else list_iterate(cola_de_estado->elements, (void*) _imprimir_proceso);
 }
 
 void imprimir_tabla_global_de_archivos(){
@@ -147,9 +168,9 @@ char* obtener_estado(int pid){
 		return string_duplicate("Ejecutando");
 	}else if (list_any_satisfy(cola_bloqueados->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Bloqueado");
-	}else if (list_any_satisfy(cola_ejecutando->elements, (void *)tiene_mismo_pid)){
-		return string_duplicate("Ejecutando");
-	}else return string_duplicate("Finalizado");
+	}else if (list_any_satisfy(cola_finalizados->elements, (void *)tiene_mismo_pid)){
+		return string_duplicate("Finalizado");
+	}else return string_duplicate("No se encontro el Proceso");
 }
 
 t_par_socket_pid* buscar_info_proceso(int pid){
