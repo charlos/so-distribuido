@@ -23,7 +23,7 @@
 t_par_socket_pid* buscar_proceso_por_socket(int socket);
 
 int main(int argc, char* argv[]) {
-
+	pthread_mutex_init(&mutex_pedido_memoria, NULL);
 	fd_set master_cpu, master_prog;
 	cola_listos = queue_create();
 	registro_pid = 1;
@@ -389,6 +389,7 @@ void cola_listos_push(t_PCB *element){
 	sem_wait(semColaListos);
 	queue_push(cola_listos, element);
 	sem_post(semColaListos);
+	log_trace(logger, "PID %d - cola_listos_push dsp de sem_post semColaListos ", element->pid);
 	sem_post(semCantidadElementosColaListos);
 }
 

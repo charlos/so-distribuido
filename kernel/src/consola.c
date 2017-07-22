@@ -144,6 +144,11 @@ void listar_procesos_de_cola(t_queue* cola_de_estado){
 			_imprimir_proceso(p->pcb);
 		}
 		list_iterate(cola_nuevos->elements, (void*)_imprimir_nuevo_proceso);
+	}else if(cola_de_estado == cola_ejecutando){
+		void _imprimir_ejecutando(t_cpu* c){
+			_imprimir_proceso(c->proceso_asignado);
+		}
+		list_iterate(lista_cpu, (void*)_imprimir_ejecutando);
 	}else list_iterate(cola_de_estado->elements, (void*) _imprimir_proceso);
 }
 
