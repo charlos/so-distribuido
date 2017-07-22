@@ -365,13 +365,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		//TODO nombre_semaforo deberia venir en "buffer"
 		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		sem_wait(semSemaforos);
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
 		semaforo->cuenta++;
 		if(semaforo->cuenta <= 0){
 			auxPCB = queue_pop(semaforo->cola); //saco algun programa de la cola del semaforo
 			pasarDeBlockedAReady(auxPCB); //pasa el proceso a la cola de listos
+			cpu->proceso_desbloqueado_por_signal = 1;
 			pcb_destroy(auxPCB);
 		}
+		sem_post(semSemaforos);
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
 		*resp = 1;
 		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, resp);
@@ -382,12 +385,14 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_FUNCION_WAIT:
 		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
+		sem_wait(semSemaforos);
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
 		semaforo->cuenta--;
 		if(semaforo->cuenta < 0){
 			queue_push(semaforo->cola, cpu->proceso_asignado); //pongo el programa en la cola del semaforo
 			pasarDeExecuteABlocked(cpu); //bloquea el programa
 		}
+		sem_post(semSemaforos);
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb para ser encolado en bloqueados
 		*resp = 1;
 		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, resp);
@@ -430,16 +435,18 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
 		sem_post(semCantidadCpuLibres);
 		break;
-	case OC_TERMINO_INSTRUCCION:
+	case OC_TERMINO_INSTRUCCION: {
+		t_PCB* oldPCB;
 		*resp = -1; //por default no continua procesando
 		pcb = deserializer_pcb(buffer);
 
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
-		auxPCB = cpu->proceso_asignado;
+		oldPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
 		bool esta_bloqueado = false;
 		bool cpu_liberado = false;
 		if(cpu->matar_proceso){
+			cpu->matar_proceso=0;
 			pcb->exit_code = -77;
 			pasarDeExecuteAExit(cpu);
 			cpu_liberado = true;
@@ -453,12 +460,13 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
 					*resp = kernel_conf->quantum_sleep;
 				} else {
-					pasarDeExecuteAReady(cpu);
+					cola_listos_push(cpu->proceso_asignado);
+					cpu_liberado = true;
 				}
 			}
 		}
 		if(!esta_bloqueado){
-			pcb_destroy(auxPCB);
+			pcb_destroy(oldPCB);
 		}
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
@@ -467,6 +475,17 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			liberar_cpu(cpu);
 			sem_post(semCantidadCpuLibres);
 		}
+		/*int cantidadProgramasListo_Sem;
+		sem_getvalue(semCantidadElementosColaListos, &cantidadProgramasListo_Sem);
+		sem_wait(semColaListos);
+		int cantidadColaListos = queue_size(cola_listos);
+		sem_post(semColaListos);
+		if(cantidadColaListos>cantidadProgramasListo_Sem){*/
+		if(cpu->proceso_desbloqueado_por_signal){
+			cpu->proceso_desbloqueado_por_signal=0;
+			sem_post(semCantidadElementosColaListos);
+		}
+	}
 		break;
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;

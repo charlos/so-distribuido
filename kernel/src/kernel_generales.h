@@ -34,6 +34,8 @@ pthread_mutex_t mutex_planificar_corto_plazo;
 pthread_mutex_t mutex_planificar_largo_plazo;
 pthread_rwlock_t* lock_tabla_global_archivos;
 
+sem_t* semSemaforos;
+
 typedef struct{
 	int program_port;
 	int cpu_port;
@@ -56,6 +58,7 @@ typedef struct{
 	t_PCB* proceso_asignado;
 	int quantum;
 	int matar_proceso; // si es true se debe pasar el pcb a la cola finalizados
+	int proceso_desbloqueado_por_signal; // si es true se debe incrementar semaforo que cuenta la cola de listos
 }t_cpu;
 
 typedef struct{
@@ -106,6 +109,7 @@ int TAMANIO_PAGINAS;
 t_list * tabla_sockets_procesos;
 t_dictionary* semaforos;
 t_list* tabla_variables_compartidas;
+void liberar_cpu(t_cpu* cpu);
 
 /**
  * @NAME: crear_PCB

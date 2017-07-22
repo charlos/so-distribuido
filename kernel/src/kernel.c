@@ -57,6 +57,7 @@ int main(int argc, char* argv[]) {
 	semCantidadCpuLibres = malloc(sizeof(sem_t));
 	semListaCpu = malloc(sizeof(sem_t));
 	lock_tabla_global_archivos = malloc(sizeof(pthread_rwlock_t));
+	semSemaforos = malloc(sizeof(sem_t));
 
 	sem_init(semColaBloqueados, 0, 1);
 	sem_init(semColaListos, 0, 1);
@@ -69,6 +70,8 @@ int main(int argc, char* argv[]) {
 	sem_init(semCantidadCpuLibres, 0, 0);
 	sem_init(semListaCpu, 0, 1);
 	pthread_mutex_init(lock_tabla_global_archivos, NULL);
+	sem_init(semSemaforos, 0, 1);
+
 	lista_cpu = list_create();
 	rw_lock_unlock(UNLOCK);
 
@@ -138,6 +141,7 @@ t_cpu* cpu_create(int file_descriptor){
 	cpu->file_descriptor = file_descriptor;
 	cpu->proceso_asignado = NULL;
 	cpu->matar_proceso=0;
+	cpu->proceso_desbloqueado_por_signal=0;
 	cpu->quantum=0;
 	return cpu;
 }
@@ -196,7 +200,9 @@ void manage_select(t_aux* estructura){
 
 						if(estructura->port == kernel_conf->cpu_port){
 							t_cpu* cpu = obtener_cpu(fd_seleccionado);
-							pasarDeExecuteAReady(cpu);
+							if(cpu->proceso_asignado != NULL){
+								pasarDeExecuteAReady(cpu);
+							}
 							eliminar_cpu(fd_seleccionado);
 						} else if(estructura->port == kernel_conf->program_port){
 
@@ -261,8 +267,8 @@ void planificador_corto_plazo(){
 	while(true){
 		// se podria usar para habilitar/deshabilitar la planificacion
 		pthread_mutex_lock(&mutex_planificar_corto_plazo);
-		sem_wait(semCantidadElementosColaListos);
 		sem_wait(semCantidadCpuLibres);
+		sem_wait(semCantidadElementosColaListos);
 		pasarDeReadyAExecute();
 		pthread_mutex_unlock(&mutex_planificar_corto_plazo);
 	}
@@ -300,7 +306,10 @@ void pasarDeReadyAExecute(){
 		sem_post(semColaListos);
 		// si no tiene procesos en la cola de listos no hace nada
 		if(pcb != NULL){
+			sem_wait(semListaCpu);
+			free(cpu->proceso_asignado);
 			cpu->proceso_asignado = pcb;
+			sem_post(semListaCpu);
 			serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
 		}
 	}
@@ -308,9 +317,9 @@ void pasarDeReadyAExecute(){
 }
 
 void pasarDeExecuteAReady(t_cpu* cpu){
-	cola_listos_push(cpu->proceso_asignado);
-
+	t_PCB* pcb = cpu->proceso_asignado;
 	liberar_cpu(cpu);
+	cola_listos_push(pcb); //se invierte el orden porque esta funcion corre el planificador
 
 }
 
@@ -337,21 +346,24 @@ void pasarDeBlockedAReady(t_PCB* pcbASacar){
 	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
 	sem_post(semColaBloqueados);
 	log_trace(logger, "PID %d - pasarDeBlockedAReady despues del sem_post ", pcbASacar->pid);
-	if(pcb != NULL) cola_listos_push(pcb);
+	if(pcb != NULL){
+		//cola_listos_push(pcb);
+		sem_wait(semColaListos);
+		queue_push(cola_listos, pcb);
+		sem_post(semColaListos);
+	}
 }
 
 void enviar_a_ejecutar(t_cpu* cpu){
 
 }
 
-void liberar_cpu(t_cpu* cpu){
-	sem_wait(semListaCpu);
-	cpu->quantum = 0;
-	cpu->proceso_asignado = NULL;
-	cpu->matar_proceso = 0;
-	sem_post(semListaCpu);
-}
 
+
+/*
+ * encuentra una cpu libre y la "marca" como no encontrada (gracias Dante!)
+ *
+ */
 t_cpu* cpu_obtener_libre(t_list* lista_cpu){
 	t_cpu* cpu = NULL;
 	int i;
@@ -360,6 +372,7 @@ t_cpu* cpu_obtener_libre(t_list* lista_cpu){
 		cpu = list_get(lista_cpu, i);
 		if( cpu->proceso_asignado == NULL ) break; //si se encuentra una cpu libre se termina la busqueda
 	}
+	if(cpu != NULL) cpu->proceso_asignado = malloc(sizeof(t_PCB));
 	sem_post(semListaCpu);
 	return cpu;
 }
@@ -382,8 +395,8 @@ void cola_listos_push(t_PCB *element){
 	log_trace(logger, "PID %d - cola_listos_push antes de sem_wait semColaListos ", element->pid);
 	sem_wait(semColaListos);
 	queue_push(cola_listos, element);
-	sem_post(semColaListos);
 	sem_post(semCantidadElementosColaListos);
+	sem_post(semColaListos);
 }
 
 void eliminar_cpu(int file_descriptor){

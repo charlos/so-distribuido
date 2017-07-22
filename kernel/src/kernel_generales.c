@@ -68,13 +68,15 @@ t_cpu* obtener_cpu(int socket){
 	return find_by_fd(socket);
 }*/
 
-t_cpu* find_by_fd(int fd) {
+/*t_cpu* find_by_fd(int fd) {
 	int _is_fd(t_cpu *cpu) {
 		return (cpu->file_descriptor == fd);
 	}
-
-	return list_find(lista_cpu, (void*) _is_fd);
-}
+	sem_wait(semListaCpu);
+	t_cpu* cpu = list_find(lista_cpu, (void*) _is_fd);
+	sem_post(semListaCpu);
+	return cpu;
+}*/
 
 void crearSemaforos(){
 	int i=0;
@@ -129,7 +131,10 @@ t_cpu* obtener_cpu(int file_descriptor){
 	bool _mismo_file_descriptor(t_cpu* cpu){
 		return cpu->file_descriptor == file_descriptor;
 	}
-	return list_find(lista_cpu, (void*)_mismo_file_descriptor);
+	sem_wait(semListaCpu);
+	t_cpu* cpu = list_find(lista_cpu, (void*)_mismo_file_descriptor);
+	sem_post(semListaCpu);
+	return cpu;
 }
 
 void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso){
@@ -153,7 +158,10 @@ t_cpu* obtener_cpu_por_proceso(int pid){
 	bool _mismo_file_descriptor(t_cpu* cpu){
 		return cpu->proceso_asignado->pid == pid;
 	}
-	return list_find(lista_cpu, (void*)_mismo_file_descriptor);
+	sem_wait(semListaCpu);
+	t_cpu* cpu = list_find(lista_cpu, (void*)_mismo_file_descriptor);
+	sem_post(semListaCpu);
+	return cpu;
 }
 
 void rw_lock_unlock(int action) {
@@ -169,4 +177,13 @@ void rw_lock_unlock(int action) {
 		break;
 	}
 	//return EXIT_SUCCESS;
+}
+
+void liberar_cpu(t_cpu* cpu){
+	sem_wait(semListaCpu);
+	cpu->quantum = 0;
+	cpu->proceso_asignado = NULL;
+	cpu->matar_proceso = 0;
+	cpu->proceso_desbloqueado_por_signal = 0;
+	sem_post(semListaCpu);
 }
