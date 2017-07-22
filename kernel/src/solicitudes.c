@@ -101,7 +101,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		info_proceso = buscar_codigo_de_proceso(pedido->pid);
 		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
+			log_trace(logger, "PID %d - Asigna paginas heap empieza", pedido->pid);
 			status = memory_assign_pages(memory_socket, pedido->pid, 1, logger);
+			log_trace(logger, "PID %d - Asigna paginas heap termina", pedido->pid);
 			if(status < 0){
 				if(status == -203){
 					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
@@ -116,11 +118,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_heapMetadata* meta_pag_nueva =crear_metadata_libre(TAMANIO_PAGINAS);
 
 			// Escribimos la metadata de la nueva pagina en Memoria
+			log_trace(logger, "PID %d - Lee paginas heap empieza", pedido->pid);
 			memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, sizeof(t_heapMetadata), sizeof(t_heapMetadata), meta_pag_nueva, logger);
+			log_trace(logger, "PID %d - Lee paginas heap termina", pedido->pid);
 
 			free(meta_pag_nueva);
 		}
+		log_trace(logger, "PID %d - Lee paginas heap (Ya habia pagina asignada) empieza", pedido->pid);
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
+		log_trace(logger, "PID %d - Lee paginas heap (Ya habia pagina asignada) termina", pedido->pid);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		log_trace(logger, "PID %d - puntero de bloque: %d", pedido->pid, bloque_heap_ptr);
 		marcar_bloque_ocupado(bloque_heap_ptr, respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
@@ -140,25 +146,26 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;		// liberar buffer
-		log_trace(logger, "PID %d - pedido de liberar punter. Posicion: %d",pedido->pid, liberar->posicion);
+		log_trace(logger, "PID %d - pedido de liberar punter. Posicion: %d",liberar->pid, liberar->posicion);
 		info_proceso = buscar_codigo_de_proceso(liberar->pid);
 
 		obtener_direccion_de_bloque_verdadera(liberar, info_proceso->paginas_codigo); //le saco las paginas de codigo y stack
 
-		log_trace(logger, "PID %d - Yendo a leer pagina de memoria: %d",pedido->pid,(liberar->nro_pagina + info_proceso->paginas_codigo));
+		log_trace(logger, "PID %d - Yendo a leer pagina de memoria: %d",liberar->pid,(liberar->nro_pagina + info_proceso->paginas_codigo));
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
 	    sumar_espacio_liberado(liberar->pid, metadata_bloque->size);
 		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
 		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
+		status = 1;
 		if(pagina_vacia(liberar->pid, liberar->nro_pagina)){
 			tabla_heap_sacar_pagina(liberar);
 			liberar_pagina(liberar, info_proceso->paginas_codigo);
+		    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 			break;
 		}
 		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
-		status = 1;
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 
