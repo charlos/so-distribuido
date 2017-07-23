@@ -33,6 +33,7 @@ pthread_mutex_t registro_pid_mutex;
 pthread_mutex_t mutex_planificar_corto_plazo;
 pthread_mutex_t mutex_planificar_largo_plazo;
 pthread_rwlock_t* lock_tabla_global_archivos;
+pthread_mutex_t mutex_pedido_memoria;
 
 typedef struct{
 	int program_port;
