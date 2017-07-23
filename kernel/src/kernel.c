@@ -165,7 +165,6 @@ void manage_select(t_aux* estructura){
 	int status;
 	fd_set lectura;
 	pthread_attr_t attr;
-	t_info_socket_solicitud* info_solicitud = malloc(sizeof(t_info_socket_solicitud));
 	set_fd_max = listening_socket;
 	FD_ZERO(&lectura);
 	FD_ZERO((estructura->master));
@@ -196,6 +195,13 @@ void manage_select(t_aux* estructura){
 					}
 				} else {
 					pthread_t hilo_solicitud;
+
+					/*****************************************************************************************
+					 * Esto soluciona el P*** ERROR de sincronizacion que hacia que rompa .todo. cuando se   *
+					 * conectaba una segunda CPU!! ya que al haber echo el MALLOC en la parte de arriba era  *
+					 * el mismo puntero para todos los hilos                                                 *
+					 *****************************************************************************************/
+					t_info_socket_solicitud* info_solicitud = malloc(sizeof(t_info_socket_solicitud));
 
 					info_solicitud->file_descriptor = fd_seleccionado;
 					info_solicitud->set = estructura->master;
