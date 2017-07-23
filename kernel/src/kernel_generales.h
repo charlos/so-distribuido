@@ -23,7 +23,7 @@ sem_t *semColaBloqueados;
 sem_t *semPlanificarLargoPlazo;
 sem_t *semPlanificarCortoPlazo;
 sem_t *semColaNuevos;
-sem_t *semColaListos;
+pthread_mutex_t semColaListos;
 sem_t* semColaFinalizados;
 sem_t* semListaCpu;
 sem_t *semCantidadCpuLibres;
@@ -121,7 +121,7 @@ void load_kernel_properties(char* ruta );
 void crearVariablesCompartidas(void);
 
 //CPU
-t_cpu* cpu_obtener_libre(t_list* lista_cpu);
+//t_cpu* cpu_obtener_libre(t_list* lista_cpu);
 void cpu_enviar_pcb(t_cpu* cpu, t_PCB* pcb);
 t_cpu* obtener_cpu(int socket);
 t_cpu* find_by_fd(int fd);

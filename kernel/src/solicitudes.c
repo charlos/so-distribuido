@@ -483,6 +483,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
+		log_trace(logger, "Se envió OC_RESP_TERMINO_INSTRUCCION al socket %d", info_solicitud->file_descriptor);
 
 		if (cpu_liberado) {
 			liberar_cpu(cpu);
@@ -499,6 +500,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			sem_post(semCantidadElementosColaListos);
 		}
 	}
+	pthread_mutex_unlock(&mutex_planificar_corto_plazo);
 		break;
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;

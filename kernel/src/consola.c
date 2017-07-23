@@ -88,10 +88,10 @@ int leer_comando(char* command) {
 		pcbEncontrado = sacar_pcb(cola_nuevos, pcbASacar);
 		sem_post(semColaNuevos);
 		if(pcbEncontrado == NULL){
-			sem_wait(semColaListos);
+			pthread_mutex_lock(&semColaListos);
 			// lo busco en la cola ready
 			pcbEncontrado = sacar_pcb(cola_listos, pcbASacar);
-			sem_post(semColaListos);
+			pthread_mutex_unlock(&semColaListos);
 			if(pcbEncontrado == NULL){
 				// lo busco en la cola blocked
 				sem_wait(semColaBloqueados);
