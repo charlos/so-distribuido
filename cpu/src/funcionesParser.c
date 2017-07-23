@@ -50,7 +50,8 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 }
 
 void llamarSinRetorno(t_nombre_etiqueta etiqueta){
-	nuevoContexto();
+	t_element_stack* regIndicestack = nuevoContexto();
+	regIndicestack->retPos = pcb->PC;
     int* posicion = (int*)dictionary_get(pcb->indice_etiquetas, etiqueta);
     pcb->PC = *posicion;
     log_trace(logger, "Llamar sin Retorno. Ir a la linea [%d]", pcb->PC);
@@ -312,7 +313,7 @@ void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
 }
 
 void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable tamanio){
-    log_trace(logger, "Escribir [%d]:%d a [%d]", tamanio, informacion, tamanio, desc);
+    log_trace(logger, "Escribir [%d bytes]:%s a [%d]", tamanio, informacion, desc);
 
     log_trace(logger, "VALOR DE INFORMACION: %s", (char *)informacion);
 
