@@ -231,9 +231,10 @@ char * read_file(char * path) {
 
 	if(strcmp(path, "1") == 0) {
 		file = fopen("/home/utnso/eje.ansisop", "r");
+	} else {
+		char * dir = string_trim(&path);
+		file = fopen(dir, "r");
 	}
-
-	else file = fopen(path, "r");
 
 	if(file) {
 		char* string = string_new();
