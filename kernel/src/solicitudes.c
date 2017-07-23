@@ -42,13 +42,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cant_paginas = calcular_paginas_necesarias(buffer);
 		pcb = crear_PCB();
 
-		int saved_socket = info_solicitud->file_descriptor;
 		t_par_socket_pid * parnuevo = malloc(sizeof(t_par_socket_pid));
 		parnuevo->pid = pcb->pid;
-		parnuevo->socket = saved_socket;
+		parnuevo->socket = info_solicitud->file_descriptor;
+		parnuevo->cantidad_syscalls = 0;
+		parnuevo->memoria_liberada = 0;
+		parnuevo->memoria_reservada = 0;
 		list_add(tabla_sockets_procesos, parnuevo);
 
-		log_trace(logger, "SOCKET DEL PID %d: %d", pcb->pid, saved_socket);
+		log_trace(logger, "SOCKET DEL PID %d: %d", pcb->pid, info_solicitud->file_descriptor);
 
 		pcb->cantidad_paginas = cant_paginas-kernel_conf->stack_size;
 		pcb->PC = 0;
@@ -89,14 +91,21 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_FUNCION_RESERVAR:
 
 		pedido = (t_pedido_reservar_memoria*)buffer;
+		bloque_heap_ptr = 0;
+		if(pedido->espacio_pedido > (TAMANIO_PAGINAS - sizeof(t_heapMetadata))){
+			log_trace(logger, "Pedido de heap invalido - Se esta pidiendo mas espacio del permitido por solicitud");
+			connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+			break;
+		}
 		log_trace(logger, "PID %d - OP OC_FUNCION_RESERVAR dentro de kernel-solicitudes.c",pedido->pid);
 		info_proceso = buscar_codigo_de_proceso(pedido->pid);
 		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
+			log_trace(logger, "PID %d - Asigna paginas heap empieza", pedido->pid);
 			status = memory_assign_pages(memory_socket, pedido->pid, 1, logger);
+			log_trace(logger, "PID %d - Asigna paginas heap termina", pedido->pid);
 			if(status < 0){
 				if(status == -203){
-					bloque_heap_ptr = 0;
 					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
 					log_trace(logger, "No se pudo asignar pagina de heap para proceso con pid: %d", pedido->pid);
 				} else log_trace(logger, "Se desconecto la memoria");
@@ -109,11 +118,15 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_heapMetadata* meta_pag_nueva =crear_metadata_libre(TAMANIO_PAGINAS);
 
 			// Escribimos la metadata de la nueva pagina en Memoria
+			log_trace(logger, "PID %d - Lee paginas heap empieza", pedido->pid);
 			memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, sizeof(t_heapMetadata), sizeof(t_heapMetadata), meta_pag_nueva, logger);
+			log_trace(logger, "PID %d - Lee paginas heap termina", pedido->pid);
 
 			free(meta_pag_nueva);
 		}
+		log_trace(logger, "PID %d - Lee paginas heap (Ya habia pagina asignada) empieza", pedido->pid);
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
+		log_trace(logger, "PID %d - Lee paginas heap (Ya habia pagina asignada) termina", pedido->pid);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		log_trace(logger, "PID %d - puntero de bloque: %d", pedido->pid, bloque_heap_ptr);
 		marcar_bloque_ocupado(bloque_heap_ptr, respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
@@ -133,26 +146,28 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_FUNCION_LIBERAR:
 		liberar = buffer;		// liberar buffer
-		log_trace(logger, "PID %d - pedido de liberar punter. Posicion: %d",pedido->pid, liberar->posicion);
+		log_trace(logger, "PID %d - pedido de liberar punter. Posicion: %d",liberar->pid, liberar->posicion);
 		info_proceso = buscar_codigo_de_proceso(liberar->pid);
 
 		obtener_direccion_de_bloque_verdadera(liberar, info_proceso->paginas_codigo); //le saco las paginas de codigo y stack
 
-		log_trace(logger, "PID %d - Yendo a leer pagina de memoria: %d",pedido->pid,(liberar->nro_pagina + info_proceso->paginas_codigo));
+		log_trace(logger, "PID %d - Yendo a leer pagina de memoria: %d",liberar->pid,(liberar->nro_pagina + info_proceso->paginas_codigo));
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
 	    sumar_espacio_liberado(liberar->pid, metadata_bloque->size);
 		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
 		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
+		status = 1;
 		if(pagina_vacia(liberar->pid, liberar->nro_pagina)){
 			tabla_heap_sacar_pagina(liberar);
 			liberar_pagina(liberar, info_proceso->paginas_codigo);
+		    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 			break;
 		}
 		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
-
 	    sumar_syscall(info_solicitud->file_descriptor);
+	    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 
 		break;
 	case OC_FUNCION_ABRIR: {
@@ -378,9 +393,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
 		*resp = 1;
 		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, resp);
-//		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
-//		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
-//		semaforoSignal(semaforo);
 		break;
 	case OC_FUNCION_WAIT:
 		nombre_semaforo	= (char*)buffer;
@@ -396,9 +408,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb para ser encolado en bloqueados
 		*resp = 1;
 		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, resp);
-//		t_nombre_semaforo nombre_semaforo = *(t_nombre_semaforo*)buffer;
-//		t_esther_semaforo * semaforo = traerSemaforo(nombre_semaforo);
-//		semaforoWait(semaforo);
 		break;
 	case OC_TERMINA_PROGRAMA:
 		pcb = deserializer_pcb(buffer);
@@ -450,6 +459,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			pcb->exit_code = -77;
 			pasarDeExecuteAExit(cpu);
 			cpu_liberado = true;
+			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
+			status = 1;
+			connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+			memory_finalize_process(memory_socket, pcb->pid, logger);
 		} else {
 			esta_bloqueado = proceso_bloqueado(pcb);
 			if( esta_bloqueado ){
@@ -965,4 +978,11 @@ int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_co
 	}
 	mandar_codigo_a_memoria(codigo_completo, pid);
 	return status;
+}
+
+t_par_socket_pid* encontrar_consola_de_pcb(int pid){
+	int * _mismopid(t_par_socket_pid * target) {
+		return pid == target->pid;
+	}
+	return list_find(tabla_sockets_procesos, _mismopid);
 }

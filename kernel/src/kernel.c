@@ -91,7 +91,6 @@ int main(int argc, char* argv[]) {
 	pthread_t hilo_consola;
 	pthread_t hilo_pantalla;
 
-
 	t_aux *estruc_cpu, *estruc_prog;
 	estruc_cpu = malloc(sizeof(t_aux));
 	estruc_prog = malloc(sizeof(t_aux));
@@ -100,9 +99,16 @@ int main(int argc, char* argv[]) {
 	estruc_prog->port = kernel_conf->program_port;
 	estruc_prog->master = &master_prog;
 
+	pthread_attr_t attr;
 
+	pthread_attr_init(&attr);
 
-//	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+	// Se crea hilo planificador corto plazo
+	pthread_create(&hilo_pantalla, &attr, &iniciar_consola, NULL);
+
+	pthread_attr_destroy(&attr);
 
 	// Se crea hilo de cpu's
 	pthread_create(&hilo_cpu, NULL, &manage_select, estruc_cpu);
@@ -200,9 +206,7 @@ void manage_select(t_aux* estructura){
 
 						if(estructura->port == kernel_conf->cpu_port){
 							t_cpu* cpu = obtener_cpu(fd_seleccionado);
-							if(cpu->proceso_asignado != NULL){
-								pasarDeExecuteAReady(cpu);
-							}
+							if(cpu->proceso_asignado)pasarDeExecuteAReady(cpu);
 							eliminar_cpu(fd_seleccionado);
 						} else if(estructura->port == kernel_conf->program_port){
 
@@ -307,7 +311,7 @@ void pasarDeReadyAExecute(){
 		// si no tiene procesos en la cola de listos no hace nada
 		if(pcb != NULL){
 			sem_wait(semListaCpu);
-			free(cpu->proceso_asignado);
+			//free(cpu->proceso_asignado);
 			cpu->proceso_asignado = pcb;
 			sem_post(semListaCpu);
 			serializar_y_enviar_PCB(pcb, cpu->file_descriptor, OC_PCB);
