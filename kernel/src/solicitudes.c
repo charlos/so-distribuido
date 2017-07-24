@@ -36,6 +36,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
     int length_direccion, pid, size_nombre, socket_consola, status;
     t_banderas flags;
 
+
 	switch(operation_code){
 	case OC_SOLICITUD_PROGRAMA_NUEVO: {
 
@@ -90,6 +91,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	case OC_FUNCION_RESERVAR:
 
+
 		pedido = (t_pedido_reservar_memoria*)buffer;
 		bloque_heap_ptr = 0;
 		if(pedido->espacio_pedido > (TAMANIO_PAGINAS - sizeof(t_heapMetadata))){
@@ -102,7 +104,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		pagina = obtener_pagina_con_suficiente_espacio(pedido->pid, pedido->espacio_pedido);
 		if(pagina == NULL){
 			log_trace(logger, "PID %d - Asigna paginas heap empieza", pedido->pid);
+			pthread_mutex_lock(&mutex_pedido_memoria);
 			status = memory_assign_pages(memory_socket, pedido->pid, 1, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
 			log_trace(logger, "PID %d - Asigna paginas heap termina", pedido->pid);
 			if(status < 0){
 				if(status == -203){
@@ -118,20 +122,24 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_heapMetadata* meta_pag_nueva =crear_metadata_libre(TAMANIO_PAGINAS);
 
 			// Escribimos la metadata de la nueva pagina en Memoria
-			log_trace(logger, "PID %d - Lee paginas heap empieza", pedido->pid);
+			log_trace(logger, "PID %d - Formatea paginas de heap nueva empieza", pedido->pid);
+			pthread_mutex_lock(&mutex_pedido_memoria);
 			memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, sizeof(t_heapMetadata), sizeof(t_heapMetadata), meta_pag_nueva, logger);
-			log_trace(logger, "PID %d - Lee paginas heap termina", pedido->pid);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
+			log_trace(logger, "PID %d - Formatea paginas de heap nueva termina", pedido->pid);
 
 			free(meta_pag_nueva);
 		}
-		log_trace(logger, "PID %d - Lee paginas heap (Ya habia pagina asignada) empieza", pedido->pid);
+		log_trace(logger, "PID %d - Lee paginas heap empieza", pedido->pid);
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
-		log_trace(logger, "PID %d - Lee paginas heap (Ya habia pagina asignada) termina", pedido->pid);
+		log_trace(logger, "PID %d - Lee paginas heap termina", pedido->pid);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		log_trace(logger, "PID %d - puntero de bloque: %d", pedido->pid, bloque_heap_ptr);
 		marcar_bloque_ocupado(bloque_heap_ptr, respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		// Mandamos la pagina de heap modificada
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_write(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		log_trace(logger, "PID %d - Escribe heap en memoria, en pagina: %d",pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo));
 		modificar_pagina(pagina, pedido->espacio_pedido); // actualizamos los datos de la pagina en la tabla de heap
 
@@ -140,7 +148,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
 		log_trace(logger, "PID %d - Mando a cpu puntero de malloc pedido. Posicion: %d",pedido->pid, bloque_heap_ptr);
 		printf("Mandando heap\n");
-
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    sumar_espacio_reservado(pedido->espacio_pedido, info_solicitud->file_descriptor);
 		break;

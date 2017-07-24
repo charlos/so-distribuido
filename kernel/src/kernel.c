@@ -23,7 +23,7 @@
 t_par_socket_pid* buscar_proceso_por_socket(int socket);
 
 int main(int argc, char* argv[]) {
-
+	pthread_mutex_init(&mutex_pedido_memoria, NULL);
 	fd_set master_cpu, master_prog;
 	registro_pid = 1;
 

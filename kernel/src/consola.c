@@ -69,9 +69,12 @@ int leer_comando(char* command) {
 		int pid = atoi(palabras[1]);
 		t_par_socket_pid* info_proceso = buscar_info_proceso(pid);
 		printf("Proceso pid: %d\n", pid);
+		char* estado = obtener_estado(pid);
+		printf("Estado: %s\n", estado);
 		printf("Cantidad de Syscalls: %d\n", info_proceso->cantidad_syscalls);
 		printf("Cantidad de memoria alocada: %d\n", info_proceso->memoria_reservada);
 		printf("Cantidad de memoria liberada: %d\n", info_proceso->memoria_liberada);
+		free(estado);
 	}
 	else if(strcmp(palabras[0], "global_file_table") ==0 ) {
 		printf("Tabla global de Archivos:\n");
@@ -144,6 +147,11 @@ void listar_procesos_de_cola(t_queue* cola_de_estado){
 			_imprimir_proceso(p->pcb);
 		}
 		list_iterate(cola_nuevos->elements, (void*)_imprimir_nuevo_proceso);
+	}else if(cola_de_estado == cola_ejecutando){
+		void _imprimir_ejecutando(t_cpu* c){
+			_imprimir_proceso(c->proceso_asignado);
+		}
+		list_iterate(lista_cpu, (void*)_imprimir_ejecutando);
 	}else list_iterate(cola_de_estado->elements, (void*) _imprimir_proceso);
 }
 
