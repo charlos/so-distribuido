@@ -217,7 +217,9 @@ void manage_select(t_aux* estructura){
 
 						if(estructura->port == kernel_conf->cpu_port){
 							t_cpu* cpu = obtener_cpu(fd_seleccionado);
-							if(cpu->proceso_asignado)pasarDeExecuteAReady(cpu);
+							if(cpu->proceso_asignado){
+								cola_listos_push(cpu->proceso_asignado);
+							}
 							eliminar_cpu(fd_seleccionado);
 						} else if(estructura->port == kernel_conf->program_port){
 
