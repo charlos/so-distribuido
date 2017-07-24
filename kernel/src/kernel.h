@@ -61,6 +61,6 @@ void pasarDeReadyAExecute();
 void pasarDeExecuteAReady(t_cpu* cpu);
 void pasarDeExecuteAExit(t_cpu* cpu);
 void pasarDeExecuteABlocked(t_cpu* cpu);
-void pasarDeBlockedAReady(t_PCB* pcbASacar);
+void pasarDeBlockedAReady(uint16_t pidPcbASacar);
 
 #endif /* KERNEL_H_ */

@@ -110,6 +110,7 @@ t_list * tabla_sockets_procesos;
 t_dictionary* semaforos;
 t_list* tabla_variables_compartidas;
 void liberar_cpu(t_cpu* cpu);
+t_PCB* sacar_pcb_con_pid(t_queue* cola, uint16_t pid);
 
 /**
  * @NAME: crear_PCB

@@ -844,6 +844,7 @@ int delete_page_process(int pid, int page) {
 	invert_table_ptr += frame;
 	invert_table_ptr->pid = 0;
 	invert_table_ptr->page = 0;
+	invert_table_ptr->segment = ' ';
 	list_add(available_frame_list, frame);
 	pthread_mutex_unlock(&mutex_lock);
 

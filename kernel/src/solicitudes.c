@@ -384,10 +384,14 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
 		semaforo->cuenta++;
 		if(semaforo->cuenta <= 0){
-			auxPCB = queue_pop(semaforo->cola); //saco algun programa de la cola del semaforo
-			pasarDeBlockedAReady(auxPCB); //pasa el proceso a la cola de listos
+			uint16_t* pid2 = queue_pop(semaforo->cola);
+			uint16_t* pid = malloc(sizeof(uint16_t));
+			memcpy(pid, pid2, sizeof(uint16_t)); //saco algun programa de la cola del semaforo
+			log_trace(logger, "POP (%d) en Semaforo -%s- por CPU %d", *pid, nombre_semaforo, info_solicitud->file_descriptor);
+			pasarDeBlockedAReady(*pid); //pasa el proceso a la cola de listos
 			cpu->proceso_desbloqueado_por_signal = 1;
-			pcb_destroy(auxPCB);
+			free(pid2);
+			//pcb_destroy(auxPCB);
 		}
 		sem_post(semSemaforos);
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb par ser encolado en bloqueados
@@ -401,7 +405,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		semaforo = dictionary_get(semaforos, nombre_semaforo);
 		semaforo->cuenta--;
 		if(semaforo->cuenta < 0){
-			queue_push(semaforo->cola, cpu->proceso_asignado); //pongo el programa en la cola del semaforo
+			uint16_t* pid = malloc(sizeof(uint16_t));
+			*pid = cpu->proceso_asignado->pid;
+			queue_push(semaforo->cola, pid); //pongo el programa en la cola del semaforo
+			log_trace(logger, "PUSH (%d) en Semaforo -%s- por CPU %d", *pid, nombre_semaforo, info_solicitud->file_descriptor);
 			pasarDeExecuteABlocked(cpu); //bloquea el programa
 		}
 		sem_post(semSemaforos);
@@ -453,12 +460,14 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		oldPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
 		bool esta_bloqueado = false;
-		bool cpu_liberado = false;
+		bool liberarcpu = false;
+		bool push_a_listos = false;
+
 		if(cpu->matar_proceso){
 			cpu->matar_proceso=0;
 			pcb->exit_code = -77;
 			pasarDeExecuteAExit(cpu);
-			cpu_liberado = true;
+			liberarcpu = true;
 			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
 			status = 1;
 			connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
@@ -467,25 +476,33 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			esta_bloqueado = proceso_bloqueado(pcb);
 			if( esta_bloqueado ){
 				// si el proceso está bloqueado libera cpu
-				cpu_liberado = true;
+				liberarcpu = true;
 			} else {
 				if(continuar_procesando(cpu)){
 					//se debe pasar el valor del sleep obtenido de la configuracion, esto ademas quiere decir que se debe continuar procesando
 					*resp = kernel_conf->quantum_sleep;
 				} else {
-					cola_listos_push(cpu->proceso_asignado);
-					cpu_liberado = true;
+					pthread_mutex_lock(&semColaListos);
+					queue_push(cola_listos, cpu->proceso_asignado);
+
+					log_trace(logger, "PUSH (pid: %d - PC: %d - SP: %d POS %p) en Ready 488 soli.c", cpu->proceso_asignado->pid, cpu->proceso_asignado->PC, cpu->proceso_asignado->SP, cpu->proceso_asignado);
+
+					log_trace(logger, "PID %d - Se inserta en Ready", cpu->proceso_asignado->pid);
+					pthread_mutex_unlock(&semColaListos);
+					push_a_listos = true;
+					liberarcpu = true;
 				}
 			}
 		}
 		if(!esta_bloqueado){
-			pcb_destroy(oldPCB);
+			log_trace(logger, "PCB a destruir (pid: %d - PC: %d - SP: %d POS %p) ",  cpu->proceso_asignado->pid, cpu->proceso_asignado->PC, cpu->proceso_asignado->SP, cpu->proceso_asignado);
+			//pcb_destroy(oldPCB);
 		}
 		//enviar oc para continuar ejecutando el proceso o no
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 		log_trace(logger, "Se envió OC_RESP_TERMINO_INSTRUCCION al socket %d", info_solicitud->file_descriptor);
 
-		if (cpu_liberado) {
+		if (liberarcpu) {
 			liberar_cpu(cpu);
 			sem_post(semCantidadCpuLibres);
 		}
@@ -495,7 +512,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		int cantidadColaListos = queue_size(cola_listos);
 		sem_post(semColaListos);
 		if(cantidadColaListos>cantidadProgramasListo_Sem){*/
-		if(cpu->proceso_desbloqueado_por_signal){
+		if(cpu->proceso_desbloqueado_por_signal || push_a_listos){
 			cpu->proceso_desbloqueado_por_signal=0;
 			sem_post(semCantidadElementosColaListos);
 		}

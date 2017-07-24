@@ -25,10 +25,9 @@ t_par_socket_pid* buscar_proceso_por_socket(int socket);
 int main(int argc, char* argv[]) {
 
 	fd_set master_cpu, master_prog;
-	cola_listos = queue_create();
 	registro_pid = 1;
 
-	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
+	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
 	contador_fd_global = 10;
@@ -302,7 +301,7 @@ void pasarDeNewAReady(){
 		nuevo_proceso = queue_pop(cola_nuevos);
 		sem_post(semColaNuevos);
 		respuesta = notificar_memoria_inicio_programa(nuevo_proceso->pcb->pid, nuevo_proceso->cantidad_paginas, nuevo_proceso->codigo);
-		if(respuesta == -203){
+		if(respuesta == ENOSPC){
 			nuevo_proceso->pcb->exit_code = -1;
 			// la funcion pasarDeNewAReady() termina pasando a finalizados!? (que asco...)
 			queue_push(cola_finalizados, nuevo_proceso->pcb);
@@ -322,7 +321,9 @@ void pasarDeReadyAExecute(){
 
 	sem_wait(semCantidadElementosColaListos);
 	pthread_mutex_lock(&semColaListos);
+	log_trace(logger, "list_size de cola_listos %d", list_size(cola_listos));
 	pcb = queue_pop(cola_listos);
+	log_trace(logger, "POP (pid: %d - PC: %d - SP: %d POS %p) en Ready", pcb->pid, pcb->PC, pcb->SP, pcb);
 	pthread_mutex_unlock(&semColaListos);
 
 
@@ -375,15 +376,17 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 	//liberar_cpu(cpu);
 }
 
-void pasarDeBlockedAReady(t_PCB* pcbASacar){
+void pasarDeBlockedAReady(uint16_t pidPcbASacar){
 	sem_wait(semColaBloqueados);
-	t_PCB* pcb = sacar_pcb(cola_bloqueados, pcbASacar);
+	t_PCB* pcb = sacar_pcb_con_pid(cola_bloqueados, pidPcbASacar);
 	log_trace(logger, "PID %d - pasarDeBlockedAReady() - Saca PCB de Blocked", pcb->pid);
 	sem_post(semColaBloqueados);
 	if(pcb != NULL){
 		//cola_listos_push(pcb);
 		pthread_mutex_lock(&semColaListos);
 		queue_push(cola_listos, pcb);
+		log_trace(logger, "PUSH (pid: %d - PC: %d - SP: %d POS %p) en Ready 388 kernel.c", pcb->pid, pcb->PC, pcb->SP, pcb);
+
 		log_trace(logger, "PID %d - pasarDeBlockedAReady() - Pone PCB en Ready", pcb->pid);
 		pthread_mutex_unlock(&semColaListos);
 	}
@@ -399,19 +402,6 @@ void enviar_a_ejecutar(t_cpu* cpu){
  * encuentra una cpu libre y la "marca" como no encontrada (gracias Dante!)
  *
  */
-/*t_cpu* cpu_obtener_libre(t_list* lista_cpu){
-	t_cpu* cpu = NULL;
-	int i;
-	sem_wait(semListaCpu);
-	for (i = 0; i < list_size(lista_cpu); i++) {
-		cpu = list_get(lista_cpu, i);
-		if( cpu->proceso_asignado == NULL ) break; //si se encuentra una cpu libre se termina la busqueda
-	}
-	if(cpu != NULL) cpu->proceso_asignado = malloc(sizeof(t_PCB));
-	sem_post(semListaCpu);
-	return cpu;
-}*/
-
 bool continuar_procesando(t_cpu* cpu){
 	if(kernel_conf->algoritmo == PLANIFICACION_ROUND_ROBIN){
 		cpu->quantum++;
@@ -429,6 +419,8 @@ void actualizar_quantum_sleep(char* ruta){
 void cola_listos_push(t_PCB *element){
 	pthread_mutex_lock(&semColaListos);
 	queue_push(cola_listos, element);
+	log_trace(logger, "PUSH (pid: %d - PC: %d - SP: %d) en Ready 422 kernel.c", element->pid, element->PC, element->SP);
+
 	log_trace(logger, "PID %d - Se inserta en Ready", element->pid);
 	sem_post(semCantidadElementosColaListos);
 	pthread_mutex_unlock(&semColaListos);

@@ -127,6 +127,14 @@ t_PCB* sacar_pcb(t_queue* cola, t_PCB* pcb){
 	return pcbEncontrado;
 }
 
+t_PCB* sacar_pcb_con_pid(t_queue* cola, uint16_t pid){
+	bool _is_pcb(t_PCB* p) {
+		return (p->pid == pid);
+	}
+	t_PCB* pcbEncontrado = list_remove_by_condition(cola->elements, (void*) _is_pcb);
+	return pcbEncontrado;
+}
+
 t_cpu* obtener_cpu(int file_descriptor){
 	bool _mismo_file_descriptor(t_cpu* cpu){
 		return cpu->file_descriptor == file_descriptor;
