@@ -163,10 +163,11 @@ t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar){
 }
 
 t_cpu* obtener_cpu_por_proceso(int pid){
-	bool _mismo_file_descriptor(t_cpu* cpu){
-		return cpu->proceso_asignado->pid == pid;
-	}
 	sem_wait(semListaCpu);
+	bool _mismo_file_descriptor(t_cpu* cpu){
+		if(cpu->proceso_asignado)return cpu->proceso_asignado->pid == pid;
+		return false;
+	}
 	t_cpu* cpu = list_find(lista_cpu, (void*)_mismo_file_descriptor);
 	sem_post(semListaCpu);
 	return cpu;
