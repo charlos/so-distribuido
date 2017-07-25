@@ -533,7 +533,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			return pid == target->pid;
 		}
 		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
+
+
+		cpu = obtener_cpu_por_proceso(pid);
+		pasarDeExecuteAExit(cpu);
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+		memory_finalize_process(memory_socket, pid, logger);
 
 		break;
 	}
