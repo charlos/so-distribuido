@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
 	fd_set master_cpu, master_prog;
 	registro_pid = 1;
 
-	crear_logger(argv[0], &logger, true, LOG_LEVEL_TRACE);
+	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
 	log_trace(logger, "Log Creado!!");
 
 	contador_fd_global = 10;
@@ -382,6 +382,7 @@ void pasarDeBlockedAReady(uint16_t pidPcbASacar){
 	log_trace(logger, "PID %d - pasarDeBlockedAReady() - Saca PCB de Blocked", pcb->pid);
 	sem_post(semColaBloqueados);
 	if(pcb != NULL){
+		pcb->PC++;
 		//cola_listos_push(pcb);
 		pthread_mutex_lock(&semColaListos);
 		queue_push(cola_listos, pcb);
@@ -463,6 +464,7 @@ void pasar_proceso_a_exit(int pid){
 				} else {
 					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
 					cpu->matar_proceso = 1;
+					return;
 				}
 			}
 		}

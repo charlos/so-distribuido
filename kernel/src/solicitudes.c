@@ -502,7 +502,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}
 		}
 		if(!esta_bloqueado){
-			log_trace(logger, "PCB a destruir (pid: %d - PC: %d - SP: %d POS %p) ",  cpu->proceso_asignado->pid, cpu->proceso_asignado->PC, cpu->proceso_asignado->SP, cpu->proceso_asignado);
+			//log_trace(logger, "PCB a destruir (pid: %d - PC: %d - SP: %d POS %p) ",  cpu->proceso_asignado->pid, cpu->proceso_asignado->PC, cpu->proceso_asignado->SP, cpu->proceso_asignado);
 			//pcb_destroy(oldPCB);
 		}
 		//enviar oc para continuar ejecutando el proceso o no

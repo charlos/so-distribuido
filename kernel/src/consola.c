@@ -16,14 +16,14 @@ void iniciar_consola(){
 	while(true){
 		char* command = malloc(sizeof(char)*256);
 
-		printf("/*******************************************************\\ \n");
-		printf("| multiprogramming		: cambiar multiprogramacion 	  |\n");
-		printf("| process_list (state)  : procesos en sistema	 		  |\n");
-		printf("| process pid 			: obtener informacion de proceso  |\n");
-		printf("| global_file_table     : tabla global de archivos	      |\n");
-		printf("| kill pid         		: finalizar proceso   			  |\n");
-		printf("| stop         			: detener planificacion		      |\n");
-		printf("\\********************************************************/\n");
+		printf("/*********************************************************\\ \n");
+		printf("| multiprogramming      : cambiar multiprogramacion       |\n");
+		printf("| process_list (state)  : procesos en sistema             |\n");
+		printf("| process pid           : obtener informacion de proceso  |\n");
+		printf("| global_file_table     : tabla global de archivos        |\n");
+		printf("| kill pid              : finalizar proceso               |\n");
+		printf("| stop                  : detener planificacion           |\n");
+		printf("\\*********************************************************/\n");
 
 		fgets(command, 256, stdin);
 
@@ -98,13 +98,29 @@ int leer_comando(char* command) {
 			if(pcbEncontrado == NULL){
 				// lo busco en la cola blocked
 				sem_wait(semColaBloqueados);
-				pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);
+				pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);//TODO cuando se saca de bloqueados, tambien se debe sacar de la cola del semaforo
+				if(pcbEncontrado!=NULL){
+					sem_wait(semSemaforos);
+					void _semaforo(char* key, t_semaphore* semaforo){
+						bool _is_pid(uint16_t* pid){
+							if(*pid == pcbEncontrado->pid){
+								semaforo->cuenta--;
+								return true;
+							}else{
+								return false;
+							}
+						}
+						list_remove_and_destroy_by_condition(semaforo->cola->elements, _is_pid, free);
+					}
+					dictionary_iterator(semaforos, _semaforo);
+					sem_post(semSemaforos);
+				}
 				sem_post(semColaBloqueados);
 				if(pcbEncontrado == NULL){
 					// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
 					t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
 					if(cpu == NULL){
-						printf("No existe programa con el PID (%d)\n", &pid);
+						printf("No existe programa con el PID (%d)\n", pid);
 						return -1;
 					} else {
 						// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
@@ -116,6 +132,12 @@ int leer_comando(char* command) {
 		}
 		// se settea mensaje de error cuando se mata un proceso desde consola de kernel
 		pcbEncontrado->exit_code = -77;
+
+		t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcbEncontrado->pid);
+		int status = 1;
+		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+		memory_finalize_process(memory_socket, pcbEncontrado->pid, logger);
+
 		// se agrega a la cola de finalizados
 		queue_push(cola_finalizados, pcbEncontrado);
 	}

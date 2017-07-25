@@ -102,16 +102,16 @@ void crearSemaforos(){
 bool proceso_bloqueado(t_PCB* pcb){
 	t_PCB* aux = NULL;
 	bool response = 0;
+	sem_wait(semColaBloqueados);
 	bool _is_pcb(t_PCB* p) {
 		return p->pid == pcb->pid;
 	}
-	sem_wait(semColaBloqueados);
 	// esto es un asco, pero bueno... elimino el viejo pcb de la cola de bloqueados y pongo el nuevo
 	if(queue_size(cola_bloqueados)){
-		aux = list_remove_by_condition(cola_bloqueados->elements, (void*) _is_pcb);
+		aux = list_find(cola_bloqueados->elements, (void*) _is_pcb);
 	}
 	if(aux != NULL){
-		queue_push(cola_bloqueados, pcb);
+		//queue_push(cola_bloqueados, pcb);
 		response = 1;
 	}
 	sem_post(semColaBloqueados);
