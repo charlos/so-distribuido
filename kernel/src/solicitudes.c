@@ -172,7 +172,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 			break;
 		}
-		memory_write(memory_socket, liberar->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
+		memory_write(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, respuesta_pedido_pagina->buffer, logger);
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_LIBERAR, &status);
 

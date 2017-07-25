@@ -157,11 +157,13 @@ int leer_comando(char* command) {
 	else return -2;
 }
 void _imprimir_proceso(t_PCB* pcb){
-	char *estado;
-	printf("Proceso id: %d\n", pcb->pid);
-	estado = obtener_estado(pcb->pid);
-	printf("Estado: %s\n", estado);
-	printf("\n\n");
+	if(pcb){
+		char *estado;
+		printf("Proceso id: %d\n", pcb->pid);
+		estado = obtener_estado(pcb->pid);
+		printf("Estado: %s\n", estado);
+		printf("\n\n");
+	}
 }
 void listar_procesos_de_cola(t_queue* cola_de_estado){
 	if(cola_de_estado == cola_nuevos){
