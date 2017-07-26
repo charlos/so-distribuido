@@ -18,7 +18,7 @@
 #include "solicitudes.h"
 
 #define EVENT_SIZE ( sizeof (struct inotify_event) + 256 )
-#define BUF_LEN ( 1 * EVENT_SIZE )
+#define BUF_LEN ( 1024 * EVENT_SIZE )
 
 t_par_socket_pid* buscar_proceso_por_socket(int socket);
 
@@ -121,16 +121,7 @@ int main(int argc, char* argv[]) {
 	// Hilo planificador
 	kernel_planificacion();
 
-	while(1){
-		char buffer[BUF_LEN];
-		int notificador =  inotify_init();
-		int watch_descriptor = inotify_add_watch(notificador, argv[1], IN_MODIFY );
-		int length = read(notificador, buffer, BUF_LEN);
-		if (length < 0) {
-			perror("read");
-		}
-		actualizar_quantum_sleep(argv[1]);
-	}
+	monitoriar_config();
 
 	pthread_join(hilo_consola, NULL);
 	pthread_join(hilo_cpu, NULL);
@@ -307,6 +298,7 @@ void pasarDeNewAReady(){
 			nuevo_proceso->pcb->exit_code = -1;
 			// la funcion pasarDeNewAReady() termina pasando a finalizados!? (que asco...)
 			queue_push(cola_finalizados, nuevo_proceso->pcb);
+			// TODO: Hacer sem_post del planificador largo plazo (?)
 		} else {
 			cola_listos_push(nuevo_proceso->pcb);
 			sem_post(semCantidadProgramasPlanificados);
@@ -367,6 +359,7 @@ void pasarDeExecuteAExit(t_cpu* cpu){
 	sem_post(semColaFinalizados);
 	liberar_cpu(cpu);
 	sem_wait(semCantidadProgramasPlanificados);
+	// TODO: Hacer sem_post del planificador largo plazo (?)
 }
 
 void pasarDeExecuteABlocked(t_cpu* cpu){
@@ -414,9 +407,10 @@ bool continuar_procesando(t_cpu* cpu){
 	}
 }
 
-void actualizar_quantum_sleep(char* ruta){
-	t_config * conf = config_create(ruta);
+void actualizar_quantum_sleep(){
+	t_config * conf = config_create("./kernel.cfg");
 	kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
+	config_destroy(conf);
 }
 
 void cola_listos_push(t_PCB *element){
@@ -475,6 +469,8 @@ void pasar_proceso_a_exit(int pid){
 	pcbEncontrado->exit_code = -77;
 	// se agrega a la cola de finalizados
 	queue_push(cola_finalizados, pcbEncontrado);
+	sem_wait(semCantidadProgramasPlanificados);
+	// TODO: Hacer sem_post del planificador largo plazo (?)
 }
 
 t_par_socket_pid* buscar_proceso_por_socket(int socket){
@@ -482,4 +478,35 @@ t_par_socket_pid* buscar_proceso_por_socket(int socket){
 		return p->socket == socket;
 	}
 	return list_remove_by_condition(tabla_sockets_procesos, (void*) tiene_mismo_socket);
+}
+
+void monitoriar_config(){
+
+	char buffer[BUF_LEN];
+	int notificador =  inotify_init();
+	int watch_descriptor = inotify_add_watch(notificador, "./", IN_MODIFY | IN_CLOSE_WRITE );
+	while(1){
+		int length = read(notificador, buffer, BUF_LEN);
+		if (length < 0) {
+			perror("read");
+		}
+		int offset = 0;
+		while (offset < length) {
+			struct inotify_event *event = (struct inotify_event *) &buffer[offset];
+			if (event->len) {
+				if (event->mask & IN_MODIFY) {
+					t_config * conf = config_create("./kernel.cfg");
+					if(config_has_property(conf, "QUANTUM_SLEEP")){
+						kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
+					}
+				} else if(event->mask & IN_CLOSE_WRITE){
+					t_config * conf = config_create("./kernel.cfg");
+					if(config_has_property(conf, "QUANTUM_SLEEP")){
+						kernel_conf->quantum_sleep = config_get_int_value(conf, "QUANTUM_SLEEP");
+					}
+				}
+			}
+			offset += sizeof (struct inotify_event) + event->len;
+		}
+	}
 }

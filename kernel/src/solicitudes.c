@@ -147,7 +147,6 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		obtener_direccion_relativa(&bloque_heap_ptr, pagina->nro_pagina, info_proceso->paginas_codigo);	//sumo el offset de las paginas de codigo, stack y heap
 		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
 		log_trace(logger, "PID %d - Mando a cpu puntero de malloc pedido. Posicion: %d",pedido->pid, bloque_heap_ptr);
-		printf("Mandando heap\n");
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    sumar_espacio_reservado(pedido->espacio_pedido, info_solicitud->file_descriptor);
 		break;
@@ -162,9 +161,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		respuesta_pedido_pagina = memory_read(memory_socket, liberar->pid, (liberar->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
 		metadata_bloque = leer_metadata((char*)respuesta_pedido_pagina->buffer + liberar->posicion);
 	    sumar_espacio_liberado(liberar->pid, metadata_bloque->size);
-		marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
-		tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
+
+	    marcar_bloque_libre(metadata_bloque, (char*)respuesta_pedido_pagina->buffer + liberar->posicion);	// Marcamos la metadata del bloque como LIBRE en la pagina de heap
+
+	    tabla_heap_cambiar_espacio_libre(liberar, metadata_bloque->size);		// registramos el nuevo espacio libre en la tabla de paginas de heap que tiene kernel
 		defragmentar(respuesta_pedido_pagina->buffer, liberar);
+
 		status = 1;
 		if(pagina_vacia(liberar->pid, liberar->nro_pagina)){
 			tabla_heap_sacar_pagina(liberar);
@@ -207,14 +209,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 	    }
 
+	    sumar_syscall(info_solicitud->file_descriptor);
 
 	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &fd_proceso);
 
-	    sumar_syscall(info_solicitud->file_descriptor);
+
 	}
     break;
 	case OC_FUNCION_ESCRIBIR: {
+	    sumar_syscall(info_solicitud->file_descriptor);
 		int8_t *resp2 = malloc(sizeof(int8_t));
 		escritura = malloc(sizeof(t_archivo));
 		escritura = (t_archivo *) buffer;
@@ -272,6 +276,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	case OC_FUNCION_LEER: {
 
+	    sumar_syscall(info_solicitud->file_descriptor);
 		t_pedido_archivo_leer * archivo_a_leer = (t_pedido_archivo_leer *)buffer;
 
 		int leer_pagina = (archivo_a_leer->informacion)/TAMANIO_PAGINAS;
@@ -305,6 +310,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	break;
 	case OC_FUNCION_CERRAR: {
 		//int8_t *resp2 = malloc(sizeof(int8_t));
+	    sumar_syscall(info_solicitud->file_descriptor);
 		t_archivo * archivo = (t_archivo *)buffer;
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
@@ -324,6 +330,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	}
 	case OC_FUNCION_BORRAR: {
+	    sumar_syscall(info_solicitud->file_descriptor);
 		t_archivo * archivo = (t_archivo *)buffer;
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
 		t_process_file * file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
@@ -349,6 +356,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	case OC_FUNCION_MOVER_CURSOR: {
 		int pid;
+	    sumar_syscall(info_solicitud->file_descriptor);
 		t_valor_variable valor_variable;
 		t_descriptor_archivo descriptor_archivo;
 
@@ -363,6 +371,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
+	    sumar_syscall(info_solicitud->file_descriptor);
 		size_nombre = (int)*buffer;
 
 		variable_recibida = malloc(sizeof(t_shared_var));
@@ -378,6 +387,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		break;
 	case OC_FUNCION_LEER_VARIABLE:
+	    sumar_syscall(info_solicitud->file_descriptor);
 		nombre_variable	= (char*)buffer;
 		log_trace(logger, "pedido de leer la variable %s",nombre_variable);
 		t_valor_variable valor = leerValorVariable(nombre_variable);
@@ -385,6 +395,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_FUNCION_SIGNAL:
 		//TODO nombre_semaforo deberia venir en "buffer"
+	    sumar_syscall(info_solicitud->file_descriptor);
 		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		sem_wait(semSemaforos);
@@ -406,6 +417,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_SIGNAL, resp);
 		break;
 	case OC_FUNCION_WAIT:
+	    sumar_syscall(info_solicitud->file_descriptor);
 		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		sem_wait(semSemaforos);

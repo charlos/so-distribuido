@@ -48,6 +48,7 @@ void planificador_corto_plazo();
 void enviar_a_ejecutar(t_cpu* cpu);
 //t_cpu* cpu_obtener_libre(t_list* lista_cpu);
 bool continuar_procesando(t_cpu* cpu);
+void monitoriar_config();
 
 
 /**

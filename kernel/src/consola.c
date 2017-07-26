@@ -104,7 +104,7 @@ int leer_comando(char* command) {
 					void _semaforo(char* key, t_semaphore* semaforo){
 						bool _is_pid(uint16_t* pid){
 							if(*pid == pcbEncontrado->pid){
-								semaforo->cuenta--;
+								semaforo->cuenta++;
 								return true;
 							}else{
 								return false;
@@ -140,6 +140,8 @@ int leer_comando(char* command) {
 
 		// se agrega a la cola de finalizados
 		queue_push(cola_finalizados, pcbEncontrado);
+		sem_wait(semCantidadProgramasPlanificados);
+		// TODO: Hacer sem_post del planificador largo plazo (?)
 	}
 	else if(strcmp(palabras[0], "multiprogramming")==0) {
 		kernel_conf->grado_multiprog = atoi(palabras[1]);
@@ -159,9 +161,10 @@ int leer_comando(char* command) {
 void _imprimir_proceso(t_PCB* pcb){
 	if(pcb){
 		char *estado;
-		printf("Proceso id: %d\n", pcb->pid);
+		printf("Proceso id: %d -----", pcb->pid);
 		estado = obtener_estado(pcb->pid);
-		printf("Estado: %s\n", estado);
+		printf("Estado: %s -----", estado);
+		if(strcmp(estado, "Finalizado") == 0) printf(" Exit Code: %d", pcb->exit_code);
 		printf("\n\n");
 	}
 }
@@ -191,12 +194,20 @@ char* obtener_estado(int pid){
 	bool tiene_mismo_pid(t_PCB* pcb){
 		return pcb->pid == pid;
 	}
+	bool tiene_proceso_asignado(t_cpu* cpu){
+		if(cpu->proceso_asignado){
+			return cpu->proceso_asignado->pid == pid;
+		}else return 0;
+	}
+	bool tiene_proces_nuevo(t_nuevo_proceso* p){
+		return p->pcb->pid == pid;
+	}
 
-	if(list_any_satisfy(cola_nuevos->elements, (void *)tiene_mismo_pid)){
+	if(list_any_satisfy(cola_nuevos->elements, (void *)tiene_proces_nuevo)){
 		return string_duplicate("Nuevo");
 	}else if(list_any_satisfy(cola_listos->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Listo");
-	}else if (list_any_satisfy(cola_ejecutando->elements, (void *)tiene_mismo_pid)){
+	}else if (list_any_satisfy(lista_cpu, (void *)tiene_proceso_asignado)){
 		return string_duplicate("Ejecutando");
 	}else if (list_any_satisfy(cola_bloqueados->elements, (void *)tiene_mismo_pid)){
 		return string_duplicate("Bloqueado");
