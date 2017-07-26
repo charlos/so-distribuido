@@ -571,25 +571,26 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					dictionary_iterator(semaforos, _semaforo);
 					sem_post(semSemaforos);
 
-					cpu = encontrar_consola_de_pcb(pid);
+					cpu = obtener_cpu_por_proceso(pid);
 
 					if(cpu == NULL) {
 						log_error(logger, "No existe programa con el pid %d", pid);
+						return;
 					}
 					else {
 						cpu->matar_proceso = 1;
+						//pasarDeExecuteAExit(cpu);
 					}
 				}
 			}
 		}
-		pcb->exit_code = -77;
+		if(pcb != NULL)
+			pcb->exit_code = -77;
 
-		cpu = obtener_cpu_por_proceso(pid);
-		pasarDeExecuteAExit(cpu);
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
 		memory_finalize_process(memory_socket, pid, logger);
 
-			break;
+	break;
 	}
 	default:
 		fprintf(stderr, "Desconexion\n");
