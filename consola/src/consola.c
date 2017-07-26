@@ -214,12 +214,12 @@ void thread_subprograma(threadpid* thread_recon) {
 
 	char* tiempo_finalizacion = temporal_get_string_time();
 	gettimeofday(&t2, NULL);
-	elapsedTime = (t2.tv_usec - t1.tv_usec) / 1000.0;
+	elapsedTime = ((t2.tv_sec*1e6 + t2.tv_usec) - (t1.tv_sec*1e6 + t1.tv_usec)) / 1000.0;
 
 	log_trace(logger, "[PID: %d] Momento de inicio: %s", thread_recon->pid, tiempo_comienzo);
 	log_trace(logger, "[PID: %d] Momento de finalizacion: %s", thread_recon->pid, tiempo_finalizacion);
 	log_trace(logger, "[PID: %d] Cantidad de impresiones: %d", thread_recon->pid, thread_recon->cantidad_escrituras);
-	log_trace(logger, "[PID: %d] Tiempo de ejecucion: %d", thread_recon->pid, elapsedTime);
+	log_trace(logger, "[PID: %d] Tiempo de ejecucion: %d ms", thread_recon->pid, elapsedTime);
 
 	pthread_exit(NULL);
 
