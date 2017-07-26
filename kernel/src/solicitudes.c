@@ -529,18 +529,67 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;
 		status = 1;
+
 		int * _mismopid(t_par_socket_pid * target) {
 			return pid == target->pid;
 		}
 		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 
+		pcb = malloc(sizeof(t_PCB));
+		t_PCB * pcbEncontrado = malloc(sizeof(t_PCB));
+
+		sem_wait(semColaNuevos);
+		pcb = sacar_pcb_con_pid(cola_nuevos, pid);
+		sem_post(semColaNuevos);
+
+		if(pcb == NULL) {
+
+			pthread_mutex_lock(&semColaListos);
+			pcb = sacar_pcb_con_pid(cola_listos, pid);
+			pthread_mutex_unlock(&semColaListos);
+
+			if(pcb == NULL) {
+
+				sem_wait(semColaBloqueados);
+				pcb = sacar_pcb_con_pid(cola_bloqueados, pid);
+				sem_post(semColaBloqueados);
+
+
+				if(pcb == NULL) {
+					sem_wait(semSemaforos);
+					void _semaforo(char* key, t_semaphore* semaforo){
+						bool _is_pid(uint16_t* pid){
+							if(*pid == pcbEncontrado->pid){
+								semaforo->cuenta--;
+								return true;
+							}else{
+								return false;
+							}
+						}
+						list_remove_and_destroy_by_condition(semaforo->cola->elements, _is_pid, free);
+					}
+					dictionary_iterator(semaforos, _semaforo);
+					sem_post(semSemaforos);
+
+					cpu = encontrar_consola_de_pcb(pid);
+
+					if(cpu == NULL) {
+						log_error(logger, "No existe programa con el pid %d", pid);
+					}
+					else {
+						cpu->matar_proceso = 1;
+					}
+				}
+			}
+		}
+		pcb->exit_code = -77;
 
 		cpu = obtener_cpu_por_proceso(pid);
 		pasarDeExecuteAExit(cpu);
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
 		memory_finalize_process(memory_socket, pid, logger);
 
-		break;
+			break;
 	}
 	default:
 		fprintf(stderr, "Desconexion\n");
