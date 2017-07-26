@@ -489,7 +489,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			liberarcpu = true;
 			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
 			status = 1;
-			connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+			if(parEncontrado)connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status); //TODO: Ver si se puede solucionar de otra forma para desconexion de consola
 			memory_finalize_process(memory_socket, pcb->pid, logger);
 		} else {
 			esta_bloqueado = proceso_bloqueado(pcb);
@@ -1041,7 +1041,7 @@ void sumar_syscall(int socket){
 		return cpu->proceso_asignado->pid == target->pid;
 	}
 	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-	parEncontrado->cantidad_syscalls++;
+	if(parEncontrado)parEncontrado->cantidad_syscalls++;
 }
 
 void sumar_espacio_reservado(int espacio_pedido, int socket){
@@ -1050,7 +1050,7 @@ void sumar_espacio_reservado(int espacio_pedido, int socket){
 		return cpu->proceso_asignado->pid == target->pid;
 	}
 	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-	parEncontrado->memoria_reservada += espacio_pedido;
+	if(parEncontrado)parEncontrado->memoria_reservada += espacio_pedido;
 }
 
 void	sumar_espacio_liberado(int pid, int espacio_liberado){
@@ -1059,7 +1059,7 @@ void	sumar_espacio_liberado(int pid, int espacio_liberado){
 		return cpu->proceso_asignado->pid == target->pid;
 	}
 	t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-	parEncontrado->memoria_liberada += espacio_liberado;
+	if(parEncontrado)parEncontrado->memoria_liberada += espacio_liberado;
 }
 
 int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
