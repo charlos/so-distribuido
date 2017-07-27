@@ -7,5 +7,5 @@ cd ./so-commons-library
 make
 sudo make install
 
-cd
+cd ..
 rm -Rf so-commons-library;

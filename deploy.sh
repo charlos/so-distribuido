@@ -1,67 +1,73 @@
 #!/bin/bash
 if [ -d "esther-deploy" ]; then rm -Rf esther-deploy; fi
 mkdir esther-deploy
-cd esther-objects
+cd esther-deploy
 mkdir shared-library
 mkdir memoria
 mkdir file-system
 mkdir kernel
 mkdir cpu
 mkdir consola
-cd
+cd ..
 
 
 # shared-library
-cd ./esther/shared-library/shared-library
+cd ./shared-library/shared-library
 make clean
 make all
-cd
-cp ./esther/shared-library/shared-library/libshared-library.so ./esther-objects/shared-library
+cd ..
+cd ..
+cp ./shared-library/shared-library/libshared-library.so ./esther-deploy/shared-library
 unset LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=/home/utnso/esther-objects/shared-library
+export LD_LIBRARY_PATH=/home/utnso/esther/esther-deploy/shared-library
 echo $LD_LIBRARY_PATH
 
 
 # memoria
-cd ./esther/memoria/src
+cd ./memoria/src
 make clean
 make all
-cd
-cp ./esther/memoria/src/memoria ./esther-objects/memoria
-cp ./esther/memoria/src/memoria.cfg ./esther-objects/memoria
+cd ..
+cd ..
+cp ./memoria/src/memoria ./esther-deploy/memoria
+cp ./memoria/src/memoria.cfg ./esther-deploy/memoria
 
 
 # file-system
-cd ./esther/file-system/src
+cd ./file-system/src
 make clean
 make all
-cd
-cp ./esther/file-system/src/file-system ./esther-objects/file-system
-cp ./esther/file-system/src/file-system.cfg ./esther-objects/file-system
+cd ..
+cd ..
+cp ./file-system/src/file-system ./esther-deploy/file-system
+cp ./file-system/src/file-system.cfg ./esther-deploy/file-system
 
 
 # kernel
-cd ./esther/kernel/src
+cd ./kernel/src
 make clean
 make all
-cd
-cp ./esther/kernel/src/kernel ./esther-objects/kernel
-cp ./esther/kernel/Debug/kernel.cfg ./esther-objects/kernel
+cd ..
+cd ..
+cp ./kernel/src/kernel ./esther-deploy/kernel
+cp ./kernel/Debug/kernel.cfg ./esther-deploy/kernel
 
 
 # cpu
-cd ./esther/cpu/src
+cd ./cpu/src
 make clean
 make all
-cd
-cp ./esther/cpu/src/cpu ./esther-objects/cpu
-cp ./esther/cpu/src/cpu.cfg ./esther-objects/cpu
+cd ..
+cd ..
+cp ./cpu/src/cpu ./esther-deploy/cpu
+cp ./cpu/src/cpu.cfg ./esther-deploy/cpu
 
 
 # consola
-cd ./esther/consola/src
+cd ./consola/src
 make clean
 make all
-cd
-cp ./esther/consola/src/cpu ./esther-objects/cpu
-cp ./esther/consola/Debug/cpu.cfg ./esther-objects/cpu
+cd ..
+cd ..
+cp ./consola/src/consola ./esther-deploy/consola
+cp ./consola/Debug/consola.cfg ./esther-deploy/consola
