@@ -1,3 +1,5 @@
+all: libshared-library.so
+
 libshared-library.so: file_system_prot.o generales.o memory_prot.o serializar.o socket.o
 	gcc -shared -o libshared-library.so file_system_prot.o generales.o memory_prot.o serializar.o socket.o
 file_system.o: file_system.h
@@ -10,3 +12,6 @@ serializar.o: serializar.h
 	gcc -c -fPIC serializar.c
 socket.o: socket.h
 	gcc -c -fPIC socket.c
+
+clean:
+	rm libshared-library.so file_system_prot.o generales.o memory_prot.o serializar.o socket.o
