@@ -207,16 +207,24 @@ t_puntero alocar(t_valor_variable espacio){
 
     free(reservar);
 
-    t_puntero * buffer = malloc(sizeof(t_puntero));
+    t_puntero * puntero = malloc(sizeof(t_puntero));
+    t_puntero * cod_error = malloc(sizeof(t_puntero));
     uint8_t operation_code;
-    connection_recv(server_socket_kernel, &operation_code, &buffer);
 
-    if((t_puntero)*buffer == 0 ){
-    	pcb->exit_code = EC_SIN_PAGINAS_PROCESO;
+	char * paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
+    connection_recv(server_socket_kernel, &operation_code, &paquete_respuesta_reservar);
+	memcpy(puntero, paquete_respuesta_reservar, sizeof(t_puntero));
+	memcpy(cod_error, ((void*)paquete_respuesta_reservar)+ sizeof(t_puntero), sizeof(t_puntero));
+
+    if(*cod_error == 1 ){
+    	pcb->exit_code = EC_ALOCAR_MUY_GRANDE;
     	return 0;
+    } else if (*cod_error == 2){
+    	pcb->exit_code = EC_SIN_ESPACIO_MEMORIA;
+    	return 0;
+    } else {
+    	return *puntero;
     }
-    return *buffer;
-
 }
 
 void liberar(t_puntero puntero){
