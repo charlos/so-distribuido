@@ -561,7 +561,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		}
 		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 
-		pcb = malloc(sizeof(t_PCB));
+		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+
+//		memory_finalize_process(memory_socket, pid, logger);
+
+		/*pcb = malloc(sizeof(t_PCB));
 		t_PCB * pcbEncontrado = malloc(sizeof(t_PCB));
 
 		sem_wait(semColaNuevos);
@@ -611,10 +615,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}
 		}
 		if(pcb != NULL)
-			pcb->exit_code = -77;
+			pcb->exit_code = -77;*/
 
-		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
-		memory_finalize_process(memory_socket, pid, logger);
+//		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+//		memory_finalize_process(memory_socket, pid, logger);
 
 	break;
 	}
