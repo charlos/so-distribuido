@@ -152,7 +152,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
 		case OC_RESP_RESERVAR:
-			message_size_value = sizeof(t_puntero);
+			message_size_value = sizeof(t_puntero) * 2;
 			break;
 		case OC_RESP_LEER_VARIABLE:
 			message_size_value = sizeof(t_valor_variable);
@@ -309,8 +309,9 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = (t_pedido_reservar_memoria*) buffer;
 				break;
 			case OC_RESP_RESERVAR:
-				recv(file_descriptor, &respuesta, message_size,MSG_WAITALL);
-				*message = &respuesta;
+				buffer = malloc(sizeof(t_puntero) * 2);
+				recv(file_descriptor, buffer, message_size,MSG_WAITALL);
+				*message = buffer;
 				break;
 			case OC_FUNCION_ESCRIBIR:
 				buffer = malloc(sizeof(t_size));
