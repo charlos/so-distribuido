@@ -19,6 +19,7 @@
 #define	LOCK_WRITE 				1
 #define	UNLOCK 					2
 
+bool planificar;
 sem_t *semColaBloqueados;
 sem_t *semPlanificarLargoPlazo;
 sem_t *semPlanificarCortoPlazo;
@@ -29,9 +30,10 @@ sem_t* semListaCpu;
 sem_t *semCantidadCpuLibres;
 sem_t *semCantidadProgramasPlanificados;
 sem_t *semCantidadElementosColaListos;
+sem_t sem_planificar_corto_plazo;
+sem_t sem_planificar_largo_plazo;
 pthread_mutex_t registro_pid_mutex;
-pthread_mutex_t mutex_planificar_corto_plazo;
-pthread_mutex_t mutex_planificar_largo_plazo;
+pthread_mutex_t mutex_planificar;
 pthread_rwlock_t* lock_tabla_global_archivos;
 pthread_mutex_t mutex_pedido_memoria;
 

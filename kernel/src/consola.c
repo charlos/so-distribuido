@@ -7,10 +7,14 @@
 
 #include "kernel_generales.h"
 #include "solicitudes.h"
+#include <pthread.h>
 
 int leer_comando(char* command);
 char* obtener_estado(int pid);
 t_par_socket_pid* buscar_info_proceso(int pid);
+void imprimir_tabla_global_de_archivos();
+void listar_procesos_de_cola(t_queue* cola_de_estado);
+void _imprimir_proceso(t_PCB* pcb);
 
 void iniciar_consola(){
 	while(true){
@@ -148,16 +152,26 @@ int leer_comando(char* command) {
 		sem_post(semPlanificarLargoPlazo);
 	}
 	else if(strcmp(palabras[0], "play")==0) {
-		pthread_mutex_unlock(&mutex_planificar_corto_plazo);
-		pthread_mutex_unlock(&mutex_planificar_largo_plazo);
+		planificar = true;
+		int cortoPlazo;
+		int largoPlazo;
+		int ret;
+
+		ret = sem_getvalue(&sem_planificar_corto_plazo, &cortoPlazo);
+		ret = sem_getvalue(&sem_planificar_largo_plazo, &largoPlazo);
+		if(cortoPlazo == 0) sem_post(&sem_planificar_corto_plazo);
+		else sem_init(&sem_planificar_corto_plazo, 0, 0);
+		if(largoPlazo == 0) sem_post(&sem_planificar_largo_plazo);
+		else sem_init(&sem_planificar_largo_plazo, 0, 0);
 	}
+	//sssem_getvalue()
 	else if(strcmp(palabras[0], "stop")==0) {
-		pthread_mutex_lock(&mutex_planificar_corto_plazo);
-		pthread_mutex_lock(&mutex_planificar_largo_plazo);
+		planificar = false;
 	}
 
 	else return -2;
 }
+
 void _imprimir_proceso(t_PCB* pcb){
 	if(pcb){
 		char *estado;
@@ -168,6 +182,7 @@ void _imprimir_proceso(t_PCB* pcb){
 		printf("\n\n");
 	}
 }
+
 void listar_procesos_de_cola(t_queue* cola_de_estado){
 	if(cola_de_estado == cola_nuevos){
 		void _imprimir_nuevo_proceso(t_nuevo_proceso* p){

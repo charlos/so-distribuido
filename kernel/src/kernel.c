@@ -71,8 +71,12 @@ int main(int argc, char* argv[]) {
 	pthread_mutex_init(lock_tabla_global_archivos, NULL);
 	sem_init(semSemaforos, 0, 1);
 
-	pthread_mutex_init(&mutex_planificar_corto_plazo, NULL);
-	pthread_mutex_lock(&mutex_planificar_corto_plazo);
+	pthread_mutex_init(&mutex_planificar, NULL);
+
+	planificar = true;
+	int ret;
+	ret = sem_init(&sem_planificar_largo_plazo, 0, 0);
+	ret = sem_init(&sem_planificar_corto_plazo, 0, 0);
 
 	lista_cpu = list_create();
 	rw_lock_unlock(UNLOCK);
@@ -179,8 +183,7 @@ void manage_select(t_aux* estructura){
 							sem_post(semListaCpu);
 							sem_post(semCantidadCpuLibres);
 
-							//TODO: BORRAR ESTO! (o tal vez no xD )
-							//pthread_mutex_unlock(&mutex_planificar_corto_plazo);
+
 						}
 					}
 				} else {
@@ -260,10 +263,10 @@ void kernel_planificacion() {
 
 void planificador_largo_plazo(){
 	while(true){
-		pthread_mutex_lock(&mutex_planificar_largo_plazo);
+		if(!planificar) sem_wait(&sem_planificar_largo_plazo);
+
 		sem_wait(semPlanificarLargoPlazo);
 		pasarDeNewAReady();
-		pthread_mutex_unlock(&mutex_planificar_largo_plazo);
 	}
 }
 
@@ -273,12 +276,10 @@ void planificador_largo_plazo(){
  */
 void planificador_corto_plazo(){
 	while(true){
-		// se podria usar para habilitar/deshabilitar la planificacion
-		//pthread_mutex_lock(&mutex_planificar_corto_plazo);
-		/*sem_wait(semCantidadCpuLibres);
-		sem_wait(semCantidadElementosColaListos);*/
+		// se usa para habilitar/deshabilitar la planificacion
+		if(!planificar) sem_wait(&sem_planificar_corto_plazo);
+
 		pasarDeReadyAExecute();
-		//pthread_mutex_unlock(&mutex_planificar_corto_plazo);
 	}
 }
 
@@ -455,7 +456,7 @@ void pasar_proceso_a_exit(int pid){
 				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
 				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
 				if(cpu == NULL){
-					printf("No existe programa con el PID (%d)\n", &pid);
+					printf("No existe programa con el PID (%d)\n", pid);
 					return;
 				} else {
 					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit

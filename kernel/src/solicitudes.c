@@ -536,7 +536,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			sem_post(semCantidadElementosColaListos);
 		}
 	}
-	pthread_mutex_unlock(&mutex_planificar_corto_plazo);
+
 		break;
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;
