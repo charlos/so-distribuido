@@ -317,7 +317,9 @@ void pasarDeReadyAExecute(){
 	pthread_mutex_lock(&semColaListos);
 	log_trace(logger, "list_size de cola_listos %d", list_size(cola_listos));
 	pcb = queue_pop(cola_listos);
-	log_trace(logger, "POP (pid: %d - PC: %d - SP: %d POS %p) en Ready", pcb->pid, pcb->PC, pcb->SP, pcb);
+	if(pcb)	log_trace(logger, "POP (pid: %d - PC: %d - SP: %d POS %p) en Ready", pcb->pid, pcb->PC, pcb->SP, pcb);
+	else log_trace(logger, "POP pcb NULL en Ready");
+
 	pthread_mutex_unlock(&semColaListos);
 
 
@@ -374,7 +376,8 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 void pasarDeBlockedAReady(uint16_t pidPcbASacar){
 	sem_wait(semColaBloqueados);
 	t_PCB* pcb = sacar_pcb_con_pid(cola_bloqueados, pidPcbASacar);
-	log_trace(logger, "PID %d - pasarDeBlockedAReady() - Saca PCB de Blocked", pcb->pid);
+	if(pcb)		log_trace(logger, "PID %d - pasarDeBlockedAReady() - Saca PCB de Blocked", pcb->pid);
+	else log_trace(logger, "PCB NULL pasarDeBlockedAReady() - Saca PCB NULL de Blocked");
 	sem_post(semColaBloqueados);
 	if(pcb != NULL){
 		pcb->PC++;
@@ -469,7 +472,9 @@ void pasar_proceso_a_exit(int pid){
 	pcbEncontrado->exit_code = -77;
 	// se agrega a la cola de finalizados
 	queue_push(cola_finalizados, pcbEncontrado);
+	pthread_mutex_lock(&mutex_pedido_memoria);
 	memory_finalize_process(memory_socket, pid, logger);
+	pthread_mutex_unlock(&mutex_pedido_memoria);
 	sem_wait(semCantidadProgramasPlanificados);
 	// TODO: Hacer sem_post del planificador largo plazo (?)
 }

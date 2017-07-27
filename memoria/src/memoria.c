@@ -915,6 +915,7 @@ int cleaning_process_entries(int pid) {
 			}
 			invert_table_ptr->pid = 0;
 			invert_table_ptr->page = 0;
+			invert_table_ptr->segment = ' ';
 			list_add(available_frame_list, frame);
 		}
 		frame++;
