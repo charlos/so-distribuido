@@ -16,7 +16,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	uint8_t operation_code = info_solicitud->oc_code;
 	char* buffer = info_solicitud->buffer;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
-	t_puntero bloque_heap_ptr;
+	t_puntero bloque_heap_ptr, error_heap;
 	int *resp = malloc(sizeof(int));
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
@@ -25,7 +25,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	t_PCB* pcb;
 	t_PCB* auxPCB;
 	t_cpu* cpu;
-	char* nombre_semaforo, *nombre_variable, *informacion, * direccion;
+	char* nombre_semaforo, *nombre_variable, *informacion, * direccion, *paquete_respuesta_reservar;
 	t_semaphore* semaforo;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
@@ -96,7 +96,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		bloque_heap_ptr = 0;
 		if(pedido->espacio_pedido > (TAMANIO_PAGINAS - sizeof(t_heapMetadata))){
 			log_trace(logger, "Pedido de heap invalido - Se esta pidiendo mas espacio del permitido por solicitud");
-			connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+			error_heap = 1;
+			paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);		// Mandamos 2 t_punteros el primero el valor del puntero, el segundo el valor del error
+			memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
+			memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
+			connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, paquete_respuesta_reservar);
 			break;
 		}
 		log_trace(logger, "PID %d - OP OC_FUNCION_RESERVAR dentro de kernel-solicitudes.c",pedido->pid);
@@ -110,7 +114,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			log_trace(logger, "PID %d - Asigna paginas heap termina", pedido->pid);
 			if(status < 0){
 				if(status == -203){
-					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+					error_heap = 2;
+					paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
+					memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
+					memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
+					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, paquete_respuesta_reservar);
 					log_trace(logger, "No se pudo asignar pagina de heap para proceso con pid: %d", pedido->pid);
 				} else log_trace(logger, "Se desconecto la memoria");
 				break;
@@ -131,7 +139,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			free(meta_pag_nueva);
 		}
 		log_trace(logger, "PID %d - Lee paginas heap empieza", pedido->pid);
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		log_trace(logger, "PID %d - Lee paginas heap termina", pedido->pid);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		log_trace(logger, "PID %d - puntero de bloque: %d", pedido->pid, bloque_heap_ptr);
@@ -145,7 +155,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		// Mandamos puntero al programa que lo pidio
 		obtener_direccion_relativa(&bloque_heap_ptr, pagina->nro_pagina, info_proceso->paginas_codigo);	//sumo el offset de las paginas de codigo, stack y heap
-		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+		error_heap = 0;
+		paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
+		memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
+		memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
+		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, paquete_respuesta_reservar);
 		log_trace(logger, "PID %d - Mando a cpu puntero de malloc pedido. Posicion: %d",pedido->pid, bloque_heap_ptr);
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    sumar_espacio_reservado(pedido->espacio_pedido, info_solicitud->file_descriptor);
