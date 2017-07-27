@@ -275,6 +275,14 @@ void borrar(t_descriptor_archivo descriptor){
 
     connection_send(server_socket_kernel, OC_FUNCION_BORRAR, archivo);
 
+    int *resp = malloc(sizeof(int));
+    uint8_t operation_code;
+    connection_recv(server_socket_kernel, &operation_code, &resp);
+
+    if(*resp < 0) {
+    	pcb->exit_code = *resp;
+    }
+    free(resp);
 }
 
 void cerrar(t_descriptor_archivo descriptor){
@@ -286,18 +294,17 @@ void cerrar(t_descriptor_archivo descriptor){
     archivo->informacion = NULL;
     archivo->tamanio = 0;
     connection_send(server_socket_kernel, OC_FUNCION_CERRAR, archivo);
-/*
-    int8_t *resp = malloc(sizeof(int8_t));
+
+    int *resp = malloc(sizeof(int));
     uint8_t operation_code;
-    connection_recv(server_socket_kernel, &operation_code, resp);
-
-    log_trace(logger, "Hecho recv de Cerrar [%d]", resp);
-
+    connection_recv(server_socket_kernel, &operation_code, &resp);
+    log_trace(logger, "Kernel nos dice [%d]", *resp);
     if(*resp < 0) {
     	pcb->exit_code = *resp;
     }
     free(resp);
-*/
+    log_trace(logger, "exit code [%d]", pcb->exit_code);
+
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){

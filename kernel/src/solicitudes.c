@@ -309,39 +309,18 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	break;
 	case OC_FUNCION_CERRAR: {
-		//int8_t *resp2 = malloc(sizeof(int8_t));
+
 	    sumar_syscall(info_solicitud->file_descriptor);
 		t_archivo * archivo = (t_archivo *)buffer;
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
 		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
-		rw_lock_unlock(LOCK_WRITE);
-		descontarDeLaTablaGlobal(file->global_fd);
-		rw_lock_unlock(UNLOCK);
+		if (file==NULL){
+					*resp = EC_ARCHIVO_NO_ABIERTO;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp);
+		}else{
 
-		bool _porFD(t_process_file* var){
-			return var->proceso_fd == file->proceso_fd;
-		}
-
-		list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
-//		*resp2 = 0;
-//		connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp2);
-//		free(resp2);
-		break;
-	}
-	case OC_FUNCION_BORRAR: {
-	    sumar_syscall(info_solicitud->file_descriptor);
-		t_archivo * archivo = (t_archivo *)buffer;
-		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
-		t_process_file * file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
-
-		t_global_file * global = getFileFromGlobal(file->global_fd);
-
-		if(global->open > 1) {
-
-		} else {
 			rw_lock_unlock(LOCK_WRITE);
-			fs_delete_file(fs_socket, global->file, logger);
 			descontarDeLaTablaGlobal(file->global_fd);
 			rw_lock_unlock(UNLOCK);
 
@@ -350,6 +329,38 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}
 
 			list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
+			*resp = EC_FINALIZACION_OK;
+			connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp);
+		}
+		break;
+	}
+	case OC_FUNCION_BORRAR: {
+	    sumar_syscall(info_solicitud->file_descriptor);
+		t_archivo * archivo = (t_archivo *)buffer;
+		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
+		t_process_file * file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
+		if (file==NULL){
+					*resp = EC_ARCHIVO_NO_ABIERTO;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_BORRAR, resp);
+		}else{
+			t_global_file * global = getFileFromGlobal(file->global_fd);
+
+			if(global->open > 1) {
+				*resp = EC_ARCHIVO_ABIERTO_OTROS;
+				connection_send(info_solicitud->file_descriptor, OC_RESP_BORRAR, resp);
+			} else {
+				rw_lock_unlock(LOCK_WRITE);
+				fs_delete_file(fs_socket, global->file, logger);
+				//descontarDeLaTablaGlobal(file->global_fd);
+				rw_lock_unlock(UNLOCK);
+
+				bool _porFD(t_process_file* var){
+					return var->proceso_fd == file->proceso_fd;
+				}
+				*resp = EC_FINALIZACION_OK;
+				connection_send(info_solicitud->file_descriptor, OC_RESP_BORRAR, resp);
+				//list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
+			}
 		}
 
 		break;
@@ -878,16 +889,22 @@ t_global_file * getFileFromGlobal(int global_fd) {
 
 void descontarDeLaTablaGlobal(int global_fd) {
 
+	void _destroy_globalfile(t_global_file * global_file) {
+		free(global_file->file);
+		free(global_file);
+	}
+
+	int _byFD(t_global_file * global_file) {
+		return global_file->global_fd == global_fd;
+	}
+
 	t_global_file * filereg = getFileFromGlobal(global_fd);
 
 	if(filereg->open > 1) {
 		filereg->open--;
 	}
 	else {
-		int _byFD(t_global_file * global_file) {
-			return global_file->global_fd == global_fd;
-		}
-		list_remove_by_condition(tabla_global_archivos, (void *) _byFD);
+		list_remove_and_destroy_by_condition(tabla_global_archivos, (void *) _byFD, (void *) _destroy_globalfile);
 	}
 
 }

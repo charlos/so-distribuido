@@ -33,6 +33,7 @@
 #define EC_ERROR_CONEXION			-19
 #define EC_ARCHIVO_NO_ABIERTO		-21
 #define EC_FS_LLENO					-22
+#define EC_ARCHIVO_ABIERTO_OTROS    -23
 
 typedef t_list t_stack;
 

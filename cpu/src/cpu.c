@@ -74,7 +74,7 @@ int main(void) {
 		size_to_read=0;
 
 		if(*continuar==-1){
-
+			log_trace(logger, "A la espera de recibir PCB");
 			connection_recv(server_socket_kernel, &operation_code, &pcb_serializado);
 			if(operation_code!=OC_PCB){
 				log_error(logger, "Problema al intentar recibir PCB");
