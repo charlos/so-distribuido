@@ -469,6 +469,7 @@ void pasar_proceso_a_exit(int pid){
 	pcbEncontrado->exit_code = -77;
 	// se agrega a la cola de finalizados
 	queue_push(cola_finalizados, pcbEncontrado);
+	memory_finalize_process(memory_socket, pid, logger);
 	sem_wait(semCantidadProgramasPlanificados);
 	// TODO: Hacer sem_post del planificador largo plazo (?)
 }
