@@ -18,9 +18,6 @@ make all
 cd ..
 cd ..
 cp ./shared-library/shared-library/libshared-library.so ./esther-deploy/shared-library
-unset LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=/home/utnso/esther/esther-deploy/shared-library
-echo $LD_LIBRARY_PATH
 
 
 # memoria
