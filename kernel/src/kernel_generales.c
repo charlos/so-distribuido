@@ -235,3 +235,89 @@ bool continuar_procesando(t_cpu* cpu){
 		return true;
 	}
 }
+
+t_table_file* getTablaArchivo(int pid){
+
+	   bool _findbyPID(t_table_file* reg){
+		   return reg->pid==pid;
+	   }
+	   t_table_file* tabla;
+	   tabla = list_find(listaDeTablasDeArchivosDeProcesos, (void*) _findbyPID);
+
+	   if(tabla == NULL) {
+		   tabla = malloc(sizeof(t_table_file));
+
+		   tabla->pid = pid;
+		   tabla->tabla_archivos = list_create();
+		   tabla->contador_fd = 10;
+
+		   list_add(listaDeTablasDeArchivosDeProcesos, tabla);
+	   }
+	   return tabla;
+}
+
+void pasar_proceso_a_exit(int pid){
+	t_PCB* pcbEncontrado = NULL;
+	t_PCB* pcbASacar = malloc(sizeof(t_PCB));
+	pcbASacar->pid = pid;
+	sem_wait(semColaNuevos);
+	// lo busco en la cola new
+	pcbEncontrado = sacar_pcb(cola_nuevos, pcbASacar);
+	sem_post(semColaNuevos);
+	if(pcbEncontrado == NULL){
+		pthread_mutex_lock(&semColaListos);
+		// lo busco en la cola ready
+		pcbEncontrado = sacar_pcb(cola_listos, pcbASacar);
+		pthread_mutex_unlock(&semColaListos);
+		if(pcbEncontrado == NULL){
+			// lo busco en la cola blocked
+			log_trace(logger, "PID %d - pasar_proceso_a_exit antes de sem_wait ", pcbASacar->pid);
+			sem_wait(semColaBloqueados);
+			pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);
+			if(pcbEncontrado!=NULL){
+				sem_wait(semSemaforos);
+				void _semaforo(char* key, t_semaphore* semaforo){
+					bool _is_pid(uint16_t* pid){
+						if(*pid == pcbEncontrado->pid){
+							semaforo->cuenta++;
+							return true;
+						}else{
+							return false;
+						}
+					}
+					list_remove_and_destroy_by_condition(semaforo->cola->elements, _is_pid, free);
+				}
+				dictionary_iterator(semaforos, _semaforo);
+				sem_post(semSemaforos);
+			}
+			sem_post(semColaBloqueados);
+			log_trace(logger, "PID %d - pasar_proceso_a_exit despues del sem_post ", pcbASacar->pid);
+			if(pcbEncontrado == NULL){
+				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
+				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
+				if(cpu == NULL){
+					printf("No existe programa con el PID (%d)\n", &pid);
+					return;
+				} else {
+					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
+					cpu->matar_proceso = 1;
+					return;
+				}
+			}
+		}
+	}
+	// se settea mensaje de error cuando se mata un proceso desde consola de kernel
+	pcbEncontrado->exit_code = -77;
+	// se agrega a la cola de finalizados
+	t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcbEncontrado->pid);
+	int status = 1;
+	connection_send(parEncontrado->socket, MUERE_PROGRAMA, &status);
+
+	pthread_mutex_lock(&mutex_pedido_memoria);
+	memory_finalize_process(memory_socket, pid, logger);
+	pthread_mutex_unlock(&mutex_pedido_memoria);
+	// se agrega a la cola de finalizados
+	queue_push(cola_finalizados, pcbEncontrado);
+	sem_wait(semCantidadProgramasPlanificados);
+	// TODO: Hacer sem_post del planificador largo plazo (?)
+}

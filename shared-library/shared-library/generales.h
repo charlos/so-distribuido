@@ -33,6 +33,8 @@
 #define EC_ERROR_CONEXION			-19
 #define EC_ARCHIVO_NO_ABIERTO		-21
 #define EC_FS_LLENO					-22
+#define EC_ARCHIVO_ABIERTO_OTROS    -23
+#define EC_SIN_ESPACIO_MEMORIA      -24
 
 typedef t_list t_stack;
 
@@ -113,7 +115,7 @@ typedef struct{
 	int proceso_fd;
 	int global_fd;
 	t_banderas flags;
-	uint8_t offset_cursor;
+	int offset_cursor;
 } t_process_file;
 
 typedef struct{

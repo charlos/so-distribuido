@@ -16,7 +16,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	uint8_t operation_code = info_solicitud->oc_code;
 	char* buffer = info_solicitud->buffer;
 	uint32_t cant_paginas, direcc_logica, direcc_fisica;
-	t_puntero bloque_heap_ptr;
+	t_puntero bloque_heap_ptr, error_heap;
 	int *resp = malloc(sizeof(int));
 	t_pedido_reservar_memoria* pedido;
 	t_pedido_liberar_memoria* liberar;
@@ -25,7 +25,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	t_PCB* pcb;
 	t_PCB* auxPCB;
 	t_cpu* cpu;
-	char* nombre_semaforo, *nombre_variable, *informacion, * direccion;
+	char* nombre_semaforo, *nombre_variable, *informacion, * direccion, *paquete_respuesta_reservar;
 	t_semaphore* semaforo;
 	t_metadata_program* metadata;
 	t_table_file* tabla_proceso;
@@ -96,7 +96,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		bloque_heap_ptr = 0;
 		if(pedido->espacio_pedido > (TAMANIO_PAGINAS - sizeof(t_heapMetadata))){
 			log_trace(logger, "Pedido de heap invalido - Se esta pidiendo mas espacio del permitido por solicitud");
-			connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+			error_heap = 1;
+
+			pthread_mutex_lock(&mutex_pedido_memoria);
+			memory_finalize_process(memory_socket, pedido->pid, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
+
+			paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);		// Mandamos 2 t_punteros el primero el valor del puntero, el segundo el valor del error
+			memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
+			memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
+			connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, paquete_respuesta_reservar);
 			break;
 		}
 		log_trace(logger, "PID %d - OP OC_FUNCION_RESERVAR dentro de kernel-solicitudes.c",pedido->pid);
@@ -110,7 +119,16 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			log_trace(logger, "PID %d - Asigna paginas heap termina", pedido->pid);
 			if(status < 0){
 				if(status == -203){
-					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+					error_heap = 2;
+
+					pthread_mutex_lock(&mutex_pedido_memoria);
+					memory_finalize_process(memory_socket, pedido->pid, logger);
+					pthread_mutex_unlock(&mutex_pedido_memoria);
+
+					paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
+					memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
+					memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
+					connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, paquete_respuesta_reservar);
 					log_trace(logger, "No se pudo asignar pagina de heap para proceso con pid: %d", pedido->pid);
 				} else log_trace(logger, "Se desconecto la memoria");
 				break;
@@ -131,7 +149,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			free(meta_pag_nueva);
 		}
 		log_trace(logger, "PID %d - Lee paginas heap empieza", pedido->pid);
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		respuesta_pedido_pagina = memory_read(memory_socket, pedido->pid, (pagina->nro_pagina + info_proceso->paginas_codigo), 0, TAMANIO_PAGINAS, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		log_trace(logger, "PID %d - Lee paginas heap termina", pedido->pid);
 		bloque_heap_ptr = buscar_bloque_disponible(respuesta_pedido_pagina->buffer, pedido->espacio_pedido);
 		log_trace(logger, "PID %d - puntero de bloque: %d", pedido->pid, bloque_heap_ptr);
@@ -145,7 +165,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		// Mandamos puntero al programa que lo pidio
 		obtener_direccion_relativa(&bloque_heap_ptr, pagina->nro_pagina, info_proceso->paginas_codigo);	//sumo el offset de las paginas de codigo, stack y heap
-		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, &bloque_heap_ptr);
+		error_heap = 0;
+		paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
+		memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
+		memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
+		connection_send(info_solicitud->file_descriptor, OC_RESP_RESERVAR, paquete_respuesta_reservar);
 		log_trace(logger, "PID %d - Mando a cpu puntero de malloc pedido. Posicion: %d",pedido->pid, bloque_heap_ptr);
 	    sumar_syscall(info_solicitud->file_descriptor);
 	    sumar_espacio_reservado(pedido->espacio_pedido, info_solicitud->file_descriptor);
@@ -190,30 +214,28 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		direccion[direccion_length] = '\0';
 
-		printf("RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
+		//printf("RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
 		log_trace(logger, "RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
 
 		int fd_proceso;
 		fd_proceso = abrir_archivo(pid, direccion, flags);
 	    if(fd_proceso == -1) {
-
-	    	int _mismoPid(t_par_socket_pid *par){
-	    		 return par->pid == pid;
-	    	}
-
-	    	msgerror= strdup("No existe archivo");
-	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
-	    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
-	    	free(msgerror);
-
-
+	    	msgerror= strdup("No existe archivo o no tiene permisos");
+	    }else if(fd_proceso == ENOSPC) {
+	    	fd_proceso=EC_FS_LLENO;
+	    	msgerror= strdup("Sin espacio en filesystem");
 	    }
-
+    	int _mismoPid(t_par_socket_pid *par){
+    		 return par->pid == pid;
+    	}
+    	if(fd_proceso < 0) {
+    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
+    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
+    	free(msgerror);
+    	}
 	    sumar_syscall(info_solicitud->file_descriptor);
 
-	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &fd_proceso);
-
 
 	}
     break;
@@ -231,13 +253,17 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				return escritura->pid == target->pid;
 			}
 			t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-			int socket_proceso = parEncontrado->socket;
-			char * inf = malloc(strlen((char*)escritura->informacion));
-			strcpy(inf, (char*)escritura->informacion);
+			if(parEncontrado){
+				int socket_proceso = parEncontrado->socket;
+				char * inf = malloc(strlen((char*)escritura->informacion));
+				strcpy(inf, (char*)escritura->informacion);
+				connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+			}
+
 
 
 			*resp2 = 1;
-			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+
 			connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 		}else{
 			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
@@ -252,6 +278,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					t_global_file * global_file = getFileFromGlobal(file->global_fd);
 					 char* path = global_file->file;
 					 *resp2 = fs_write(fs_socket, path, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 log_trace(logger, "se mandó a escribir a %s offset %d y la respuesta fue %d", path,file->offset_cursor,resp2);
 					 rw_lock_unlock(UNLOCK);
 					 switch(*resp2){
 					 	 case SUCCESS:
@@ -297,7 +324,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}
 			char* msgerror= strdup("No se pudo leer el archivo");
 			t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
-			connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
+			if(parNuevo)connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 
 			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER_ERROR, &(read_response->exec_code));
 		} else {
@@ -309,39 +336,18 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	}
 	break;
 	case OC_FUNCION_CERRAR: {
-		//int8_t *resp2 = malloc(sizeof(int8_t));
+
 	    sumar_syscall(info_solicitud->file_descriptor);
 		t_archivo * archivo = (t_archivo *)buffer;
 
 		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
 		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
-		rw_lock_unlock(LOCK_WRITE);
-		descontarDeLaTablaGlobal(file->global_fd);
-		rw_lock_unlock(UNLOCK);
+		if (file==NULL){
+					*resp = EC_ARCHIVO_NO_ABIERTO;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp);
+		}else{
 
-		bool _porFD(t_process_file* var){
-			return var->proceso_fd == file->proceso_fd;
-		}
-
-		list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
-//		*resp2 = 0;
-//		connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp2);
-//		free(resp2);
-		break;
-	}
-	case OC_FUNCION_BORRAR: {
-	    sumar_syscall(info_solicitud->file_descriptor);
-		t_archivo * archivo = (t_archivo *)buffer;
-		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
-		t_process_file * file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
-
-		t_global_file * global = getFileFromGlobal(file->global_fd);
-
-		if(global->open > 1) {
-
-		} else {
 			rw_lock_unlock(LOCK_WRITE);
-			fs_delete_file(fs_socket, global->file, logger);
 			descontarDeLaTablaGlobal(file->global_fd);
 			rw_lock_unlock(UNLOCK);
 
@@ -350,6 +356,38 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}
 
 			list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
+			*resp = EC_FINALIZACION_OK;
+			connection_send(info_solicitud->file_descriptor, OC_RESP_CERRAR, resp);
+		}
+		break;
+	}
+	case OC_FUNCION_BORRAR: {
+	    sumar_syscall(info_solicitud->file_descriptor);
+		t_archivo * archivo = (t_archivo *)buffer;
+		t_table_file* tabla_proceso = getTablaArchivo(archivo->pid);
+		t_process_file * file = buscarArchivoTablaProceso(tabla_proceso, archivo->descriptor_archivo);
+		if (file==NULL){
+					*resp = EC_ARCHIVO_NO_ABIERTO;
+					connection_send(info_solicitud->file_descriptor, OC_RESP_BORRAR, resp);
+		}else{
+			t_global_file * global = getFileFromGlobal(file->global_fd);
+
+			if(global->open > 1) {
+				*resp = EC_ARCHIVO_ABIERTO_OTROS;
+				connection_send(info_solicitud->file_descriptor, OC_RESP_BORRAR, resp);
+			} else {
+				rw_lock_unlock(LOCK_WRITE);
+				fs_delete_file(fs_socket, global->file, logger);
+				//descontarDeLaTablaGlobal(file->global_fd);
+				rw_lock_unlock(UNLOCK);
+
+				bool _porFD(t_process_file* var){
+					return var->proceso_fd == file->proceso_fd;
+				}
+				*resp = EC_FINALIZACION_OK;
+				connection_send(info_solicitud->file_descriptor, OC_RESP_BORRAR, resp);
+				//list_remove_and_destroy_by_condition(tabla_proceso->tabla_archivos, (void*) _porFD, free);
+			}
 		}
 
 		break;
@@ -360,7 +398,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_valor_variable valor_variable;
 		t_descriptor_archivo descriptor_archivo;
 
-		memcpy(&pid, buffer, sizeof(int));
+		//memcpy(&pid, buffer, sizeof(int));
+		pid = *(uint8_t*)buffer;
 		memcpy(&descriptor_archivo, buffer + sizeof(int), sizeof(t_descriptor_archivo));
 		memcpy(&valor_variable, buffer + sizeof(int) + sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
 
@@ -368,6 +407,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, descriptor_archivo);
 
 		file->offset_cursor=valor_variable;
+		log_trace(logger, "Mover cursor del archivo FD %d a la posicion %d", descriptor_archivo,file->offset_cursor);
 	}
 	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
@@ -431,7 +471,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		pcb = deserializer_pcb(buffer);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_finalize_process(memory_socket, pcb->pid, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		status = 1;
 		int * _mismopid2(t_par_socket_pid * target) {
 			return pcb->pid == target->pid;
@@ -450,7 +492,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_ERROR_EJECUCION_CPU:
 		pcb = deserializer_pcb(buffer);
-		memory_finalize_process(memory_socket, pcb->pid, logger);
+		if(pcb->exit_code != EC_ALOCAR_MUY_GRANDE && pcb->exit_code != EC_SIN_ESPACIO_MEMORIA){
+			pthread_mutex_lock(&mutex_pedido_memoria);
+			memory_finalize_process(memory_socket, pcb->pid, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
+		}
+
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		status = 1;
@@ -496,7 +543,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
 			status = 1;
 			if(parEncontrado)connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status); //TODO: Ver si se puede solucionar de otra forma para desconexion de consola
+			pthread_mutex_lock(&mutex_pedido_memoria);
 			memory_finalize_process(memory_socket, pcb->pid, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
 		} else {
 			//esta_bloqueado = proceso_bloqueado(pcb);
 			if( cpu->proceso_bloqueado_por_wait ){
@@ -560,67 +609,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;
 		status = 1;
-
-		int * _mismopid(t_par_socket_pid * target) {
-			return pid == target->pid;
-		}
-		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-
-		pcb = malloc(sizeof(t_PCB));
-		t_PCB * pcbEncontrado = malloc(sizeof(t_PCB));
-
-		sem_wait(semColaNuevos);
-		pcb = sacar_pcb_con_pid(cola_nuevos, pid);
-		sem_post(semColaNuevos);
-
-		if(pcb == NULL) {
-
-			pthread_mutex_lock(&semColaListos);
-			pcb = sacar_pcb_con_pid(cola_listos, pid);
-			pthread_mutex_unlock(&semColaListos);
-
-			if(pcb == NULL) {
-
-				sem_wait(semColaBloqueados);
-				pcb = sacar_pcb_con_pid(cola_bloqueados, pid);
-				sem_post(semColaBloqueados);
-
-
-				if(pcb == NULL) {
-					sem_wait(semSemaforos);
-					void _semaforo(char* key, t_semaphore* semaforo){
-						bool _is_pid(uint16_t* pid){
-							if(*pid == pcbEncontrado->pid){
-								semaforo->cuenta--;
-								return true;
-							}else{
-								return false;
-							}
-						}
-						list_remove_and_destroy_by_condition(semaforo->cola->elements, _is_pid, free);
-					}
-					dictionary_iterator(semaforos, _semaforo);
-					sem_post(semSemaforos);
-
-					cpu = obtener_cpu_por_proceso(pid);
-
-					if(cpu == NULL) {
-						log_error(logger, "No existe programa con el pid %d", pid);
-						return;
-					}
-					else {
-						cpu->matar_proceso = 1;
-						//pasarDeExecuteAExit(cpu);
-					}
-				}
-			}
-		}
-		if(pcb != NULL)
-			pcb->exit_code = -77;
-
-		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
-		memory_finalize_process(memory_socket, pid, logger);
-
+		pasar_proceso_a_exit(pid);
 	break;
 	}
 	default:
@@ -647,13 +636,17 @@ int calcular_paginas_necesarias(char* codigo){
 void mandar_codigo_a_memoria(char* codigo, int pid){
 	int i = 0, offset = 0, cant_a_mandar = strlen(codigo);
 	while(cant_a_mandar > TAMANIO_PAGINAS){
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_write(memory_socket, pid, i, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, codigo + offset, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		offset += TAMANIO_PAGINAS;
 		cant_a_mandar -= TAMANIO_PAGINAS;
 		i++;
 	}
 	if(cant_a_mandar > 0){
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_write(memory_socket, pid, i, 0, cant_a_mandar, cant_a_mandar, codigo + offset, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 	}
 }
 
@@ -813,12 +806,16 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 			rw_lock_unlock(UNLOCK);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
-		} else if(flags.creacion && result == ISNOTREG) {
+		} else if(flags.creacion) {  //&& result == ISNOTREG
 			int res = fs_create_file(fs_socket, direccion, logger);
-			rw_lock_unlock(LOCK_WRITE);
-			fd_global = crearArchivoTablaGlobal(direccion);
-			rw_lock_unlock(UNLOCK);
-			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+			if(res>0){
+				rw_lock_unlock(LOCK_WRITE);
+				fd_global = crearArchivoTablaGlobal(direccion);
+				rw_lock_unlock(UNLOCK);
+				fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+			}else{
+				fd_proceso = res;
+			}
 
 		} else {
 			fd_global = -1;
@@ -897,16 +894,22 @@ t_global_file * getFileFromGlobal(int global_fd) {
 
 void descontarDeLaTablaGlobal(int global_fd) {
 
+	void _destroy_globalfile(t_global_file * global_file) {
+		free(global_file->file);
+		free(global_file);
+	}
+
+	int _byFD(t_global_file * global_file) {
+		return global_file->global_fd == global_fd;
+	}
+
 	t_global_file * filereg = getFileFromGlobal(global_fd);
 
 	if(filereg->open > 1) {
 		filereg->open--;
 	}
 	else {
-		int _byFD(t_global_file * global_file) {
-			return global_file->global_fd == global_fd;
-		}
-		list_remove_by_condition(tabla_global_archivos, (void *) _byFD);
+		list_remove_and_destroy_by_condition(tabla_global_archivos, (void *) _byFD, (void *) _destroy_globalfile);
 	}
 
 }
@@ -937,25 +940,7 @@ int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
 	return file->proceso_fd;
 }
 
-t_table_file* getTablaArchivo(int pid){
 
-	   bool _findbyPID(t_table_file* reg){
-		   return reg->pid==pid;
-	   }
-	   t_table_file* tabla;
-	   tabla = list_find(listaDeTablasDeArchivosDeProcesos, (void*) _findbyPID);
-
-	   if(tabla == NULL) {
-		   tabla = malloc(sizeof(t_table_file));
-
-		   tabla->pid = pid;
-		   tabla->tabla_archivos = list_create();
-		   tabla->contador_fd = 10;
-
-		   list_add(listaDeTablasDeArchivosDeProcesos, tabla);
-	   }
-	   return tabla;
-}
 
 t_list* crearTablaArchProceso(){
 	t_list* tabla_archivo_proceso = list_create();
@@ -976,7 +961,6 @@ void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 			juntar_bloques(metadata, metadata2);
 			memcpy(pagina + offset - sizeof(t_heapMetadata) - metadata->size, metadata2, sizeof(t_heapMetadata));
 			tabla_heap_cambiar_espacio_libre(pedido_free, sizeof(t_heapMetadata));
-		    sumar_espacio_liberado(pedido_free->pid, sizeof(t_heapMetadata));
 			break;
 		}
 		metadata = metadata2;
@@ -1083,7 +1067,9 @@ void	sumar_espacio_liberado(int pid, int espacio_liberado){
 
 int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
 	int status = 0;
+	pthread_mutex_lock(&mutex_pedido_memoria);
 	status = memory_init_process(memory_socket, pid, cant_paginas, logger);
+	pthread_mutex_unlock(&mutex_pedido_memoria);
 	if(status == -203){
 		log_error(logger, "No hay espacio suficiente para nuevo programa");
 		return status;

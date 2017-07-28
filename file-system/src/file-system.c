@@ -74,6 +74,7 @@ void load_file_system_properties(void) {
 	t_config * conf = config_create("./file-system.cfg");
 	file_system_conf = malloc(sizeof(t_file_system_conf));
 	file_system_conf->port = config_get_int_value(conf, "PUERTO");
+	file_system_conf->blocks = config_get_int_value(conf, "BLOQUES");
 	file_system_conf->mount_point = config_get_string_value(conf, "PUNTO_MONTAJE");
 	file_system_conf->logfile = config_get_string_value(conf, "LOGFILE");
 }
@@ -85,6 +86,7 @@ void print_file_system_properties(void) {
 	log_info(logger, " >> SADICA file-system" );
 	log_info(logger, " >> port ---------------> %u" , (file_system_conf->port));
 	log_info(logger, " >> mount_point --------> %s" , (file_system_conf->mount_point));
+	log_info(logger, " >> blocks -------------> %d" , (file_system_conf->blocks));
 }
 
 /**
@@ -122,7 +124,7 @@ void load(void) {
 	char * metadata_file_path = string_from_format("%s/Metadata.bin", metadata_dir_path);
 	if ((stat(metadata_file_path, &sb) < 0) || (stat(metadata_file_path, &sb) == 0 && !(S_ISREG(sb.st_mode)))) {
 		FILE * metadata_file = fopen(metadata_file_path, "w");
-		fprintf(metadata_file,"TAMANIO_BLOQUES=%d\nCANTIDAD_BLOQUES=%d\nMAGIC_NUMBER=SADICA", BLOCK_SIZE, BLOCKS);
+		fprintf(metadata_file,"TAMANIO_BLOQUES=%d\nCANTIDAD_BLOQUES=%d\nMAGIC_NUMBER=SADICA", BLOCK_SIZE, file_system_conf->blocks);
 		fclose(metadata_file);
 	}
 
@@ -131,7 +133,7 @@ void load(void) {
 	char * bitmap_file_path = string_from_format("%s/Bitmap.bin", metadata_dir_path);
 	if ((stat(bitmap_file_path, &sb) < 0) || (stat(bitmap_file_path, &sb) == 0 && !(S_ISREG(sb.st_mode)))) {
 		FILE * bitmap_file = fopen(bitmap_file_path, "wb");
-		int j = BLOCKS / 8; // 1 byte = 8 bits
+		int j = file_system_conf->blocks / 8; // 1 byte = 8 bits
 		char ch = '\0';
 		int i = 0;
 		while (i < j) {
@@ -156,11 +158,11 @@ void load(void) {
 	bitmap_mfile_ptr = mmap ((caddr_t) 0, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	check((bitmap_mfile_ptr == MAP_FAILED), "mmap %s failed: %s", bitmap_file_path, strerror (errno));
 
-	bitmap = bitarray_create_with_mode(bitmap_mfile_ptr, BLOCKS, MSB_FIRST);
+	bitmap = bitarray_create_with_mode(bitmap_mfile_ptr, file_system_conf->blocks, MSB_FIRST);
 
 	if (clean) {
 		int pos = 0;
-		while (pos < BLOCKS) {
+		while (pos < file_system_conf->blocks) {
 			bitarray_clean_bit(bitmap, pos);
 			pos++;
 		}
@@ -302,7 +304,7 @@ void create_file(int * client_socket) {
 int get_available_block(void) {
 	int pos = 0;
 	bool its_busy;
-	while (pos < BLOCKS) {
+	while (pos < file_system_conf->blocks) {
 		its_busy = bitarray_test_bit(bitmap, pos);
 		if (!its_busy) {
 			bitarray_set_bit(bitmap, pos);

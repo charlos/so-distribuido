@@ -119,7 +119,6 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(uint8_t);
 			break;
 		case OC_RESP_ESCRIBIR:
-		case OC_RESP_CERRAR:
 			message_size_value = sizeof(int8_t);
 			break;
 		case OC_QUANTUM_SLEEP:
@@ -143,6 +142,8 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 		case OC_MUERE_PROGRAMA:
 		case OC_RESP_TERMINO_INSTRUCCION:
 		case OC_RESP_LEER_ERROR:
+		case OC_RESP_BORRAR:
+		case OC_RESP_CERRAR:
 		case HANDSHAKE_CPU:
 		case OC_RESP_LIBERAR:
 			message_size_value = sizeof(int);
@@ -151,7 +152,7 @@ int connection_send(int file_descriptor, uint8_t operation_code, void* message){
 			message_size_value = sizeof(t_pedido_reservar_memoria);
 			break;
 		case OC_RESP_RESERVAR:
-			message_size_value = sizeof(t_puntero);
+			message_size_value = sizeof(t_puntero) * 2;
 			break;
 		case OC_RESP_LEER_VARIABLE:
 			message_size_value = sizeof(t_valor_variable);
@@ -251,6 +252,8 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				status = recv(file_descriptor, buffer, message_size, MSG_WAITALL);
 				buffer[message_size] = '\0';
 				break;
+			case OC_RESP_BORRAR:
+			case OC_RESP_CERRAR:
 			case OC_RESP_TERMINO_INSTRUCCION:
 			case OC_RESP_ABRIR:
 			case OC_MUERE_PROGRAMA:
@@ -306,8 +309,9 @@ int connection_recv(int file_descriptor, uint8_t* operation_code_value, void** m
 				*message = (t_pedido_reservar_memoria*) buffer;
 				break;
 			case OC_RESP_RESERVAR:
-				recv(file_descriptor, &respuesta, message_size,MSG_WAITALL);
-				*message = &respuesta;
+				buffer = malloc(sizeof(t_puntero) * 2);
+				recv(file_descriptor, buffer, message_size,MSG_WAITALL);
+				*message = buffer;
 				break;
 			case OC_FUNCION_ESCRIBIR:
 				buffer = malloc(sizeof(t_size));

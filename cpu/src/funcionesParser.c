@@ -207,16 +207,26 @@ t_puntero alocar(t_valor_variable espacio){
 
     free(reservar);
 
-    t_puntero * buffer = malloc(sizeof(t_puntero));
+    t_puntero * puntero = malloc(sizeof(t_puntero));
+    t_puntero * cod_error = malloc(sizeof(t_puntero));
     uint8_t operation_code;
-    connection_recv(server_socket_kernel, &operation_code, &buffer);
 
-    if((t_puntero)*buffer == 0 ){
-    	pcb->exit_code = EC_SIN_PAGINAS_PROCESO;
+	char * paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
+    connection_recv(server_socket_kernel, &operation_code, &paquete_respuesta_reservar);
+	memcpy(puntero, paquete_respuesta_reservar, sizeof(t_puntero));
+	memcpy(cod_error, ((void*)paquete_respuesta_reservar)+ sizeof(t_puntero), sizeof(t_puntero));
+
+    if(*cod_error == 1 ){
+    	log_error(logger, "PID:%d Error al reservar memoria. Tamaño [%d] mayor al tamaño de la página", pcb->pid, espacio);
+    	pcb->exit_code = EC_ALOCAR_MUY_GRANDE;
     	return 0;
+    } else if (*cod_error == 2){
+    	log_error(logger, "PID:%d Error al reservar memoria. No hay espacio para alocar [%d]", pcb->pid, espacio);
+    	pcb->exit_code = EC_SIN_ESPACIO_MEMORIA;
+    	return 0;
+    } else {
+    	return *puntero;
     }
-    return *buffer;
-
 }
 
 void liberar(t_puntero puntero){
@@ -261,6 +271,11 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 
     if(*fd_proceso < 0) {
     	pcb->exit_code = *fd_proceso;
+    	if(*fd_proceso==EC_FS_LLENO){
+    		log_error(logger, "PID:%d Error al abrir el archivo. Filesystem sin espacio", pcb->pid);
+    	}else{
+    		log_error(logger, "PID:%d Error al abrir el archivo", pcb->pid);
+    	}
     }
     return *fd_proceso;
     free(fd_proceso);
@@ -275,6 +290,15 @@ void borrar(t_descriptor_archivo descriptor){
 
     connection_send(server_socket_kernel, OC_FUNCION_BORRAR, archivo);
 
+    int *resp = malloc(sizeof(int));
+    uint8_t operation_code;
+    connection_recv(server_socket_kernel, &operation_code, &resp);
+
+    if(*resp < 0) {
+    	pcb->exit_code = *resp;
+    	log_error(logger, "PID:%d Error al borrar el archivo", pcb->pid);
+    }
+    free(resp);
 }
 
 void cerrar(t_descriptor_archivo descriptor){
@@ -286,18 +310,16 @@ void cerrar(t_descriptor_archivo descriptor){
     archivo->informacion = NULL;
     archivo->tamanio = 0;
     connection_send(server_socket_kernel, OC_FUNCION_CERRAR, archivo);
-/*
-    int8_t *resp = malloc(sizeof(int8_t));
-    uint8_t operation_code;
-    connection_recv(server_socket_kernel, &operation_code, resp);
 
-    log_trace(logger, "Hecho recv de Cerrar [%d]", resp);
+    int *resp = malloc(sizeof(int));
+    uint8_t operation_code;
+    connection_recv(server_socket_kernel, &operation_code, &resp);
 
     if(*resp < 0) {
     	pcb->exit_code = *resp;
+    	log_error(logger, "PID:%d Error al cerrar el archivo", pcb->pid);
     }
     free(resp);
-*/
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
@@ -338,10 +360,13 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     int8_t *resp = malloc(sizeof(int8_t));
     connection_recv(server_socket_kernel, operation_code, &resp);
 
-    log_trace(logger, "RESULTADO DE OPERACION ESCRIBIR: %d", *resp);
     if(*resp<0){
-    	log_error(logger, "ERROR AL ESCRIBIR. CODIGO: %d", *resp);
     	pcb->exit_code=*resp;
+    	if(*resp==EC_FS_LLENO){
+    		log_error(logger, "PID:%d Error al abrir el archivo. Filesystem sin espacio", pcb->pid);
+    	}else{
+    		log_error(logger, "PID:%d Error al abrir el archivo", pcb->pid);
+    	}
     }
     free(resp);
 }
