@@ -17,8 +17,7 @@
 
 
 #define PUERTO_DE_ESCUCHA 53000
-#define PLANIFICACION_FIFO "FIFO"
-#define PLANIFICACION_ROUND_ROBIN "RR"
+
 
 #define CPU 5
 
@@ -47,7 +46,7 @@ void planificador_largo_plazo();
 void planificador_corto_plazo();
 void enviar_a_ejecutar(t_cpu* cpu);
 //t_cpu* cpu_obtener_libre(t_list* lista_cpu);
-bool continuar_procesando(t_cpu* cpu);
+
 void monitoriar_config();
 
 
@@ -61,7 +60,7 @@ void pasarDeNewAReady();
 void pasarDeReadyAExecute();
 void pasarDeExecuteAReady(t_cpu* cpu);
 void pasarDeExecuteAExit(t_cpu* cpu);
-void pasarDeExecuteABlocked(t_cpu* cpu);
-void pasarDeBlockedAReady(uint16_t pidPcbASacar);
+
+
 
 #endif /* KERNEL_H_ */

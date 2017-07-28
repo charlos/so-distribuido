@@ -141,10 +141,12 @@ t_stack* stack_create(){
 
 t_cpu* cpu_create(int file_descriptor){
 	t_cpu* cpu = malloc(sizeof(t_cpu));
+	cpu->libre = true;
 	cpu->file_descriptor = file_descriptor;
 	cpu->proceso_asignado = NULL;
 	cpu->matar_proceso=0;
 	cpu->proceso_desbloqueado_por_signal=0;
+	cpu->proceso_bloqueado_por_wait = 0;
 	cpu->quantum=0;
 	return cpu;
 }
@@ -326,12 +328,13 @@ void pasarDeReadyAExecute(){
 	sem_wait(semListaCpu);
 	for (i = 0; i < list_size(lista_cpu); i++) {
 		cpu = list_get(lista_cpu, i);
-		if( cpu->proceso_asignado == NULL ) {
+		if( cpu->libre ) {
 			/*sem_wait(semColaListos);
 			pcb = queue_pop(cola_listos);
 			sem_post(semColaListos);*/
 			// si no tiene procesos en la cola de listos no hace nada
 			if(pcb != NULL){
+				cpu->libre = false;
 				cpu->proceso_asignado = pcb;
 				serializarPCB = true;
 			} else {
@@ -357,37 +360,15 @@ void pasarDeExecuteAReady(t_cpu* cpu){
 void pasarDeExecuteAExit(t_cpu* cpu){
 	sem_wait(semColaFinalizados);
 	queue_push(cola_finalizados, cpu->proceso_asignado);
-	sem_post(semColaFinalizados);
 	liberar_cpu(cpu);
+	sem_post(semColaFinalizados);
 	sem_wait(semCantidadProgramasPlanificados);
 	// TODO: Hacer sem_post del planificador largo plazo (?)
 }
 
-void pasarDeExecuteABlocked(t_cpu* cpu){
-	log_trace(logger, "PID %d - pasarDeExecuteABlocked antes de sem_wait ", cpu->proceso_asignado->pid);
-	sem_wait(semColaBloqueados);
-	queue_push(cola_bloqueados, cpu->proceso_asignado);
-	sem_post(semColaBloqueados);
-	log_trace(logger, "PID %d - pasarDeExecuteABlocked despues del sem_post ", cpu->proceso_asignado->pid);
-	//liberar_cpu(cpu);
-}
 
-void pasarDeBlockedAReady(uint16_t pidPcbASacar){
-	sem_wait(semColaBloqueados);
-	t_PCB* pcb = sacar_pcb_con_pid(cola_bloqueados, pidPcbASacar);
-	log_trace(logger, "PID %d - pasarDeBlockedAReady() - Saca PCB de Blocked", pcb->pid);
-	sem_post(semColaBloqueados);
-	if(pcb != NULL){
-		pcb->PC++;
-		//cola_listos_push(pcb);
-		pthread_mutex_lock(&semColaListos);
-		queue_push(cola_listos, pcb);
-		log_trace(logger, "PUSH (pid: %d - PC: %d - SP: %d POS %p) en Ready 388 kernel.c", pcb->pid, pcb->PC, pcb->SP, pcb);
 
-		log_trace(logger, "PID %d - pasarDeBlockedAReady() - Pone PCB en Ready", pcb->pid);
-		pthread_mutex_unlock(&semColaListos);
-	}
-}
+
 
 void enviar_a_ejecutar(t_cpu* cpu){
 
@@ -395,18 +376,6 @@ void enviar_a_ejecutar(t_cpu* cpu){
 
 
 
-/*
- * encuentra una cpu libre y la "marca" como no encontrada (gracias Dante!)
- *
- */
-bool continuar_procesando(t_cpu* cpu){
-	if(kernel_conf->algoritmo == PLANIFICACION_ROUND_ROBIN){
-		cpu->quantum++;
-		return (cpu->quantum < kernel_conf->quantum);
-	} else {
-		return true;
-	}
-}
 
 void actualizar_quantum_sleep(){
 	t_config * conf = config_create("./kernel.cfg");

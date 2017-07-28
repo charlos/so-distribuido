@@ -407,7 +407,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			memcpy(pid, pid2, sizeof(uint16_t)); //saco algun programa de la cola del semaforo
 			log_trace(logger, "POP (%d) en Semaforo -%s- por CPU %d", *pid, nombre_semaforo, info_solicitud->file_descriptor);
 			pasarDeBlockedAReady(*pid); //pasa el proceso a la cola de listos
-			cpu->proceso_desbloqueado_por_signal = 1;
+			sem_post(semCantidadElementosColaListos);
+			//cpu->proceso_desbloqueado_por_signal = 1;
 			free(pid2);
 			//pcb_destroy(auxPCB);
 		}
@@ -418,19 +419,10 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_FUNCION_WAIT:
 	    sumar_syscall(info_solicitud->file_descriptor);
-		nombre_semaforo	= (char*)buffer;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
-		sem_wait(semSemaforos);
-		semaforo = dictionary_get(semaforos, nombre_semaforo);
-		semaforo->cuenta--;
-		if(semaforo->cuenta < 0){
-			uint16_t* pid = malloc(sizeof(uint16_t));
-			*pid = cpu->proceso_asignado->pid;
-			queue_push(semaforo->cola, pid); //pongo el programa en la cola del semaforo
-			log_trace(logger, "PUSH (%d) en Semaforo -%s- por CPU %d", *pid, nombre_semaforo, info_solicitud->file_descriptor);
-			pasarDeExecuteABlocked(cpu); //bloquea el programa
-		}
-		sem_post(semSemaforos);
+		cpu->nombre_semaforo = (char*)buffer;
+		cpu->proceso_bloqueado_por_wait = 1;
+
 		// Respuesta para desbloquear CPU, terminará la ejecución y devolverá el pcb para ser encolado en bloqueados
 		*resp = 1;
 		connection_send(info_solicitud->file_descriptor, OC_RESP_WAIT, resp);
@@ -440,13 +432,13 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		memory_finalize_process(memory_socket, pcb->pid, logger);
-		pasarDeExecuteAExit(cpu);
 		status = 1;
 		int * _mismopid2(t_par_socket_pid * target) {
 			return pcb->pid == target->pid;
 		}
 		t_par_socket_pid * parEncontrado2 = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid2);
 		connection_send(parEncontrado2->socket, OC_MUERE_PROGRAMA, &status);
+		pasarDeExecuteAExit(cpu);
 		sem_post(semCantidadCpuLibres);
 		break;
 	case OC_DESCONEX_CPU:
@@ -461,20 +453,20 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		memory_finalize_process(memory_socket, pcb->pid, logger);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
-		pasarDeExecuteAExit(cpu);
 		status = 1;
 		int * _mismopid(t_par_socket_pid * target) {
 			return pcb->pid == target->pid;
 		}
 		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+		pasarDeExecuteAExit(cpu);
 		sem_post(semCantidadCpuLibres);
 		break;
 	case OC_TERMINO_INSTRUCCION: {
 		t_PCB* oldPCB;
 		*resp = -1; //por default no continua procesando
 		pcb = deserializer_pcb(buffer);
-
+		t_semaphore* semaforo;
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		oldPCB = cpu->proceso_asignado;
 		cpu->proceso_asignado = pcb;
@@ -482,18 +474,32 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		bool liberarcpu = false;
 		bool push_a_listos = false;
 
+		if(cpu->proceso_bloqueado_por_wait){
+			sem_wait(semSemaforos); // no se va a poder usar el semaforo hasta que no termine la instruccion (OC_TERMINO_INSTRUCCION)
+			semaforo = dictionary_get(semaforos, cpu->nombre_semaforo);
+			semaforo->cuenta--;
+			if(semaforo->cuenta < 0){
+				uint16_t* pid = malloc(sizeof(uint16_t));
+				*pid = cpu->proceso_asignado->pid;
+				queue_push(semaforo->cola, pid); //pongo el programa en la cola del semaforo
+				log_trace(logger, "PUSH (%d) en Semaforo -%s- por CPU %d", *pid, nombre_semaforo, info_solicitud->file_descriptor);
+				pasarDeExecuteABlocked(cpu); //bloquea el programa
+				cpu->proceso_bloqueado_por_wait = 1;
+			} else {
+				cpu->proceso_bloqueado_por_wait = 0;
+				sem_post(semSemaforos);
+			}
+		}
+
 		if(cpu->matar_proceso){
-			cpu->matar_proceso=0;
 			pcb->exit_code = -77;
-			pasarDeExecuteAExit(cpu);
-			liberarcpu = true;
 			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
 			status = 1;
 			if(parEncontrado)connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status); //TODO: Ver si se puede solucionar de otra forma para desconexion de consola
 			memory_finalize_process(memory_socket, pcb->pid, logger);
 		} else {
-			esta_bloqueado = proceso_bloqueado(pcb);
-			if( esta_bloqueado ){
+			//esta_bloqueado = proceso_bloqueado(pcb);
+			if( cpu->proceso_bloqueado_por_wait ){
 				// si el proceso está bloqueado libera cpu
 				liberarcpu = true;
 			} else {
@@ -507,7 +513,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					log_trace(logger, "PUSH (pid: %d - PC: %d - SP: %d POS %p) en Ready 488 soli.c", cpu->proceso_asignado->pid, cpu->proceso_asignado->PC, cpu->proceso_asignado->SP, cpu->proceso_asignado);
 
 					log_trace(logger, "PID %d - Se inserta en Ready", cpu->proceso_asignado->pid);
-					pthread_mutex_unlock(&semColaListos);
+
 					push_a_listos = true;
 					liberarcpu = true;
 				}
@@ -521,23 +527,36 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		connection_send(info_solicitud->file_descriptor, OC_RESP_TERMINO_INSTRUCCION, resp);
 		log_trace(logger, "Se envió OC_RESP_TERMINO_INSTRUCCION al socket %d", info_solicitud->file_descriptor);
 
-		if (liberarcpu) {
-			liberar_cpu(cpu);
-			sem_post(semCantidadCpuLibres);
-		}
+
 		/*int cantidadProgramasListo_Sem;
 		sem_getvalue(semCantidadElementosColaListos, &cantidadProgramasListo_Sem);
 		sem_wait(semColaListos);
 		int cantidadColaListos = queue_size(cola_listos);
 		sem_post(semColaListos);
 		if(cantidadColaListos>cantidadProgramasListo_Sem){*/
-		if(cpu->proceso_desbloqueado_por_signal || push_a_listos){
-			cpu->proceso_desbloqueado_por_signal=0;
+		if(push_a_listos){
 			sem_post(semCantidadElementosColaListos);
+			pthread_mutex_unlock(&semColaListos);
+		}
+
+		if(cpu->proceso_bloqueado_por_wait){
+			//cpu->proceso_bloqueado_por_wait = 0;
+			sem_post(semSemaforos); // libero el semaforo para que pueda usarse en el signal
+		}
+
+		if (liberarcpu) {
+			liberar_cpu(cpu);
+			sem_post(semCantidadCpuLibres);
+		} else {
+			if(cpu->matar_proceso){
+				pasarDeExecuteAExit(cpu);
+				sem_post(semCantidadCpuLibres);
+			}
 		}
 	}
 
 		break;
+
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;
 		status = 1;

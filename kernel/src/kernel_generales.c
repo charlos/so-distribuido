@@ -190,9 +190,48 @@ void rw_lock_unlock(int action) {
 
 void liberar_cpu(t_cpu* cpu){
 	sem_wait(semListaCpu);
+	cpu->libre = true;
 	cpu->quantum = 0;
 	cpu->proceso_asignado = NULL;
 	cpu->matar_proceso = 0;
 	cpu->proceso_desbloqueado_por_signal = 0;
+	cpu->proceso_bloqueado_por_wait = 0;
 	sem_post(semListaCpu);
+}
+
+void pasarDeBlockedAReady(uint16_t pidPcbASacar){
+	sem_wait(semColaBloqueados);
+	t_PCB* pcb = sacar_pcb_con_pid(cola_bloqueados, pidPcbASacar);
+	log_trace(logger, "PID %d - pasarDeBlockedAReady() - Saca PCB de Blocked", pcb->pid);
+
+	if(pcb != NULL){
+		//pcb->PC++;
+		//cola_listos_push(pcb);
+		pthread_mutex_lock(&semColaListos);
+		queue_push(cola_listos, pcb);
+		//log_trace(logger, "PUSH (pid: %d - PC: %d - SP: %d POS %p) en Ready 388 kernel.c", pcb->pid, pcb->PC, pcb->SP, pcb);
+		log_trace(logger, "PID %d - pasarDeBlockedAReady() - Pone PCB en Ready", pcb->pid);
+		pthread_mutex_unlock(&semColaListos);
+	}
+	sem_post(semColaBloqueados);
+}
+
+void pasarDeExecuteABlocked(t_cpu* cpu){
+	log_trace(logger, "PID %d - pasarDeExecuteABlocked antes de sem_wait ", cpu->proceso_asignado->pid);
+	sem_wait(semColaBloqueados);
+	queue_push(cola_bloqueados, cpu->proceso_asignado);
+	log_trace(logger, "PID %d - pasarDeExecuteABlocked despues del sem_post ", cpu->proceso_asignado->pid);
+	cpu->proceso_asignado = NULL;
+	sem_post(semColaBloqueados);
+
+	//liberar_cpu(cpu);
+}
+
+bool continuar_procesando(t_cpu* cpu){
+	if(kernel_conf->algoritmo == PLANIFICACION_ROUND_ROBIN){
+		cpu->quantum++;
+		return (cpu->quantum < kernel_conf->quantum);
+	} else {
+		return true;
+	}
 }

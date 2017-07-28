@@ -19,6 +19,9 @@
 #define	LOCK_WRITE 				1
 #define	UNLOCK 					2
 
+#define PLANIFICACION_FIFO "FIFO"
+#define PLANIFICACION_ROUND_ROBIN "RR"
+
 bool planificar;
 sem_t *semColaBloqueados;
 sem_t *semPlanificarLargoPlazo;
@@ -57,11 +60,14 @@ typedef struct{
 }t_kernel_conf;
 
 typedef struct{
+	bool libre;
+	char* nombre_semaforo;
 	int file_descriptor;
 	t_PCB* proceso_asignado;
 	int quantum;
 	int matar_proceso; // si es true se debe pasar el pcb a la cola finalizados
 	int proceso_desbloqueado_por_signal; // si es true se debe incrementar semaforo que cuenta la cola de listos
+	int proceso_bloqueado_por_wait;
 }t_cpu;
 
 typedef struct{
@@ -134,5 +140,9 @@ t_PCB* sacar_pcb(t_queue* cola, t_PCB* pcb);
 void liberar_nuevo_proceso(t_nuevo_proceso* nuevo_proceso);
 void iniciar_consola();
 t_cpu* buscar_pcb_en_lista_cpu(t_PCB* pcbABuscar);
+
+void pasarDeBlockedAReady(uint16_t pidPcbASacar);
+void pasarDeExecuteABlocked(t_cpu* cpu);
+bool continuar_procesando(t_cpu* cpu);
 
 #endif /* KERNEL_GENERALES_H_ */
