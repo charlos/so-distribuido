@@ -204,30 +204,28 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 
 		direccion[direccion_length] = '\0';
 
-		printf("RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
+		//printf("RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
 		log_trace(logger, "RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
 
 		int fd_proceso;
 		fd_proceso = abrir_archivo(pid, direccion, flags);
 	    if(fd_proceso == -1) {
-
-	    	int _mismoPid(t_par_socket_pid *par){
-	    		 return par->pid == pid;
-	    	}
-
-	    	msgerror= strdup("No existe archivo");
-	    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
-	    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
-	    	free(msgerror);
-
-
+	    	msgerror= strdup("No existe archivo o no tiene permisos");
+	    }else if(fd_proceso == ENOSPC) {
+	    	fd_proceso=EC_FS_LLENO;
+	    	msgerror= strdup("Sin espacio en filesystem");
 	    }
-
+    	int _mismoPid(t_par_socket_pid *par){
+    		 return par->pid == pid;
+    	}
+    	if(fd_proceso < 0) {
+    	t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
+    	connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
+    	free(msgerror);
+    	}
 	    sumar_syscall(info_solicitud->file_descriptor);
 
-	    //TODO respuesta al pedido de abrir archivo
 	    connection_send(info_solicitud->file_descriptor, OC_RESP_ABRIR, &fd_proceso);
-
 
 	}
     break;
@@ -266,6 +264,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 					t_global_file * global_file = getFileFromGlobal(file->global_fd);
 					 char* path = global_file->file;
 					 *resp2 = fs_write(fs_socket, path, file->offset_cursor, escritura->tamanio, escritura->tamanio, escritura->informacion, logger);
+					 log_trace(logger, "se mandó a escribir a %s offset %d y la respuesta fue %d", path,file->offset_cursor,resp2);
 					 rw_lock_unlock(UNLOCK);
 					 switch(*resp2){
 					 	 case SUCCESS:
@@ -385,7 +384,8 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_valor_variable valor_variable;
 		t_descriptor_archivo descriptor_archivo;
 
-		memcpy(&pid, buffer, sizeof(int));
+		//memcpy(&pid, buffer, sizeof(int));
+		pid = *(uint8_t*)buffer;
 		memcpy(&descriptor_archivo, buffer + sizeof(int), sizeof(t_descriptor_archivo));
 		memcpy(&valor_variable, buffer + sizeof(int) + sizeof(t_descriptor_archivo), sizeof(t_valor_variable));
 
@@ -393,6 +393,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		t_process_file* file = buscarArchivoTablaProceso(tabla_proceso, descriptor_archivo);
 
 		file->offset_cursor=valor_variable;
+		log_trace(logger, "Mover cursor del archivo FD %d a la posicion %d", descriptor_archivo,file->offset_cursor);
 	}
 	break;
 	case OC_FUNCION_ESCRIBIR_VARIABLE:
@@ -823,12 +824,16 @@ int abrir_archivo(uint16_t pid, char* direccion, t_banderas flags){
 			rw_lock_unlock(UNLOCK);
 			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
 
-		} else if(flags.creacion && result == ISNOTREG) {
+		} else if(flags.creacion) {  //&& result == ISNOTREG
 			int res = fs_create_file(fs_socket, direccion, logger);
-			rw_lock_unlock(LOCK_WRITE);
-			fd_global = crearArchivoTablaGlobal(direccion);
-			rw_lock_unlock(UNLOCK);
-			fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+			if(res>0){
+				rw_lock_unlock(LOCK_WRITE);
+				fd_global = crearArchivoTablaGlobal(direccion);
+				rw_lock_unlock(UNLOCK);
+				fd_proceso = cargarArchivoTablaProceso(pid, fd_global, flags);
+			}else{
+				fd_proceso = res;
+			}
 
 		} else {
 			fd_global = -1;

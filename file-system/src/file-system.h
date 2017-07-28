@@ -11,12 +11,13 @@
 #define FILE_SYSTEM_H_
 
 #define BLOCK_SIZE 	64
-#define BLOCKS 		5192
+
 
 typedef struct {
 	uint32_t port;
 	char *   mount_point;
 	char *   logfile;
+	uint32_t blocks;
 } t_file_system_conf;
 
 #endif /* FILE_SYSTEM_H_ */

@@ -217,9 +217,11 @@ t_puntero alocar(t_valor_variable espacio){
 	memcpy(cod_error, ((void*)paquete_respuesta_reservar)+ sizeof(t_puntero), sizeof(t_puntero));
 
     if(*cod_error == 1 ){
+    	log_error(logger, "PID:%d Error al reservar memoria. Tamaño [%d] mayor al tamaño de la página", pcb->pid, espacio);
     	pcb->exit_code = EC_ALOCAR_MUY_GRANDE;
     	return 0;
     } else if (*cod_error == 2){
+    	log_error(logger, "PID:%d Error al reservar memoria. No hay espacio para alocar [%d]", pcb->pid, espacio);
     	pcb->exit_code = EC_SIN_ESPACIO_MEMORIA;
     	return 0;
     } else {
@@ -269,6 +271,11 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas banderas){
 
     if(*fd_proceso < 0) {
     	pcb->exit_code = *fd_proceso;
+    	if(*fd_proceso==EC_FS_LLENO){
+    		log_error(logger, "PID:%d Error al abrir el archivo. Filesystem sin espacio", pcb->pid);
+    	}else{
+    		log_error(logger, "PID:%d Error al abrir el archivo", pcb->pid);
+    	}
     }
     return *fd_proceso;
     free(fd_proceso);
@@ -289,6 +296,7 @@ void borrar(t_descriptor_archivo descriptor){
 
     if(*resp < 0) {
     	pcb->exit_code = *resp;
+    	log_error(logger, "PID:%d Error al borrar el archivo", pcb->pid);
     }
     free(resp);
 }
@@ -306,13 +314,12 @@ void cerrar(t_descriptor_archivo descriptor){
     int *resp = malloc(sizeof(int));
     uint8_t operation_code;
     connection_recv(server_socket_kernel, &operation_code, &resp);
-    log_trace(logger, "Kernel nos dice [%d]", *resp);
+
     if(*resp < 0) {
     	pcb->exit_code = *resp;
+    	log_error(logger, "PID:%d Error al cerrar el archivo", pcb->pid);
     }
     free(resp);
-    log_trace(logger, "exit code [%d]", pcb->exit_code);
-
 }
 
 void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion){
@@ -353,10 +360,13 @@ void escribir(t_descriptor_archivo desc, void * informacion, t_valor_variable ta
     int8_t *resp = malloc(sizeof(int8_t));
     connection_recv(server_socket_kernel, operation_code, &resp);
 
-    log_trace(logger, "RESULTADO DE OPERACION ESCRIBIR: %d", *resp);
     if(*resp<0){
-    	log_error(logger, "ERROR AL ESCRIBIR. CODIGO: %d", *resp);
     	pcb->exit_code=*resp;
+    	if(*resp==EC_FS_LLENO){
+    		log_error(logger, "PID:%d Error al abrir el archivo. Filesystem sin espacio", pcb->pid);
+    	}else{
+    		log_error(logger, "PID:%d Error al abrir el archivo", pcb->pid);
+    	}
     }
     free(resp);
 }
