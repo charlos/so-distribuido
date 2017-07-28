@@ -56,7 +56,7 @@ void liberar_pagina(t_pedido_liberar_memoria* pedido_free, int offset_de_paginas
 t_codigo_proceso* buscar_codigo_de_proceso(int pid);
 void asignarValorVariable(t_shared_var*);
 t_valor_variable leerValorVariable(char*);
-void * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
+t_read_response * obtener_informacion_a_imprimir(t_puntero puntero, int pid);
 void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int cantidad_paginas_codigo);
 void obtener_direccion_logica(t_pedido_liberar_memoria* pedido_free, int cantidad_paginas_codigo);
 int calcular_paginas_necesarias(char* codigo);

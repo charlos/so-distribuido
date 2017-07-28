@@ -125,9 +125,12 @@ void asignar(t_puntero puntero, t_valor_variable valor_variable){
     if (resp==DISCONNECTED_SERVER){
     	pcb->exit_code=EC_ERROR_CONEXION;
     	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d]) ERROR_CONEXION", page, offset,valor_variable);
-    }else if (resp==PAGE_FAULT || resp==SEGMENTATION_FAULT){
-    	pcb->exit_code=EC_STACKOVERFLOW;
-    	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d]) STACKOVERFLOW", page, offset,valor_variable);
+    //}else if (resp==PAGE_FAULT || resp==SEGMENTATION_FAULT){
+   // 	pcb->exit_code=EC_STACKOVERFLOW;
+   // 	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d]) STACKOVERFLOW", page, offset,valor_variable);
+    }else if (resp==PAGE_FAULT){
+    	pcb->exit_code=EC_EXCEPCION_MEMORIA;
+    	log_error(logger, "Error al escribir en memoria (Page [%p] | Offset [%d] | Valor [%d])", page, offset,valor_variable);
     }
 }
 
