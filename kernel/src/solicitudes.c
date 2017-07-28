@@ -97,6 +97,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		if(pedido->espacio_pedido > (TAMANIO_PAGINAS - sizeof(t_heapMetadata))){
 			log_trace(logger, "Pedido de heap invalido - Se esta pidiendo mas espacio del permitido por solicitud");
 			error_heap = 1;
+
+			pthread_mutex_lock(&mutex_pedido_memoria);
+			memory_finalize_process(memory_socket, pedido->pid, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
+
 			paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);		// Mandamos 2 t_punteros el primero el valor del puntero, el segundo el valor del error
 			memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
 			memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
@@ -115,6 +120,11 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			if(status < 0){
 				if(status == -203){
 					error_heap = 2;
+
+					pthread_mutex_lock(&mutex_pedido_memoria);
+					memory_finalize_process(memory_socket, pedido->pid, logger);
+					pthread_mutex_unlock(&mutex_pedido_memoria);
+
 					paquete_respuesta_reservar = malloc(sizeof(t_puntero) * 2);
 					memcpy(paquete_respuesta_reservar, &bloque_heap_ptr, sizeof(t_puntero));
 					memcpy(paquete_respuesta_reservar + sizeof(t_puntero), &error_heap, sizeof(t_puntero));
@@ -243,13 +253,17 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				return escritura->pid == target->pid;
 			}
 			t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-			int socket_proceso = parEncontrado->socket;
-			char * inf = malloc(strlen((char*)escritura->informacion));
-			strcpy(inf, (char*)escritura->informacion);
+			if(parEncontrado){
+				int socket_proceso = parEncontrado->socket;
+				char * inf = malloc(strlen((char*)escritura->informacion));
+				strcpy(inf, (char*)escritura->informacion);
+				connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+			}
+
 
 
 			*resp2 = 1;
-			connection_send(socket_proceso, OC_ESCRIBIR_EN_CONSOLA, inf);
+
 			connection_send(info_solicitud->file_descriptor, OC_RESP_ESCRIBIR, resp2);
 		}else{
 			t_table_file* tabla_archivos_proceso = getTablaArchivo(escritura->pid);
@@ -310,7 +324,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			}
 			char* msgerror= strdup("No se pudo leer el archivo");
 			t_par_socket_pid * parNuevo = list_find(tabla_sockets_procesos, (void *) _mismoPid);
-			connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
+			if(parNuevo)connection_send(parNuevo->socket, OC_ESCRIBIR_EN_CONSOLA, msgerror);
 
 			connection_send(info_solicitud->file_descriptor, OC_RESP_LEER_ERROR, &(read_response->exec_code));
 		} else {
@@ -465,7 +479,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		pcb = deserializer_pcb(buffer);
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_finalize_process(memory_socket, pcb->pid, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		pasarDeExecuteAExit(cpu);
 		status = 1;
 		int * _mismopid2(t_par_socket_pid * target) {
@@ -484,7 +500,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		break;
 	case OC_ERROR_EJECUCION_CPU:
 		pcb = deserializer_pcb(buffer);
-		memory_finalize_process(memory_socket, pcb->pid, logger);
+		if(pcb->exit_code != EC_ALOCAR_MUY_GRANDE && pcb->exit_code != EC_SIN_ESPACIO_MEMORIA){
+			pthread_mutex_lock(&mutex_pedido_memoria);
+			memory_finalize_process(memory_socket, pcb->pid, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
+		}
+
 		cpu = obtener_cpu(info_solicitud->file_descriptor);
 		cpu->proceso_asignado = pcb;
 		pasarDeExecuteAExit(cpu);
@@ -516,7 +537,9 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
 			status = 1;
 			if(parEncontrado)connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status); //TODO: Ver si se puede solucionar de otra forma para desconexion de consola
+			pthread_mutex_lock(&mutex_pedido_memoria);
 			memory_finalize_process(memory_socket, pcb->pid, logger);
+			pthread_mutex_unlock(&mutex_pedido_memoria);
 		} else {
 			esta_bloqueado = proceso_bloqueado(pcb);
 			if( esta_bloqueado ){
@@ -567,71 +590,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;
 		status = 1;
-
-		int * _mismopid(t_par_socket_pid * target) {
-			return pid == target->pid;
-		}
-		t_par_socket_pid * parEncontrado = (t_par_socket_pid*)list_find(tabla_sockets_procesos, _mismopid);
-
-		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
-
-//		memory_finalize_process(memory_socket, pid, logger);
-
-		/*pcb = malloc(sizeof(t_PCB));
-		t_PCB * pcbEncontrado = malloc(sizeof(t_PCB));
-
-		sem_wait(semColaNuevos);
-		pcb = sacar_pcb_con_pid(cola_nuevos, pid);
-		sem_post(semColaNuevos);
-
-		if(pcb == NULL) {
-
-			pthread_mutex_lock(&semColaListos);
-			pcb = sacar_pcb_con_pid(cola_listos, pid);
-			pthread_mutex_unlock(&semColaListos);
-
-			if(pcb == NULL) {
-
-				sem_wait(semColaBloqueados);
-				pcb = sacar_pcb_con_pid(cola_bloqueados, pid);
-				sem_post(semColaBloqueados);
-
-
-				if(pcb == NULL) {
-					sem_wait(semSemaforos);
-					void _semaforo(char* key, t_semaphore* semaforo){
-						bool _is_pid(uint16_t* pid){
-							if(*pid == pcbEncontrado->pid){
-								semaforo->cuenta--;
-								return true;
-							}else{
-								return false;
-							}
-						}
-						list_remove_and_destroy_by_condition(semaforo->cola->elements, _is_pid, free);
-					}
-					dictionary_iterator(semaforos, _semaforo);
-					sem_post(semSemaforos);
-
-					cpu = obtener_cpu_por_proceso(pid);
-
-					if(cpu == NULL) {
-						log_error(logger, "No existe programa con el pid %d", pid);
-						return;
-					}
-					else {
-						cpu->matar_proceso = 1;
-						//pasarDeExecuteAExit(cpu);
-					}
-				}
-			}
-		}
-		if(pcb != NULL)
-			pcb->exit_code = -77;*/
-
-//		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
-//		memory_finalize_process(memory_socket, pid, logger);
-
+		pasar_proceso_a_exit(pid);
 	break;
 	}
 	default:
@@ -658,13 +617,17 @@ int calcular_paginas_necesarias(char* codigo){
 void mandar_codigo_a_memoria(char* codigo, int pid){
 	int i = 0, offset = 0, cant_a_mandar = strlen(codigo);
 	while(cant_a_mandar > TAMANIO_PAGINAS){
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_write(memory_socket, pid, i, 0, TAMANIO_PAGINAS, TAMANIO_PAGINAS, codigo + offset, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		offset += TAMANIO_PAGINAS;
 		cant_a_mandar -= TAMANIO_PAGINAS;
 		i++;
 	}
 	if(cant_a_mandar > 0){
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_write(memory_socket, pid, i, 0, cant_a_mandar, cant_a_mandar, codigo + offset, logger);
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 	}
 }
 
@@ -1104,7 +1067,9 @@ void	sumar_espacio_liberado(int pid, int espacio_liberado){
 
 int notificar_memoria_inicio_programa(int pid, int cant_paginas, char* codigo_completo){
 	int status = 0;
+	pthread_mutex_lock(&mutex_pedido_memoria);
 	status = memory_init_process(memory_socket, pid, cant_paginas, logger);
+	pthread_mutex_unlock(&mutex_pedido_memoria);
 	if(status == -203){
 		log_error(logger, "No hay espacio suficiente para nuevo programa");
 		return status;

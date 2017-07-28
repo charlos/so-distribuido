@@ -136,8 +136,9 @@ int leer_comando(char* command) {
 		t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcbEncontrado->pid);
 		int status = 1;
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_finalize_process(memory_socket, pcbEncontrado->pid, logger);
-
+		pthread_mutex_unlock(&mutex_pedido_memoria);
 		// se agrega a la cola de finalizados
 		queue_push(cola_finalizados, pcbEncontrado);
 		sem_wait(semCantidadProgramasPlanificados);
