@@ -25,13 +25,7 @@ typedef struct{
 	bool isFree;
 }t_heapMetadata;
 
-typedef struct {
-	int pid;
-	int socket;
-	int cantidad_syscalls;
-	int memoria_reservada;
-	int memoria_liberada;
-} t_par_socket_pid;
+
 
 t_list* tabla_paginas_heap;
 t_list* tabla_global_archivos;
@@ -54,7 +48,7 @@ int crearArchivoTablaGlobal(char*);
 int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags);
 int nuevoFD_PID(int);
 t_list* crearTablaArchProceso();
-t_table_file* getTablaArchivo(int pid);
+
 t_heapMetadata* leer_metadata(void* pagina);
 bool pagina_vacia(int pid, int nro_pagina);
 void tabla_heap_sacar_pagina(t_pedido_liberar_memoria* pedido_free);

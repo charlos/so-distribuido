@@ -7,7 +7,7 @@
 
 #include "kernel_generales.h"
 #include "solicitudes.h"
-
+t_PCB* buscar_pcb_en_colas(int pid);
 int leer_comando(char* command);
 char* obtener_estado(int pid);
 t_par_socket_pid* buscar_info_proceso(int pid);
@@ -68,13 +68,15 @@ int leer_comando(char* command) {
 	else if(strcmp(palabras[0], "process")==0) {
 		int pid = atoi(palabras[1]);
 		t_par_socket_pid* info_proceso = buscar_info_proceso(pid);
-		printf("Proceso pid: %d\n", pid);
+		/*printf("Proceso pid: %d\n", pid);
 		char* estado = obtener_estado(pid);
 		printf("Estado: %s\n", estado);
 		printf("Cantidad de Syscalls: %d\n", info_proceso->cantidad_syscalls);
 		printf("Cantidad de memoria alocada: %d\n", info_proceso->memoria_reservada);
 		printf("Cantidad de memoria liberada: %d\n", info_proceso->memoria_liberada);
-		free(estado);
+		free(estado);*/
+		t_PCB* pcb = buscar_pcb_en_colas(pid);
+		_imprimir_proceso(pcb);
 	}
 	else if(strcmp(palabras[0], "global_file_table") ==0 ) {
 		printf("Tabla global de Archivos:\n");
@@ -159,10 +161,33 @@ int leer_comando(char* command) {
 
 	else return -2;
 }
+
+void mostrar_flags(t_banderas flags){
+	if(flags.creacion)printf("c");
+	if(flags.escritura)printf("w");
+	if(flags.lectura)printf("r");
+}
+
+void mostrar_informacion_tabla_de_archivos(t_table_file* tabla_de_archivos) {
+
+	void _mostar_informacion_de_archivo_abierto(t_process_file* file) {
+		printf("\n Descriptor de archivo del proceso", file->proceso_fd);
+		printf("descriptor global", file->global_fd);
+		mostrar_flags(file->flags);
+
+	}
+	list_iterate(tabla_de_archivos->tabla_archivos,	(void*) _mostar_informacion_de_archivo_abierto);
+}
+
 void _imprimir_proceso(t_PCB* pcb){
 	if(pcb){
 		char *estado;
 		printf("Proceso id: %d -----", pcb->pid);
+		t_table_file* tabla_de_archivos = getTablaArchivo(pcb->pid);
+		if(!list_is_empty(tabla_de_archivos->tabla_archivos)){
+			printf("Tabla De Archivos del Proceso:\n\n");
+			mostrar_informacion_tabla_de_archivos(tabla_de_archivos);
+		}
 		estado = obtener_estado(pcb->pid);
 		printf("Estado: %s -----", estado);
 		if(strcmp(estado, "Finalizado") == 0) printf(" Exit Code: %d", pcb->exit_code);
@@ -185,7 +210,7 @@ void listar_procesos_de_cola(t_queue* cola_de_estado){
 
 void imprimir_tabla_global_de_archivos(){
 	void _imprimir_entrada(t_global_file* f){
-		printf("%s	|	%d", f->file, f->open);
+		printf("%s	|	%d\n", f->file, f->open);
 	}
 	list_iterate(tabla_global_archivos, (void*) _imprimir_entrada);
 }
@@ -222,4 +247,38 @@ t_par_socket_pid* buscar_info_proceso(int pid){
 		return p->pid == pid;
 	}
 	return list_find(tabla_sockets_procesos, (void*) tiene_mismo_pid);
+}
+
+t_PCB* buscar_pcb_en_colas(int pid){
+	bool _mismo_pid_nuevo(t_nuevo_proceso* p){
+		return p->pcb->pid == pid;
+	}
+	bool _mismo_pid(t_PCB* pcb){
+		return pcb->pid == pid;
+	}
+	sem_wait(semColaNuevos);
+	t_PCB* pcb =	list_find(cola_nuevos->elements, (void*) _mismo_pid_nuevo);
+	sem_post(semColaNuevos);
+	if(pcb == NULL){
+		pthread_mutex_lock(&semColaListos);
+		pcb = list_find(cola_listos->elements, (void*) _mismo_pid);
+		pthread_mutex_unlock(&semColaListos);
+		if(pcb == NULL){
+			sem_wait(semColaBloqueados);
+			pcb = list_find(cola_bloqueados->elements, (void*) _mismo_pid);
+			sem_post(semColaBloqueados);
+			if(pcb == NULL){
+				sem_wait(semColaFinalizados);
+				pcb = list_find(cola_finalizados->elements, (void*) _mismo_pid);
+				sem_post(semColaFinalizados);
+				if(pcb == NULL){
+					pcb = malloc(sizeof(t_PCB));
+					pcb->pid = pid;
+					t_cpu* cpu = buscar_pcb_en_lista_cpu(pcb);
+					return cpu->proceso_asignado;
+				}
+			}
+		}
+	}
+	return pcb;
 }

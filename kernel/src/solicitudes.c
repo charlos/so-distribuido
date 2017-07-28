@@ -921,25 +921,7 @@ int cargarArchivoTablaProceso(int pid, int fd_global, t_banderas flags){
 	return file->proceso_fd;
 }
 
-t_table_file* getTablaArchivo(int pid){
 
-	   bool _findbyPID(t_table_file* reg){
-		   return reg->pid==pid;
-	   }
-	   t_table_file* tabla;
-	   tabla = list_find(listaDeTablasDeArchivosDeProcesos, (void*) _findbyPID);
-
-	   if(tabla == NULL) {
-		   tabla = malloc(sizeof(t_table_file));
-
-		   tabla->pid = pid;
-		   tabla->tabla_archivos = list_create();
-		   tabla->contador_fd = 10;
-
-		   list_add(listaDeTablasDeArchivosDeProcesos, tabla);
-	   }
-	   return tabla;
-}
 
 t_list* crearTablaArchProceso(){
 	t_list* tabla_archivo_proceso = list_create();
@@ -960,7 +942,6 @@ void defragmentar(char* pagina, t_pedido_liberar_memoria* pedido_free){
 			juntar_bloques(metadata, metadata2);
 			memcpy(pagina + offset - sizeof(t_heapMetadata) - metadata->size, metadata2, sizeof(t_heapMetadata));
 			tabla_heap_cambiar_espacio_libre(pedido_free, sizeof(t_heapMetadata));
-		    sumar_espacio_liberado(pedido_free->pid, sizeof(t_heapMetadata));
 			break;
 		}
 		metadata = metadata2;

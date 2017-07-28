@@ -19,6 +19,8 @@
 #define	LOCK_WRITE 				1
 #define	UNLOCK 					2
 
+#define MUERE_PROGRAMA 99
+
 sem_t *semColaBloqueados;
 sem_t *semPlanificarLargoPlazo;
 sem_t *semPlanificarCortoPlazo;
@@ -92,6 +94,14 @@ typedef struct{
 	t_queue* cola;
 }t_semaphore;
 
+typedef struct {
+	int pid;
+	int socket;
+	int cantidad_syscalls;
+	int memoria_reservada;
+	int memoria_liberada;
+} t_par_socket_pid;
+
 
 
 int registro_pid;
@@ -112,6 +122,7 @@ t_dictionary* semaforos;
 t_list* tabla_variables_compartidas;
 void liberar_cpu(t_cpu* cpu);
 t_PCB* sacar_pcb_con_pid(t_queue* cola, uint16_t pid);
+t_table_file* getTablaArchivo(int pid);
 
 /**
  * @NAME: crear_PCB

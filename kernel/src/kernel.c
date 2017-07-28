@@ -434,50 +434,7 @@ void eliminar_cpu(int file_descriptor){
 	list_remove_and_destroy_by_condition(lista_cpu, _is_cpu, free);
 }
 
-void pasar_proceso_a_exit(int pid){
-	t_PCB* pcbEncontrado = NULL;
-	t_PCB* pcbASacar = malloc(sizeof(t_PCB));
-	pcbASacar->pid = pid;
-	sem_wait(semColaNuevos);
-	// lo busco en la cola new
-	pcbEncontrado = sacar_pcb(cola_nuevos, pcbASacar);
-	sem_post(semColaNuevos);
-	if(pcbEncontrado == NULL){
-		pthread_mutex_lock(&semColaListos);
-		// lo busco en la cola ready
-		pcbEncontrado = sacar_pcb(cola_listos, pcbASacar);
-		pthread_mutex_unlock(&semColaListos);
-		if(pcbEncontrado == NULL){
-			// lo busco en la cola blocked
-			log_trace(logger, "PID %d - pasar_proceso_a_exit antes de sem_wait ", pcbASacar->pid);
-			sem_wait(semColaBloqueados);
-			pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);
-			sem_post(semColaBloqueados);
-			log_trace(logger, "PID %d - pasar_proceso_a_exit despues del sem_post ", pcbASacar->pid);
-			if(pcbEncontrado == NULL){
-				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
-				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
-				if(cpu == NULL){
-					printf("No existe programa con el PID (%d)\n", &pid);
-					return;
-				} else {
-					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
-					cpu->matar_proceso = 1;
-					return;
-				}
-			}
-		}
-	}
-	// se settea mensaje de error cuando se mata un proceso desde consola de kernel
-	pcbEncontrado->exit_code = -77;
-	// se agrega a la cola de finalizados
-	queue_push(cola_finalizados, pcbEncontrado);
-	pthread_mutex_lock(&mutex_pedido_memoria);
-	memory_finalize_process(memory_socket, pid, logger);
-	pthread_mutex_unlock(&mutex_pedido_memoria);
-	sem_wait(semCantidadProgramasPlanificados);
-	// TODO: Hacer sem_post del planificador largo plazo (?)
-}
+
 
 t_par_socket_pid* buscar_proceso_por_socket(int socket){
 	bool tiene_mismo_socket(t_par_socket_pid* p){
