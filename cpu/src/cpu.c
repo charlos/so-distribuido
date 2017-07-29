@@ -62,7 +62,7 @@ int main(void) {
 		log_error(logger, "Problema con Handshake con Memoria.");
 	}
 
-	int pc, page, offset, pageend, size_to_read;
+	int pc, page, offset, pageend, size_to_read, size_send;
 	uint8_t operation_code;
 	char* instruccion;
 	char* pcb_serializado;
@@ -168,7 +168,8 @@ int main(void) {
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_ERROR_EJECUCION_CPU);
 			pcb_destroy(pcb);
 		}else {
-			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
+			size_send = serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINO_INSTRUCCION);
+			log_trace(logger, "Tamaño enviado a kernel: %d",size_send);
 			log_trace(logger, "------------PID %d Antes de recv de OC_TERMINO_INSTRUCCION",pcb->pid);
 			connection_recv(server_socket_kernel, &operation_code, &continuar);
 			log_trace(logger, "------------PID %d Despues de recv de OC_TERMINO_INSTRUCCION: Respuesta %d",pcb->pid,*continuar);

@@ -156,13 +156,13 @@ int read_command(char* command) {
 	}
 	else if(strcmp(palabras[0], "disconnect") ==0 ) {
 
-		void _killThread(threadpid * recon) {
+		/*void _killThread(threadpid * recon) {
 			pthread_kill(recon->tid, SIGKILL);
 		}
-		list_iterate(thread_list, (void*) _killThread);
+		list_iterate(thread_list, (void*) _killThread);*/
 
 		printf("Hasta Luego");
-		//exit(0);
+		abort();
 	}
 	else if(strcmp(palabras[0], "clean")==0) {
 		printf("\e[1;1H\e[2J");

@@ -24,7 +24,7 @@ t_par_socket_pid* buscar_proceso_por_socket(int socket);
 
 int main(int argc, char* argv[]) {
 	pthread_mutex_init(&mutex_pedido_memoria, NULL);
-	fd_set master_cpu, master_prog;
+
 	registro_pid = 1;
 
 	crear_logger(argv[0], &logger, false, LOG_LEVEL_TRACE);
@@ -72,6 +72,7 @@ int main(int argc, char* argv[]) {
 	sem_init(semSemaforos, 0, 1);
 
 	pthread_mutex_init(&mutex_planificar, NULL);
+	pthread_mutex_init(&mutex_kill, NULL);
 
 	planificar = true;
 	int ret;
@@ -179,7 +180,7 @@ void manage_select(t_aux* estructura){
 						if(nuevaConexion > set_fd_max)set_fd_max = nuevaConexion;
 						if(estructura->port == kernel_conf->cpu_port){
 							t_cpu* cpu = cpu_create(nuevaConexion);
-							connection_send(nuevaConexion, HANDSHAKE_OC, &(kernel_conf->stack_size));
+							connection_send(nuevaConexion, HANDSHAKE_CPU, &(kernel_conf->stack_size));
 							sem_wait(semListaCpu);
 							list_add(lista_cpu, cpu);
 							sem_post(semListaCpu);
@@ -317,6 +318,7 @@ void pasarDeReadyAExecute(){
 	int i;
 
 	sem_wait(semCantidadElementosColaListos);
+	sem_wait(semCantidadCpuLibres);
 	pthread_mutex_lock(&semColaListos);
 	log_trace(logger, "list_size de cola_listos %d", list_size(cola_listos));
 	pcb = queue_pop(cola_listos);
@@ -325,8 +327,6 @@ void pasarDeReadyAExecute(){
 
 	pthread_mutex_unlock(&semColaListos);
 
-
-	sem_wait(semCantidadCpuLibres);
 	sem_wait(semListaCpu);
 	for (i = 0; i < list_size(lista_cpu); i++) {
 		cpu = list_get(lista_cpu, i);
@@ -340,6 +340,7 @@ void pasarDeReadyAExecute(){
 				cpu->proceso_asignado = pcb;
 				serializarPCB = true;
 			} else {
+				sem_post(semCantidadCpuLibres);
 				log_error(logger, "Fallo al obtener PCB en planificador corto plazo");
 			}
 			break;

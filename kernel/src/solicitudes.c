@@ -510,6 +510,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		sem_post(semCantidadCpuLibres);
 		break;
 	case OC_TERMINO_INSTRUCCION: {
+		pthread_mutex_lock(&mutex_kill);
 		t_PCB* oldPCB;
 		*resp = -1; //por default no continua procesando
 		pcb = deserializer_pcb(buffer);
@@ -541,8 +542,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		if(cpu->matar_proceso){
 			pcb->exit_code = -77;
 			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
+
 			status = 1;
-			if(parEncontrado)connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status); //TODO: Ver si se puede solucionar de otra forma para desconexion de consola
+			if(parEncontrado){
+				connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status); //TODO: Ver si se puede solucionar de otra forma para desconexion de consola
+				FD_CLR(parEncontrado->socket, &master_prog);
+			}
 			pthread_mutex_lock(&mutex_pedido_memoria);
 			memory_finalize_process(memory_socket, pcb->pid, logger);
 			pthread_mutex_unlock(&mutex_pedido_memoria);
@@ -602,6 +607,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				sem_post(semCantidadCpuLibres);
 			}
 		}
+		pthread_mutex_unlock(&mutex_kill);
 	}
 
 		break;

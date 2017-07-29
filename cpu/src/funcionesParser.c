@@ -39,8 +39,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		agregarAStack(newvar,VAR_STACK);
 	}
 	nextPageOffsetInStack->offset+=newvar->size;
-
-    if(newvar->pagina > stack_size+pcb->cantidad_paginas){
+    if(newvar->pagina == stack_size+pcb->cantidad_paginas){
     	pcb->exit_code=EC_STACKOVERFLOW;
     	log_error(logger, "(Page [%p] | Offset [%d] ) STACKOVERFLOW", newvar->pagina, newvar->offset);
     	return 0;

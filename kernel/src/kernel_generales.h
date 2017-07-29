@@ -42,6 +42,7 @@ pthread_mutex_t registro_pid_mutex;
 pthread_mutex_t mutex_planificar;
 pthread_rwlock_t* lock_tabla_global_archivos;
 pthread_mutex_t mutex_pedido_memoria;
+pthread_mutex_t mutex_kill;
 
 sem_t* semSemaforos;
 
@@ -112,7 +113,7 @@ typedef struct {
 } t_par_socket_pid;
 
 
-
+fd_set master_cpu, master_prog;
 int registro_pid;
 t_log* logger;
 t_queue* cola_nuevos;

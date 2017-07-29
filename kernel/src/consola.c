@@ -84,6 +84,8 @@ int leer_comando(char* command) {
 	//
 		t_PCB* pcbEncontrado = NULL;
 		int pid = atoi(palabras[1]);
+		pasar_proceso_a_exit(pid);
+/*
 		t_PCB* pcbASacar = malloc(sizeof(t_PCB));
 		pcbASacar->pid = pid;
 		sem_wait(semColaNuevos);
@@ -134,14 +136,17 @@ int leer_comando(char* command) {
 		pcbEncontrado->exit_code = -77;
 
 		t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcbEncontrado->pid);
+
 		int status = 1;
 		connection_send(parEncontrado->socket, OC_MUERE_PROGRAMA, &status);
+		FD_CLR(parEncontrado->socket, &master_prog);
 		pthread_mutex_lock(&mutex_pedido_memoria);
 		memory_finalize_process(memory_socket, pcbEncontrado->pid, logger);
 		pthread_mutex_unlock(&mutex_pedido_memoria);
 		// se agrega a la cola de finalizados
 		queue_push(cola_finalizados, pcbEncontrado);
 		sem_wait(semCantidadProgramasPlanificados);
+		*/
 		// TODO: Hacer sem_post del planificador largo plazo (?)
 	}
 	else if(strcmp(palabras[0], "multiprogramming")==0) {

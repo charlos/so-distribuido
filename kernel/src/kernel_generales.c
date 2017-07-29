@@ -127,6 +127,21 @@ t_PCB* sacar_pcb(t_queue* cola, t_PCB* pcb){
 	return pcbEncontrado;
 }
 
+t_PCB* sacar_pcb_de_nuevo(t_queue* cola, t_PCB* pcb){
+	bool _is_pcb(t_nuevo_proceso* p) {
+		return (p->pcb->pid == pcb->pid);
+	}
+	t_nuevo_proceso* encontrado = list_remove_by_condition(cola->elements, (void*) _is_pcb);
+	if(encontrado != NULL) {
+		t_PCB* pcbx=encontrado->pcb;
+		return pcbx;
+	} else {
+		return NULL;
+	}
+	//free(encontrado->codigo);
+	//free(encontrado);
+}
+
 t_PCB* sacar_pcb_con_pid(t_queue* cola, uint16_t pid){
 	bool _is_pcb(t_PCB* p) {
 		return (p->pid == pid);
@@ -228,7 +243,7 @@ void pasarDeExecuteABlocked(t_cpu* cpu){
 }
 
 bool continuar_procesando(t_cpu* cpu){
-	if(kernel_conf->algoritmo == PLANIFICACION_ROUND_ROBIN){
+	if(strcmp(kernel_conf->algoritmo ,PLANIFICACION_ROUND_ROBIN)==0){
 		cpu->quantum++;
 		return (cpu->quantum < kernel_conf->quantum);
 	} else {
@@ -257,12 +272,13 @@ t_table_file* getTablaArchivo(int pid){
 }
 
 void pasar_proceso_a_exit(int pid){
+	pthread_mutex_lock(&mutex_kill);
 	t_PCB* pcbEncontrado = NULL;
 	t_PCB* pcbASacar = malloc(sizeof(t_PCB));
 	pcbASacar->pid = pid;
 	sem_wait(semColaNuevos);
 	// lo busco en la cola new
-	pcbEncontrado = sacar_pcb(cola_nuevos, pcbASacar);
+	pcbEncontrado = sacar_pcb_de_nuevo(cola_nuevos, pcbASacar);
 	sem_post(semColaNuevos);
 	if(pcbEncontrado == NULL){
 		pthread_mutex_lock(&semColaListos);
@@ -275,6 +291,7 @@ void pasar_proceso_a_exit(int pid){
 			sem_wait(semColaBloqueados);
 			pcbEncontrado = sacar_pcb(cola_bloqueados, pcbASacar);
 			if(pcbEncontrado!=NULL){
+				log_trace(logger, "PID %d - encontrado en cola bloqueados ", pid);
 				sem_wait(semSemaforos);
 				void _semaforo(char* key, t_semaphore* semaforo){
 					bool _is_pid(uint16_t* pid){
@@ -296,22 +313,26 @@ void pasar_proceso_a_exit(int pid){
 				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
 				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
 				if(cpu == NULL){
+					log_error(logger, "1 HIJO DE PUTAAAA SE ESTA MOVIENDO EL PCB EN EL MEDIO DEL KILLLL");
 					printf("No existe programa con el PID (%d)\n", &pid);
+					pthread_mutex_unlock(&mutex_kill);
 					return;
 				} else {
+					log_error(logger, "2 HIJO DE PUTAAAA SE ESTA MOVIENDO EL PCB EN EL MEDIO DEL KILLLL");
 					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
 					cpu->matar_proceso = 1;
+					pthread_mutex_unlock(&mutex_kill);
 					return;
 				}
 			}
-		}
-	}
+		}else{log_trace(logger, "PID %d - encontrado en cola listos ", pid);}
+	}else{log_trace(logger, "PID %d - encontrado en cola nuevos ", pid);}
 	// se settea mensaje de error cuando se mata un proceso desde consola de kernel
 	pcbEncontrado->exit_code = -77;
 	// se agrega a la cola de finalizados
-	t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcbEncontrado->pid);
+/*	t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcbEncontrado->pid);
 	int status = 1;
-	connection_send(parEncontrado->socket, MUERE_PROGRAMA, &status);
+	connection_send(parEncontrado->socket, MUERE_PROGRAMA, &status);*/
 
 	pthread_mutex_lock(&mutex_pedido_memoria);
 	memory_finalize_process(memory_socket, pid, logger);
@@ -320,4 +341,5 @@ void pasar_proceso_a_exit(int pid){
 	queue_push(cola_finalizados, pcbEncontrado);
 	sem_wait(semCantidadProgramasPlanificados);
 	// TODO: Hacer sem_post del planificador largo plazo (?)
+	pthread_mutex_unlock(&mutex_kill);
 }
