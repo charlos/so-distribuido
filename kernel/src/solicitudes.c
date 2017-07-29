@@ -215,7 +215,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		direccion[direccion_length] = '\0';
 
 		//printf("RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
-		log_trace(logger, "RECIBE EL BUFFER CON LENGTH %d PID %d Y CHAR %s", direccion_length, pid, direccion);
+		//log_trace(logger, "RECIBE EL BUFFER CON LENGTH %d PID %d  ", direccion_length, pid);
 
 		int fd_proceso;
 		fd_proceso = abrir_archivo(pid, direccion, flags);

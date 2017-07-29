@@ -148,6 +148,7 @@ int leer_comando(char* command) {
 		sem_wait(semCantidadProgramasPlanificados);
 		*/
 		// TODO: Hacer sem_post del planificador largo plazo (?)
+
 	}
 	else if(strcmp(palabras[0], "multiprogramming")==0) {
 		kernel_conf->grado_multiprog = atoi(palabras[1]);

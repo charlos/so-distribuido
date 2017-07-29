@@ -339,6 +339,7 @@ void pasar_proceso_a_exit(int pid){
 	pthread_mutex_unlock(&mutex_pedido_memoria);
 	// se agrega a la cola de finalizados
 	queue_push(cola_finalizados, pcbEncontrado);
+	sem_post(semPlanificarLargoPlazo);
 	sem_wait(semCantidadProgramasPlanificados);
 	// TODO: Hacer sem_post del planificador largo plazo (?)
 	pthread_mutex_unlock(&mutex_kill);

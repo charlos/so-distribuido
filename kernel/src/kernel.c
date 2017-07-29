@@ -302,11 +302,12 @@ void pasarDeNewAReady(){
 			nuevo_proceso->pcb->exit_code = -1;
 			// la funcion pasarDeNewAReady() termina pasando a finalizados!? (que asco...)
 			queue_push(cola_finalizados, nuevo_proceso->pcb);
-			// TODO: Hacer sem_post del planificador largo plazo (?)
+			sem_post(semPlanificarLargoPlazo);
 		} else {
 			cola_listos_push(nuevo_proceso->pcb);
 			sem_post(semCantidadProgramasPlanificados);
 			liberar_nuevo_proceso(nuevo_proceso);
+			if(cantidadProgramasPlanificados<kernel_conf->grado_multiprog)sem_post(semPlanificarLargoPlazo);
 		}
 	}
 }
@@ -365,8 +366,8 @@ void pasarDeExecuteAExit(t_cpu* cpu){
 	queue_push(cola_finalizados, cpu->proceso_asignado);
 	liberar_cpu(cpu);
 	sem_post(semColaFinalizados);
+	sem_post(semPlanificarLargoPlazo);
 	sem_wait(semCantidadProgramasPlanificados);
-	// TODO: Hacer sem_post del planificador largo plazo (?)
 }
 
 void enviar_a_ejecutar(t_cpu* cpu){
