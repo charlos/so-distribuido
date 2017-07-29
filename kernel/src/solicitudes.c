@@ -246,7 +246,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 		escritura = (t_archivo *) buffer;
 		log_trace(logger, "Llamada a escritura. FD: %d.	informacion: %s", escritura->descriptor_archivo, (char*)escritura->informacion);
 		if(escritura->descriptor_archivo == 1){
-			//void * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
+			//t_read_response * informacion_a_imprimir = obtener_informacion_a_imprimir(escritura->informacion, escritura->pid);
 			//int socket_proceso = *(int*) dictionary_get(tabla_sockets_procesos, string_itoa(escritura->pid));
 
 			int * _mismopid(t_par_socket_pid * target) {
@@ -1012,15 +1012,12 @@ t_valor_variable leerValorVariable(char* nombre_variable){
 	return variable->valor;
 }
 
-void * obtener_informacion_a_imprimir(t_puntero puntero, int pid) {
+t_read_response * obtener_informacion_a_imprimir(t_puntero puntero, int pid) {
 
 	int pagina = puntero/TAMANIO_PAGINAS;
 	int offset = puntero % TAMANIO_PAGINAS;
 
-	t_read_response * respuesta_memoria = memory_read(memory_socket, pid, pagina, offset, sizeof(t_puntero), logger);
-
-	return respuesta_memoria->buffer;
-
+	return memory_read(memory_socket, pid, pagina, offset, sizeof(t_puntero), logger);
 }
 
 void obtener_direccion_relativa(t_puntero* puntero, int nro_pagina_heap, int cantidad_paginas_codigo){

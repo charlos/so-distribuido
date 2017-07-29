@@ -85,7 +85,8 @@ int main(void) {
 		}else{
 			quantum_sleep = *continuar;
 		}
-		sleep(quantum_sleep);
+
+		usleep(1000 * (quantum_sleep));
 		*continuar = -1;
 
 		if(list_size(pcb->indice_stack)==0){
@@ -158,8 +159,10 @@ int main(void) {
 
 		if(pcb->exit_code == OC_TERMINA_PROGRAMA){
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_TERMINA_PROGRAMA);
+			pcb_destroy(pcb);
 		} else if(flagDesconeccion){
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_DESCONEX_CPU);
+			pcb_destroy(pcb);
 			exit(0);
 		} else if(pcb->exit_code<0){
 			serializar_y_enviar_PCB(pcb, server_socket_kernel, OC_ERROR_EJECUCION_CPU);

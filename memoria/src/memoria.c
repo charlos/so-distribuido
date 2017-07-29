@@ -155,7 +155,7 @@ void load_memory_properties(void) {
  * @NAME create_logger
  */
 void create_logger(void) {
-	logger = log_create((memory_conf->logfile), "memory_process", true, LOG_LEVEL_TRACE);
+	logger = log_create((memory_conf->logfile), "memory_process", false, LOG_LEVEL_TRACE);
 }
 
 /**
