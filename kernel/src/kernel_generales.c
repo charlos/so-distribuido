@@ -271,7 +271,7 @@ t_table_file* getTablaArchivo(int pid){
 	   return tabla;
 }
 
-void pasar_proceso_a_exit(int pid){
+int pasar_proceso_a_exit(int pid){
 	pthread_mutex_lock(&mutex_kill);
 	t_PCB* pcbEncontrado = NULL;
 	t_PCB* pcbASacar = malloc(sizeof(t_PCB));
@@ -313,16 +313,14 @@ void pasar_proceso_a_exit(int pid){
 				// si se llegó hasta acá es porque el pid o no existe o se está ejecutando
 				t_cpu* cpu = buscar_pcb_en_lista_cpu(pcbASacar);
 				if(cpu == NULL){
-					log_error(logger, "1 HIJO DE PUTAAAA SE ESTA MOVIENDO EL PCB EN EL MEDIO DEL KILLLL");
 					printf("No existe programa con el PID (%d)\n", &pid);
 					pthread_mutex_unlock(&mutex_kill);
-					return;
+					return 0;
 				} else {
-					log_error(logger, "2 HIJO DE PUTAAAA SE ESTA MOVIENDO EL PCB EN EL MEDIO DEL KILLLL");
 					// si existe cpu se le setea "matar_proceso" para que al momento de terminar la instriccion la cpu lo mande a la cola exit
 					cpu->matar_proceso = 1;
 					pthread_mutex_unlock(&mutex_kill);
-					return;
+					return 0;
 				}
 			}
 		}else{log_trace(logger, "PID %d - encontrado en cola listos ", pid);}
@@ -343,4 +341,5 @@ void pasar_proceso_a_exit(int pid){
 	sem_wait(semCantidadProgramasPlanificados);
 	// TODO: Hacer sem_post del planificador largo plazo (?)
 	pthread_mutex_unlock(&mutex_kill);
+	return 1;
 }

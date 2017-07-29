@@ -530,7 +530,7 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 				uint16_t* pid = malloc(sizeof(uint16_t));
 				*pid = cpu->proceso_asignado->pid;
 				queue_push(semaforo->cola, pid); //pongo el programa en la cola del semaforo
-				log_trace(logger, "PUSH (%d) en Semaforo -%s- por CPU %d", *pid, nombre_semaforo, info_solicitud->file_descriptor);
+				log_trace(logger, "PUSH (%d) en Semaforo -%s- por CPU %d", *pid, cpu->nombre_semaforo, info_solicitud->file_descriptor);
 				pasarDeExecuteABlocked(cpu); //bloquea el programa
 				cpu->proceso_bloqueado_por_wait = 1;
 			} else {
@@ -615,7 +615,12 @@ void solve_request(t_info_socket_solicitud* info_solicitud){
 	case OC_KILL_CONSOLA: {
 		pid = *(int*)buffer;
 		status = 1;
-		pasar_proceso_a_exit(pid);
+		if(pasar_proceso_a_exit(pid)){
+			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pid);
+			int status = 1;
+			connection_send(parEncontrado->socket, MUERE_PROGRAMA, &status);
+		}
+
 	break;
 	}
 	default:

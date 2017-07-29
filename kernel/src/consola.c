@@ -84,7 +84,11 @@ int leer_comando(char* command) {
 	//
 		t_PCB* pcbEncontrado = NULL;
 		int pid = atoi(palabras[1]);
-		pasar_proceso_a_exit(pid);
+		if(pasar_proceso_a_exit(pid)){
+			t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pid);
+			int status = 1;
+			if(parEncontrado)connection_send(parEncontrado->socket, MUERE_PROGRAMA, &status);
+		}
 /*
 		t_PCB* pcbASacar = malloc(sizeof(t_PCB));
 		pcbASacar->pid = pid;
@@ -184,8 +188,8 @@ void mostrar_flags(t_banderas flags){
 void mostrar_informacion_tabla_de_archivos(t_table_file* tabla_de_archivos) {
 
 	void _mostar_informacion_de_archivo_abierto(t_process_file* file) {
-		printf("\n Descriptor de archivo del proceso", file->proceso_fd);
-		printf("descriptor global", file->global_fd);
+		printf("\n Descriptor de archivo del proceso: %d\n", file->proceso_fd);
+		printf("descriptor global: %d \n", file->global_fd);
 		mostrar_flags(file->flags);
 
 	}
@@ -204,6 +208,13 @@ void _imprimir_proceso(t_PCB* pcb){
 		char *estado;
 		printf("Proceso id: %d -----", pcb->pid);
 		t_table_file* tabla_de_archivos = getTablaArchivo(pcb->pid);
+		t_par_socket_pid* parEncontrado = encontrar_consola_de_pcb(pcb->pid);
+//		if(parEncontrado){
+//			printf("Cantidad de Syscalls: %d\n", parEncontrado->cantidad_syscalls);
+//			printf("Cantidad de memoria alocada: %d\n", parEncontrado->memoria_reservada);
+//			printf("Cantidad de memoria liberada: %d\n", parEncontrado->memoria_liberada);
+	//	}
+
 		if(!list_is_empty(tabla_de_archivos->tabla_archivos)){
 			printf("Tabla De Archivos del Proceso:\n\n");
 			mostrar_informacion_tabla_de_archivos(tabla_de_archivos);
